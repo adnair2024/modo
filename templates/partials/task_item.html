@@ -1,0 +1,50 @@
+<div class="bg-white p-4 rounded-lg shadow transition-all hover:shadow-md border-l-4 {{ 'border-green-500' if task.status == 'done' else 'border-transparent' }}" 
+     id="task-{{ task.id }}"
+     hx-get="{{ url_for('get_edit_task', task_id=task.id) }}" 
+     hx-trigger="dblclick" 
+     hx-swap="outerHTML">
+    <div class="flex items-start justify-between">
+        <div class="flex items-start gap-3 flex-1">
+            <button hx-post="{{ url_for('toggle_task', task_id=task.id) }}" 
+                    hx-target="#task-{{ task.id }}" 
+                    hx-swap="outerHTML"
+                    class="mt-1 w-6 h-6 border-2 border-gray-300 rounded-full flex items-center justify-center flex-shrink-0 {{ 'bg-green-500 border-green-500' if task.status == 'done' else 'hover:border-indigo-500' }}">
+                {% if task.status == 'done' %}
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                {% endif %}
+            </button>
+            <div class="flex-1">
+                <div class="flex items-center gap-2 mb-1 flex-wrap">
+                    <span class="font-medium {{ 'line-through text-gray-500' if task.status == 'done' else 'text-gray-800' }}">{{ task.title }}</span>
+                    {% for tag in task.tags %}
+                        <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full font-medium">{{ tag.name }}</span>
+                    {% endfor %}
+                </div>
+                
+                {% if task.description %}
+                <p class="text-sm text-gray-600 mb-2 {{ 'line-through' if task.status == 'done' }}">{{ task.description }}</p>
+                {% endif %}
+                
+                <div class="flex items-center gap-4 text-xs text-gray-500 mt-2">
+                    {% if task.due_date %}
+                    <span class="flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        {{ task.due_date.strftime('%b %d, %H:%M') }}
+                    </span>
+                    {% endif %}
+                    
+                    <span class="flex items-center gap-1 font-mono bg-gray-100 px-2 py-0.5 rounded" title="{{ task.completed_pomodoros }} completed out of {{ task.estimated_pomodoros }} estimated">
+                        🍅 {{ task.completed_pomodoros }}/{{ task.estimated_pomodoros }}
+                    </span>
+                </div>
+            </div>
+        </div>
+        
+        <button hx-delete="{{ url_for('delete_task', task_id=task.id) }}" 
+                hx-target="#task-{{ task.id }}" 
+                hx-swap="outerHTML"
+                class="text-gray-400 hover:text-red-500 ml-4 transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+        </button>
+    </div>
+</div>

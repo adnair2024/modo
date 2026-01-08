@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto mt-10">
+    <h1 class="text-3xl font-bold mb-8 text-indigo-700 dark:text-indigo-400">Settings</h1>
+    
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-8 space-y-8">
+        
+        <!-- Timer Settings -->
+        <section>
+            <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Timer Automation
+            </h2>
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <span class="block font-medium text-gray-700 dark:text-gray-300">Auto-start Breaks</span>
+                        <span class="text-sm text-gray-500 dark:text-gray-400">Automatically start the break timer when a focus session ends.</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="auto-break" class="sr-only peer" {{ 'checked' if current_user.auto_start_break else '' }}>
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                    </label>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <div>
+                        <span class="block font-medium text-gray-700 dark:text-gray-300">Auto-start Focus</span>
+                        <span class="text-sm text-gray-500 dark:text-gray-400">Automatically start the next focus session when a break ends.</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="auto-focus" class="sr-only peer" {{ 'checked' if current_user.auto_start_focus else '' }}>
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                    </label>
+                </div>
+            </div>
+        </section>
+
+        <hr class="border-gray-200 dark:border-gray-700">
+
+        <!-- Theme Settings -->
+        <section>
+             <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"></path></svg>
+                Appearance
+            </h2>
+             <div class="flex items-center justify-between">
+                <span class="block font-medium text-gray-700 dark:text-gray-300">Theme</span>
+                <div class="flex gap-2">
+                    <button class="px-4 py-2 rounded border {{ 'bg-indigo-50 border-indigo-500 text-indigo-700' if current_user.theme_preference == 'light' else 'border-gray-300 text-gray-600' }} hover:bg-indigo-50" onclick="setTheme('light')">Light</button>
+                    <button class="px-4 py-2 rounded border {{ 'bg-indigo-900 border-indigo-500 text-white' if current_user.theme_preference == 'dark' else 'border-gray-300 text-gray-600' }} hover:bg-gray-700 hover:text-white" onclick="setTheme('dark')">Dark</button>
+                </div>
+            </div>
+        </section>
+
+    </div>
+</div>
+
+<script>
+    const autoBreak = document.getElementById('auto-break');
+    const autoFocus = document.getElementById('auto-focus');
+
+    function updateSetting(key, value) {
+        fetch('/api/update_settings', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({[key]: value})
+        });
+    }
+
+    autoBreak.addEventListener('change', (e) => updateSetting('auto_start_break', e.target.checked));
+    autoFocus.addEventListener('change', (e) => updateSetting('auto_start_focus', e.target.checked));
+
+    function setTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        updateSetting('theme', theme);
+        location.reload(); 
+    }
+</script>
+{% endblock %}

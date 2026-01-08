@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ current_user.theme_preference if current_user.is_authenticated else 'light' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modo - Productivity Manager</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script>
+        tailwind.config = {
+            darkMode: ['class', '[data-theme="dark"]'],
+            theme: {
+                extend: {
+                    colors: {
+                        // basic dark mode mapping setup if needed
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        [data-theme="dark"] body { background-color: #1f2937; color: #f3f4f6; }
+        [data-theme="dark"] .bg-white { background-color: #374151; color: #f3f4f6; }
+        [data-theme="dark"] .text-gray-900 { color: #f3f4f6; }
+        [data-theme="dark"] .text-gray-800 { color: #e5e7eb; }
+        [data-theme="dark"] .text-gray-600 { color: #9ca3af; }
+        [data-theme="dark"] .border-gray-200 { border-color: #4b5563; }
+        [data-theme="dark"] .bg-gray-100 { background-color: #111827; }
+        [data-theme="dark"] input, [data-theme="dark"] textarea, [data-theme="dark"] select { background-color: #374151; color: white; border-color: #4b5563; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-900 font-sans transition-colors duration-200">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-white border-r border-gray-200 hidden md:flex md:flex-col h-screen overflow-y-auto">
+            <div class="p-6">
+                <h1 class="text-2xl font-bold text-indigo-600">Modo</h1>
+            </div>
+            <nav class="mt-6 flex-1">
+                <a href="{{ url_for('index') }}" class="block py-2.5 px-6 rounded transition duration-200 hover:bg-indigo-50 hover:text-indigo-600">To-Do List</a>
+                <a href="{{ url_for('timer') }}" class="block py-2.5 px-6 rounded transition duration-200 hover:bg-indigo-50 hover:text-indigo-600">Timer</a>
+                <a href="{{ url_for('personal_stats') }}" class="block py-2.5 px-6 rounded transition duration-200 hover:bg-indigo-50 hover:text-indigo-600">My Stats</a>
+                <a href="{{ url_for('leaderboard') }}" class="block py-2.5 px-6 rounded transition duration-200 hover:bg-indigo-50 hover:text-indigo-600">Leaderboard</a>
+                <a href="{{ url_for('settings') }}" class="block py-2.5 px-6 rounded transition duration-200 hover:bg-indigo-50 hover:text-indigo-600">Settings</a>
+                {% if current_user.is_authenticated %}
+                <a href="{{ url_for('auth.logout') }}" class="block py-2.5 px-6 rounded transition duration-200 hover:bg-red-50 hover:text-red-600 mt-10">Logout</a>
+                {% else %}
+                <a href="{{ url_for('auth.login') }}" class="block py-2.5 px-6 rounded transition duration-200 hover:bg-indigo-50 hover:text-indigo-600 mt-10">Login</a>
+                {% endif %}
+            </nav>
+            
+            {% if current_user.is_authenticated %}
+            <div class="p-6 border-t border-gray-200 mb-16">
+                <button id="theme-toggle" class="flex items-center gap-2 text-gray-600 hover:text-indigo-600 transition w-full">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                    <span>Toggle Theme</span>
+                </button>
+            </div>
+            {% endif %}
+        </aside>
+
+        <!-- Content -->
+        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6 transition-colors duration-200">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="bg-white border-l-4 border-{{ 'red' if category == 'error' else 'green' }}-500 text-{{ 'red' if category == 'error' else 'green' }}-700 p-4 mb-4" role="alert">
+                            <p>{{ message }}</p>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    
+    <script>
+        const themeToggle = document.getElementById('theme-toggle');
+        if (themeToggle) {
+            themeToggle.addEventListener('click', () => {
+                const html = document.documentElement;
+                const currentTheme = html.getAttribute('data-theme');
+                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+                html.setAttribute('data-theme', newTheme);
+                
+                // Persist
+                fetch('/api/update_settings', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({theme: newTheme})
+                });
+            });
+        }
+    </script>
+    <!-- Add global settings for JS to access -->
+    {% if current_user.is_authenticated %}
+    <script>
+        window.userSettings = {
+            autoStartBreak: {{ 'true' if current_user.auto_start_break else 'false' }},
+            autoStartFocus: {{ 'true' if current_user.auto_start_focus else 'false' }}
+        };
+    </script>
+    {% endif %}
+    <div id="global-timer-container" class="fixed bottom-0 left-0 right-0 bg-gray-900 text-white p-2 flex justify-between items-center shadow-lg border-t border-gray-700 z-50">
+        <div class="flex items-center space-x-4">
+            <span class="font-bold text-xl font-mono" id="global-timer-display">25:00</span>
+            <select id="global-timer-task" class="bg-gray-800 text-sm p-1 rounded border border-gray-600 max-w-xs">
+                <option value="">Select Task...</option>
+                {% if current_user.is_authenticated %}
+                    {% for task in current_user.tasks %}
+                        {% if task.status != 'done' %}
+                        <option value="{{ task.id }}">{{ task.title }}</option>
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            </select>
+        </div>
+        <div class="space-x-2">
+            <button id="global-timer-start" class="bg-green-600 px-3 py-1 rounded text-sm hover:bg-green-500">Start</button>
+            <button id="global-timer-pause" class="bg-yellow-600 px-3 py-1 rounded text-sm hover:bg-yellow-500 hidden">Pause</button>
+            <button id="global-timer-reset" class="bg-red-600 px-3 py-1 rounded text-sm hover:bg-red-500">Reset</button>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/timer.js') }}"></script>
+</body>
+</html>
