@@ -34,6 +34,17 @@
                         <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
                     </label>
                 </div>
+
+                <div class="flex items-center justify-between">
+                    <div>
+                        <span class="block font-medium text-gray-700 dark:text-gray-300">Auto-select Priority Task</span>
+                        <span class="text-sm text-gray-500 dark:text-gray-400">Automatically select the highest priority task after a session or break.</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="auto-priority" class="sr-only peer" {{ 'checked' if current_user.auto_select_priority else '' }}>
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                    </label>
+                </div>
             </div>
         </section>
 
@@ -60,6 +71,7 @@
 <script>
     const autoBreak = document.getElementById('auto-break');
     const autoFocus = document.getElementById('auto-focus');
+    const autoPriority = document.getElementById('auto-priority');
 
     function updateSetting(key, value) {
         fetch('/api/update_settings', {
@@ -71,6 +83,7 @@
 
     autoBreak.addEventListener('change', (e) => updateSetting('auto_start_break', e.target.checked));
     autoFocus.addEventListener('change', (e) => updateSetting('auto_start_focus', e.target.checked));
+    autoPriority.addEventListener('change', (e) => updateSetting('auto_select_priority', e.target.checked));
 
     function setTheme(theme) {
         document.documentElement.setAttribute('data-theme', theme);

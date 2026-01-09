@@ -81,6 +81,7 @@ def add_task():
     description = request.form.get('description')
     due_date_str = request.form.get('due_date')
     est_pomodoros = request.form.get('estimated_pomodoros', type=int, default=1)
+    priority = request.form.get('priority', type=int, default=1)
     tags_str = request.form.get('tags')
 
     if title:
@@ -96,6 +97,7 @@ def add_task():
             description=description,
             due_date=due_date,
             estimated_pomodoros=est_pomodoros,
+            priority=priority,
             user_id=current_user.id
         )
 
@@ -157,6 +159,7 @@ def update_task(task_id):
     description = request.form.get('description')
     due_date_str = request.form.get('due_date')
     est_pomodoros = request.form.get('estimated_pomodoros', type=int)
+    priority = request.form.get('priority', type=int)
     tags_str = request.form.get('tags')
 
     if title:
@@ -164,6 +167,8 @@ def update_task(task_id):
         task.description = description
         if est_pomodoros:
             task.estimated_pomodoros = est_pomodoros
+        if priority:
+            task.priority = priority
 
         if due_date_str:
             try:
@@ -194,6 +199,15 @@ def get_task_item(task_id):
         abort(403)
     return render_template('partials/task_item.html', task=task)
 
+@app.route('/api/next_priority_task', methods=['GET'])
+@login_required
+def get_next_priority_task():
+    task = Task.query.filter_by(user_id=current_user.id, status='todo')\
+        .order_by(Task.priority.desc(), Task.created_at.asc()).first()
+    if task:
+        return jsonify({'id': task.id, 'title': task.title})
+    return jsonify({'id': None})
+
 @app.route('/stats')
 @login_required
 def personal_stats():
@@ -216,6 +230,8 @@ def update_settings():
         current_user.auto_start_break = data['auto_start_break']
     if 'auto_start_focus' in data:
         current_user.auto_start_focus = data['auto_start_focus']
+    if 'auto_select_priority' in data:
+        current_user.auto_select_priority = data['auto_select_priority']
         
     db.session.commit()
     return jsonify({'status': 'success'})

@@ -201,8 +201,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentMode = 'break';
                 secondsLeft = 5 * 60;
                 localStorage.setItem('timerMode', currentMode);
-                localStorage.removeItem('timerSecondsLeft'); // Clear saved time so it uses default
+                localStorage.removeItem('timerSecondsLeft'); 
                 
+                // If auto-select priority is on, find the next task for AFTER the break
+                if (settings.autoSelectPriority) {
+                    fetch('/api/next_priority_task')
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.id) {
+                                currentTaskId = data.id.toString();
+                                localStorage.setItem('timerTask', currentTaskId);
+                                updateTaskSelects(currentTaskId);
+                            }
+                        });
+                }
+
                 updateUI();
 
                 if (settings.autoStartBreak) {
@@ -220,16 +233,33 @@ document.addEventListener('DOMContentLoaded', () => {
             currentMode = 'focus';
             secondsLeft = 25 * 60;
             localStorage.setItem('timerMode', currentMode);
-             localStorage.removeItem('timerSecondsLeft');
+            localStorage.removeItem('timerSecondsLeft');
 
-            updateUI();
-
-            if (settings.autoStartFocus) {
-                startTimer(true);
-                 alert('Break Over! Starting Focus...');
+            // If auto-select priority is on, find the next task now
+            if (settings.autoSelectPriority) {
+                fetch('/api/next_priority_task')
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.id) {
+                            currentTaskId = data.id.toString();
+                            localStorage.setItem('timerTask', currentTaskId);
+                            updateTaskSelects(currentTaskId);
+                        }
+                        finishBreak(settings);
+                    });
             } else {
-                 alert('Break Over! Ready to focus?');
+                finishBreak(settings);
             }
+        }
+    }
+
+    function finishBreak(settings) {
+        updateUI();
+        if (settings.autoStartFocus) {
+            startTimer(true);
+             alert('Break Over! Starting Focus...');
+        } else {
+             alert('Break Over! Ready to focus?');
         }
     }
 

@@ -13,6 +13,7 @@ class User(UserMixin, db.Model):
     theme_preference = db.Column(db.String(50), default='light')
     auto_start_break = db.Column(db.Boolean, default=False)
     auto_start_focus = db.Column(db.Boolean, default=False)
+    auto_select_priority = db.Column(db.Boolean, default=False)
 
 task_tags = db.Table('task_tags',
     db.Column('task_id', db.Integer, db.ForeignKey('task.id'), primary_key=True),
@@ -28,6 +29,7 @@ class Task(db.Model):
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=True)
     status = db.Column(db.String(20), default='todo') # todo, in_progress, done
+    priority = db.Column(db.Integer, default=1) # 1: Low, 2: Medium, 3: High
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     due_date = db.Column(db.DateTime, nullable=True)
     estimated_pomodoros = db.Column(db.Integer, default=1)
