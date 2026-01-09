@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
             start: document.getElementById('global-timer-start'),
             pause: document.getElementById('global-timer-pause'),
             reset: document.getElementById('global-timer-reset'),
+            skip: document.getElementById('global-timer-skip'),
             task: document.getElementById('global-timer-task')
         },
         page: {
@@ -13,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
             start: document.getElementById('page-timer-start'),
             pause: document.getElementById('page-timer-pause'),
             reset: document.getElementById('page-timer-reset'),
+            skip: document.getElementById('page-timer-skip'),
             task: document.getElementById('page-timer-task')
         }
     };
@@ -116,7 +118,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 els.pause.classList.remove('hidden');
             }
         }
-        if (els.task) els.task.disabled = showPause || currentMode === 'break'; 
+        
+        // Show/Hide Skip Break
+        if (els.skip) {
+            if (currentMode === 'break') {
+                els.skip.classList.remove('hidden');
+            } else {
+                els.skip.classList.add('hidden');
+            }
+        }
+
+        // Only disable task selection during BREAK, allow it during FOCUS even if running
+        if (els.task) {
+            els.task.disabled = (currentMode === 'break'); 
+        }
     }
 
     function startTimer(setNewEndTime = true) {
@@ -181,6 +196,19 @@ document.addEventListener('DOMContentLoaded', () => {
         secondsLeft = currentMode === 'break' ? settings.breakDuration * 60 : settings.focusDuration * 60;
         localStorage.removeItem('timerSecondsLeft');
         updateUI();
+    }
+    
+    function skipBreak() {
+        pauseTimer();
+        const settings = window.userSettings || { focusDuration: 25, breakDuration: 5 };
+        currentMode = 'focus';
+        secondsLeft = settings.focusDuration * 60;
+        localStorage.setItem('timerMode', currentMode);
+        localStorage.removeItem('timerSecondsLeft');
+        updateUI();
+        
+        // Optionally ask to start immediately?
+        // startTimer(true); 
     }
 
     function completeTimer() {
@@ -265,6 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (elements.global.start) elements.global.start.addEventListener('click', () => startTimer(true));
         if (elements.global.pause) elements.global.pause.addEventListener('click', pauseTimer);
         if (elements.global.reset) elements.global.reset.addEventListener('click', resetTimer);
+        if (elements.global.skip) elements.global.skip.addEventListener('click', skipBreak);
         if (elements.global.task) elements.global.task.addEventListener('change', (e) => {
             currentTaskId = e.target.value;
             updateTaskSelects(currentTaskId);
@@ -275,6 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (elements.page.start) elements.page.start.addEventListener('click', () => startTimer(true));
         if (elements.page.pause) elements.page.pause.addEventListener('click', pauseTimer);
         if (elements.page.reset) elements.page.reset.addEventListener('click', resetTimer);
+        if (elements.page.skip) elements.page.skip.addEventListener('click', skipBreak);
         if (elements.page.task) elements.page.task.addEventListener('change', (e) => {
             currentTaskId = e.target.value;
             updateTaskSelects(currentTaskId);
@@ -283,4 +313,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     init();
+
 });

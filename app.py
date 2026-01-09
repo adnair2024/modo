@@ -62,14 +62,57 @@ def index():
     tags = request.args.getlist('tags')
     if tags:
         query = query.join(Task.tags).filter(Tag.name.in_(tags)).distinct()
+    
+    # Sorting
+    sort_by = request.args.get('sort_by', 'created_at')
 
     # If searching or filtering, show all matches sorted by status and date
     if q or date_start_str or date_end_str or tags:
-        tasks = query.order_by(Task.status == 'done', Task.created_at.desc()).all()
+        # For search results, we still want the "nag" logic if possible, but let's stick to the current pattern for simplicity
+        # or better, apply the same sort logic.
+        # Let's apply the uniform sort logic to everything.
+        all_tasks = query.all()
+        
+        # Sort logic
+        now = datetime.now()
+        
+        def get_sort_key(t):
+            is_overdue = t.due_date and t.due_date < now and t.status != 'done'
+            status_rank = 1 if t.status == 'done' else 0
+            overdue_rank = 0 if is_overdue else 1 
+            
+            if sort_by == 'priority':
+                 sort_val = -t.priority
+            elif sort_by == 'due_date':
+                 sort_val = t.due_date.timestamp() if t.due_date else 9999999999
+            else: # created_at
+                 sort_val = -t.created_at.timestamp()
+            
+            return (status_rank, overdue_rank, sort_val)
+
+        all_tasks.sort(key=get_sort_key)
+        tasks = all_tasks
         has_more_completed = False
     else:
         # Default view: All Todo, Limited Done
-        todo_tasks = query.filter(Task.status != 'done').order_by(Task.created_at.desc()).all()
+        todo_tasks = query.filter(Task.status != 'done').all()
+        
+        now = datetime.now()
+        overdue = [t for t in todo_tasks if t.due_date and t.due_date < now]
+        regular = [t for t in todo_tasks if t not in overdue]
+        
+        # Sort overdue: Priority DESC, then Due Date ASC
+        overdue.sort(key=lambda t: (-t.priority, t.due_date if t.due_date else datetime.max))
+        
+        # Sort regular
+        if sort_by == 'priority':
+            regular.sort(key=lambda t: (-t.priority, t.created_at))
+        elif sort_by == 'due_date':
+            regular.sort(key=lambda t: (t.due_date if t.due_date else datetime.max))
+        else: # created_at
+            regular.sort(key=lambda t: t.created_at, reverse=True)
+            
+        todo_sorted = overdue + regular
         
         # Check if 'show_all_done' is in args
         show_all_done = request.args.get('show_all_done') == 'true'
@@ -84,14 +127,14 @@ def index():
             done_tasks = done_query.limit(10).all()
             has_more_completed = total_done > 10
             
-        tasks = todo_tasks + done_tasks
+        tasks = todo_sorted + done_tasks
 
     all_tags = Tag.query.all()
 
     if request.headers.get('HX-Request'):
-        return render_template('partials/task_list.html', tasks=tasks, has_more_completed=has_more_completed)
+        return render_template('partials/task_list.html', tasks=tasks, has_more_completed=has_more_completed, now=datetime.now())
 
-    return render_template('index.html', tasks=tasks, all_tags=all_tags, has_more_completed=has_more_completed)
+    return render_template('index.html', tasks=tasks, all_tags=all_tags, has_more_completed=has_more_completed, now=datetime.now())
 
 @app.route('/timer')
 @login_required
@@ -171,7 +214,7 @@ def add_task():
 
         db.session.add(new_task)
         db.session.commit()
-        return render_template('partials/task_item.html', task=new_task)
+        return render_template('partials/task_item.html', task=new_task, now=datetime.now())
     return '', 400
 
 @app.route('/delete_task/<int:task_id>', methods=['DELETE'])
@@ -229,12 +272,48 @@ def toggle_task(task_id):
     tags = request.values.getlist('tags')
     if tags:
         query = query.join(Task.tags).filter(Tag.name.in_(tags)).distinct()
+    
+    # Sorting
+    sort_by = request.values.get('sort_by', 'created_at')
 
     if q or date_start_str or date_end_str or tags:
-        tasks = query.order_by(Task.status == 'done', Task.created_at.desc()).all()
+        all_tasks = query.all()
+        now = datetime.now()
+        
+        def get_sort_key(t):
+            is_overdue = t.due_date and t.due_date < now and t.status != 'done'
+            status_rank = 1 if t.status == 'done' else 0
+            overdue_rank = 0 if is_overdue else 1 
+            
+            if sort_by == 'priority':
+                 sort_val = -t.priority
+            elif sort_by == 'due_date':
+                 sort_val = t.due_date.timestamp() if t.due_date else 9999999999
+            else: # created_at
+                 sort_val = -t.created_at.timestamp()
+            
+            return (status_rank, overdue_rank, sort_val)
+
+        all_tasks.sort(key=get_sort_key)
+        tasks = all_tasks
         has_more_completed = False
     else:
-        todo_tasks = query.filter(Task.status != 'done').order_by(Task.created_at.desc()).all()
+        todo_tasks = query.filter(Task.status != 'done').all()
+        now = datetime.now()
+        overdue = [t for t in todo_tasks if t.due_date and t.due_date < now]
+        regular = [t for t in todo_tasks if t not in overdue]
+        
+        overdue.sort(key=lambda t: (-t.priority, t.due_date if t.due_date else datetime.max))
+        
+        if sort_by == 'priority':
+            regular.sort(key=lambda t: (-t.priority, t.created_at))
+        elif sort_by == 'due_date':
+            regular.sort(key=lambda t: (t.due_date if t.due_date else datetime.max))
+        else:
+            regular.sort(key=lambda t: t.created_at, reverse=True)
+            
+        todo_sorted = overdue + regular
+        
         show_all_done = request.values.get('show_all_done') == 'true'
         
         done_query = query.filter(Task.status == 'done').order_by(Task.created_at.desc())
@@ -247,9 +326,9 @@ def toggle_task(task_id):
             done_tasks = done_query.limit(10).all()
             has_more_completed = total_done > 10
             
-        tasks = todo_tasks + done_tasks
+        tasks = todo_sorted + done_tasks
 
-    return render_template('partials/task_list.html', tasks=tasks, has_more_completed=has_more_completed)
+    return render_template('partials/task_list.html', tasks=tasks, has_more_completed=has_more_completed, now=datetime.now())
 
 @app.route('/task/<int:task_id>/edit', methods=['GET'])
 @login_required
@@ -300,7 +379,7 @@ def update_task(task_id):
                 task.tags.append(tag)
 
     db.session.commit()
-    return render_template('partials/task_item.html', task=task)
+    return render_template('partials/task_item.html', task=task, now=datetime.now())
 
 @app.route('/task/<int:task_id>/item', methods=['GET'])
 @login_required
@@ -308,7 +387,7 @@ def get_task_item(task_id):
     task = Task.query.get_or_404(task_id)
     if task.user_id != current_user.id:
         abort(403)
-    return render_template('partials/task_item.html', task=task)
+    return render_template('partials/task_item.html', task=task, now=datetime.now())
 
 @app.route('/api/next_priority_task', methods=['GET'])
 @login_required
