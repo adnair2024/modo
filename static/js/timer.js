@@ -35,6 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const savedTask = localStorage.getItem('timerTask');
         const savedSeconds = localStorage.getItem('timerSecondsLeft');
         const savedMode = localStorage.getItem('timerMode');
+        const settings = window.userSettings || { focusDuration: 25, breakDuration: 5 };
 
         if (savedTask) {
             currentTaskId = savedTask;
@@ -57,18 +58,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 secondsLeft = 0;
                 isRunning = false;
                 localStorage.setItem('timerStatus', 'paused');
-                // Timer finished while away - handle completion logic on load?
-                // For safety, let's just leave it at 00:00 or reset. 
-                // Better: auto-transition logic runs here if "auto" was enabled.
-                // But simplified: user sees 00:00 and clicks next.
             }
         } else if (savedSeconds) {
              secondsLeft = parseInt(savedSeconds);
              isRunning = false;
         } else {
              // Defaults if nothing saved
-             if (currentMode === 'break') secondsLeft = 5 * 60;
-             else secondsLeft = 25 * 60;
+             if (currentMode === 'break') secondsLeft = settings.breakDuration * 60;
+             else secondsLeft = settings.focusDuration * 60;
         }
 
         updateUI();
@@ -180,26 +177,26 @@ document.addEventListener('DOMContentLoaded', () => {
     function resetTimer() {
         pauseTimer();
         // Reset to default of current mode
-        secondsLeft = currentMode === 'break' ? 5 * 60 : 25 * 60;
+        const settings = window.userSettings || { focusDuration: 25, breakDuration: 5 };
+        secondsLeft = currentMode === 'break' ? settings.breakDuration * 60 : settings.focusDuration * 60;
         localStorage.removeItem('timerSecondsLeft');
         updateUI();
     }
 
     function completeTimer() {
         pauseTimer();
+        const settings = window.userSettings || { focusDuration: 25, breakDuration: 5 };
         
         if (currentMode === 'focus') {
             // Log Session
             fetch('/api/log_session', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ minutes: 25, task_id: currentTaskId })
+                body: JSON.stringify({ minutes: settings.focusDuration, task_id: currentTaskId })
             }).then(() => {
-                const settings = window.userSettings || {};
-                
                 // Switch to Break
                 currentMode = 'break';
-                secondsLeft = 5 * 60;
+                secondsLeft = settings.breakDuration * 60;
                 localStorage.setItem('timerMode', currentMode);
                 localStorage.removeItem('timerSecondsLeft'); 
                 
@@ -227,11 +224,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         } else {
             // Break Complete
-            const settings = window.userSettings || {};
+            const settings = window.userSettings || { focusDuration: 25, breakDuration: 5 };
             
             // Switch to Focus
             currentMode = 'focus';
-            secondsLeft = 25 * 60;
+            secondsLeft = settings.focusDuration * 60;
             localStorage.setItem('timerMode', currentMode);
             localStorage.removeItem('timerSecondsLeft');
 

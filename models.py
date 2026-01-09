@@ -14,6 +14,8 @@ class User(UserMixin, db.Model):
     auto_start_break = db.Column(db.Boolean, default=False)
     auto_start_focus = db.Column(db.Boolean, default=False)
     auto_select_priority = db.Column(db.Boolean, default=False)
+    focus_duration = db.Column(db.Integer, default=25)
+    break_duration = db.Column(db.Integer, default=5)
 
 task_tags = db.Table('task_tags',
     db.Column('task_id', db.Integer, db.ForeignKey('task.id'), primary_key=True),

@@ -6,10 +6,30 @@
     
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-8 space-y-8">
         
-        <!-- Timer Settings -->
+        <!-- Timer Duration -->
         <section>
             <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200 flex items-center gap-2">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Timer Duration
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="focus-duration" class="block font-medium text-gray-700 dark:text-gray-300 mb-2">Focus Duration (minutes)</label>
+                    <input type="number" id="focus-duration" min="1" max="120" value="{{ current_user.focus_duration or 25 }}" class="w-full px-4 py-2 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                    <label for="break-duration" class="block font-medium text-gray-700 dark:text-gray-300 mb-2">Break Duration (minutes)</label>
+                    <input type="number" id="break-duration" min="1" max="60" value="{{ current_user.break_duration or 5 }}" class="w-full px-4 py-2 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+            </div>
+        </section>
+
+        <hr class="border-gray-200 dark:border-gray-700">
+
+        <!-- Timer Settings -->
+        <section>
+            <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                 Timer Automation
             </h2>
             <div class="space-y-4">
@@ -65,25 +85,48 @@
             </div>
         </section>
 
+        <!-- Save Button -->
+        <div class="flex justify-end pt-4">
+            <button id="save-settings" class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition font-medium shadow-sm">
+                Save Changes
+            </button>
+        </div>
+
     </div>
 </div>
 
 <script>
-    const autoBreak = document.getElementById('auto-break');
-    const autoFocus = document.getElementById('auto-focus');
-    const autoPriority = document.getElementById('auto-priority');
+    const saveButton = document.getElementById('save-settings');
 
-    function updateSetting(key, value) {
+    saveButton.addEventListener('click', () => {
+        const settings = {
+            auto_start_break: document.getElementById('auto-break').checked,
+            auto_start_focus: document.getElementById('auto-focus').checked,
+            auto_select_priority: document.getElementById('auto-priority').checked,
+            focus_duration: document.getElementById('focus-duration').value,
+            break_duration: document.getElementById('break-duration').value
+        };
+
         fetch('/api/update_settings', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({[key]: value})
+            body: JSON.stringify(settings)
+        }).then(response => {
+            if (response.ok) {
+                alert('Settings saved successfully!');
+                // Update global userSettings if available
+                if (window.userSettings) {
+                    window.userSettings.autoStartBreak = settings.auto_start_break;
+                    window.userSettings.autoStartFocus = settings.auto_start_focus;
+                    window.userSettings.autoSelectPriority = settings.auto_select_priority;
+                    window.userSettings.focusDuration = parseInt(settings.focus_duration);
+                    window.userSettings.breakDuration = parseInt(settings.break_duration);
+                }
+            } else {
+                alert('Failed to save settings.');
+            }
         });
-    }
-
-    autoBreak.addEventListener('change', (e) => updateSetting('auto_start_break', e.target.checked));
-    autoFocus.addEventListener('change', (e) => updateSetting('auto_start_focus', e.target.checked));
-    autoPriority.addEventListener('change', (e) => updateSetting('auto_select_priority', e.target.checked));
+    });
 
     function setTheme(theme) {
         document.documentElement.setAttribute('data-theme', theme);

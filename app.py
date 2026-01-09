@@ -31,8 +31,46 @@ app.register_blueprint(auth)
 @app.route('/')
 @login_required
 def index():
-    tasks = Task.query.filter_by(user_id=current_user.id).order_by(Task.created_at.desc()).all()
-    return render_template('index.html', tasks=tasks)
+    query = Task.query.filter_by(user_id=current_user.id)
+
+    # Search
+    q = request.args.get('q')
+    if q:
+        query = query.filter(Task.title.ilike(f'%{q}%'))
+
+    # Date Range
+    date_start_str = request.args.get('date_start')
+    date_end_str = request.args.get('date_end')
+    
+    if date_start_str:
+        try:
+            date_start = datetime.strptime(date_start_str, '%Y-%m-%d')
+            query = query.filter(Task.due_date >= date_start)
+        except ValueError:
+            pass
+            
+    if date_end_str:
+        try:
+            date_end = datetime.strptime(date_end_str, '%Y-%m-%d')
+            # Set to end of day
+            date_end = date_end.replace(hour=23, minute=59, second=59)
+            query = query.filter(Task.due_date <= date_end)
+        except ValueError:
+            pass
+
+    # Tags
+    tags = request.args.getlist('tags')
+    if tags:
+        query = query.join(Task.tags).filter(Tag.name.in_(tags)).distinct()
+
+    # Order by status (done at bottom) then by date
+    tasks = query.order_by(Task.status == 'done', Task.created_at.desc()).all()
+    all_tags = Tag.query.all()
+
+    if request.headers.get('HX-Request'):
+        return render_template('partials/task_list.html', tasks=tasks)
+
+    return render_template('index.html', tasks=tasks, all_tags=all_tags)
 
 @app.route('/timer')
 @login_required
@@ -138,7 +176,10 @@ def toggle_task(task_id):
         task.status = 'done'
     
     db.session.commit()
-    return render_template('partials/task_item.html', task=task)
+    
+    # After toggle, re-fetch and return the full list to maintain order
+    tasks = Task.query.filter_by(user_id=current_user.id).order_by(Task.status == 'done', Task.created_at.desc()).all()
+    return render_template('partials/task_list.html', tasks=tasks)
 
 @app.route('/task/<int:task_id>/edit', methods=['GET'])
 @login_required
@@ -232,6 +273,10 @@ def update_settings():
         current_user.auto_start_focus = data['auto_start_focus']
     if 'auto_select_priority' in data:
         current_user.auto_select_priority = data['auto_select_priority']
+    if 'focus_duration' in data:
+        current_user.focus_duration = int(data['focus_duration'])
+    if 'break_duration' in data:
+        current_user.break_duration = int(data['break_duration'])
         
     db.session.commit()
     return jsonify({'status': 'success'})

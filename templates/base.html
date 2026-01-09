@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Modo - Productivity Manager</title>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
@@ -96,12 +97,14 @@
         window.userSettings = {
             autoStartBreak: {{ 'true' if current_user.auto_start_break else 'false' }},
             autoStartFocus: {{ 'true' if current_user.auto_start_focus else 'false' }},
-            autoSelectPriority: {{ 'true' if current_user.auto_select_priority else 'false' }}
+            autoSelectPriority: {{ 'true' if current_user.auto_select_priority else 'false' }},
+            focusDuration: {{ current_user.focus_duration or 25 }},
+            breakDuration: {{ current_user.break_duration or 5 }}
         };
     </script>
     <div id="global-timer-container" class="fixed bottom-0 left-0 right-0 bg-gray-900 text-white p-2 flex justify-between items-center shadow-lg border-t border-gray-700 z-50">
         <div class="flex items-center space-x-4">
-            <span class="font-bold text-xl font-mono" id="global-timer-display">25:00</span>
+            <span class="font-bold text-xl font-mono" id="global-timer-display">{{ '%02d' % (current_user.focus_duration or 25) }}:00</span>
             <select id="global-timer-task" class="bg-gray-800 text-sm p-1 rounded border border-gray-600 max-w-xs">
                 <option value="">Select Task...</option>
                     {% for task in current_user.tasks %}

@@ -1,0 +1,10 @@
+<div id="task-list" class="space-y-4">
+    {% for task in tasks %}
+        {% include "partials/task_item.html" %}
+    {% endfor %}
+    {% if not tasks %}
+        <div class="text-center text-gray-500 py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+            <p>No tasks found.</p>
+        </div>
+    {% endif %}
+</div>
