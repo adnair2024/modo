@@ -63,14 +63,35 @@ def index():
     if tags:
         query = query.join(Task.tags).filter(Tag.name.in_(tags)).distinct()
 
-    # Order by status (done at bottom) then by date
-    tasks = query.order_by(Task.status == 'done', Task.created_at.desc()).all()
+    # If searching or filtering, show all matches sorted by status and date
+    if q or date_start_str or date_end_str or tags:
+        tasks = query.order_by(Task.status == 'done', Task.created_at.desc()).all()
+        has_more_completed = False
+    else:
+        # Default view: All Todo, Limited Done
+        todo_tasks = query.filter(Task.status != 'done').order_by(Task.created_at.desc()).all()
+        
+        # Check if 'show_all_done' is in args
+        show_all_done = request.args.get('show_all_done') == 'true'
+        
+        done_query = query.filter(Task.status == 'done').order_by(Task.created_at.desc())
+        total_done = done_query.count()
+        
+        if show_all_done:
+            done_tasks = done_query.all()
+            has_more_completed = False
+        else:
+            done_tasks = done_query.limit(10).all()
+            has_more_completed = total_done > 10
+            
+        tasks = todo_tasks + done_tasks
+
     all_tags = Tag.query.all()
 
     if request.headers.get('HX-Request'):
-        return render_template('partials/task_list.html', tasks=tasks)
+        return render_template('partials/task_list.html', tasks=tasks, has_more_completed=has_more_completed)
 
-    return render_template('index.html', tasks=tasks, all_tags=all_tags)
+    return render_template('index.html', tasks=tasks, all_tags=all_tags, has_more_completed=has_more_completed)
 
 @app.route('/timer')
 @login_required
@@ -177,9 +198,58 @@ def toggle_task(task_id):
     
     db.session.commit()
     
-    # After toggle, re-fetch and return the full list to maintain order
-    tasks = Task.query.filter_by(user_id=current_user.id).order_by(Task.status == 'done', Task.created_at.desc()).all()
-    return render_template('partials/task_list.html', tasks=tasks)
+    # Re-fetch with filters and pagination logic
+    query = Task.query.filter_by(user_id=current_user.id)
+
+    # Search
+    q = request.values.get('q')
+    if q:
+        query = query.filter(Task.title.ilike(f'%{q}%'))
+
+    # Date Range
+    date_start_str = request.values.get('date_start')
+    date_end_str = request.values.get('date_end')
+    
+    if date_start_str:
+        try:
+            date_start = datetime.strptime(date_start_str, '%Y-%m-%d')
+            query = query.filter(Task.due_date >= date_start)
+        except ValueError:
+            pass
+            
+    if date_end_str:
+        try:
+            date_end = datetime.strptime(date_end_str, '%Y-%m-%d')
+            date_end = date_end.replace(hour=23, minute=59, second=59)
+            query = query.filter(Task.due_date <= date_end)
+        except ValueError:
+            pass
+
+    # Tags
+    tags = request.values.getlist('tags')
+    if tags:
+        query = query.join(Task.tags).filter(Tag.name.in_(tags)).distinct()
+
+    if q or date_start_str or date_end_str or tags:
+        tasks = query.order_by(Task.status == 'done', Task.created_at.desc()).all()
+        has_more_completed = False
+    else:
+        todo_tasks = query.filter(Task.status != 'done').order_by(Task.created_at.desc()).all()
+        show_all_done = request.values.get('show_all_done') == 'true'
+        
+        done_query = query.filter(Task.status == 'done').order_by(Task.created_at.desc())
+        total_done = done_query.count()
+        
+        if show_all_done:
+            done_tasks = done_query.all()
+            has_more_completed = False
+        else:
+            done_tasks = done_query.limit(10).all()
+            has_more_completed = total_done > 10
+            
+        tasks = todo_tasks + done_tasks
+
+    return render_template('partials/task_list.html', tasks=tasks, has_more_completed=has_more_completed)
 
 @app.route('/task/<int:task_id>/edit', methods=['GET'])
 @login_required

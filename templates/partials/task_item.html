@@ -8,6 +8,7 @@
             <button hx-post="{{ url_for('toggle_task', task_id=task.id) }}" 
                     hx-target="#task-list" 
                     hx-swap="outerHTML"
+                    hx-include="#filter-form"
                     class="mt-1 w-6 h-6 border-2 border-gray-300 rounded-full flex items-center justify-center flex-shrink-0 {{ 'bg-green-500 border-green-500' if task.status == 'done' else 'hover:border-indigo-500' }}">
                 {% if task.status == 'done' %}
                 <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>

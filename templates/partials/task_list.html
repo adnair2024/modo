@@ -2,6 +2,18 @@
     {% for task in tasks %}
         {% include "partials/task_item.html" %}
     {% endfor %}
+    
+    {% if has_more_completed %}
+    <div class="text-center pt-4">
+        <button hx-get="{{ url_for('index', show_all_done='true') }}" 
+                hx-target="#task-list" 
+                hx-swap="outerHTML"
+                class="text-sm text-indigo-600 hover:text-indigo-800 font-medium bg-indigo-50 px-4 py-2 rounded-full transition">
+            See previous completed tasks...
+        </button>
+    </div>
+    {% endif %}
+
     {% if not tasks %}
         <div class="text-center text-gray-500 py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
             <p>No tasks found.</p>
