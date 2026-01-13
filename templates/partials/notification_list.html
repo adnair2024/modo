@@ -1,0 +1,30 @@
+{% if notifications %}
+    {% for notif in notifications %}
+    <div class="p-3 border-b hover:bg-gray-50 relative group transition duration-150 ease-in-out">
+        <div class="flex items-start">
+            <div class="flex-shrink-0">
+                {% if notif.type == 'success' %}
+                <span class="text-green-500">✓</span>
+                {% elif notif.type == 'warning' %}
+                <span class="text-yellow-500">⚠</span>
+                {% else %}
+                <span class="text-blue-500">ℹ</span>
+                {% endif %}
+            </div>
+            <div class="ml-3 w-0 flex-1">
+                <p class="text-sm leading-5 font-medium text-gray-900">{{ notif.message }}</p>
+                <p class="text-xs leading-4 text-gray-500 mt-1">{{ notif.created_at.strftime('%H:%M') }}</p>
+            </div>
+        </div>
+        <button class="absolute top-2 right-2 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition"
+                hx-post="/api/notifications/mark_read/{{ notif.id }}" 
+                hx-swap="outerHTML" 
+                hx-target="closest div"
+                @click.stop="$el.closest('.group').remove(); if(unreadCount > 0) unreadCount--;">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="p-4 text-center text-gray-500 text-sm">No new notifications</div>
+{% endif %}

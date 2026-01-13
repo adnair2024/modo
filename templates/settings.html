@@ -70,17 +70,70 @@
 
         <hr class="border-gray-200 dark:border-gray-700">
 
+        <!-- Notification Settings -->
+        <section>
+            <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                Notifications
+            </h2>
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <span class="block font-medium text-gray-700 dark:text-gray-300">Pomodoro Completion</span>
+                        <span class="text-sm text-gray-500 dark:text-gray-400">Get notified when a timer finishes.</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="notify-pomodoro" class="sr-only peer" {{ 'checked' if current_user.notify_pomodoro else '' }}>
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                    </label>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <div>
+                        <span class="block font-medium text-gray-700 dark:text-gray-300">Event Heads Up</span>
+                        <span class="text-sm text-gray-500 dark:text-gray-400">Get notified before an event starts.</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="notify-event" class="sr-only peer" {{ 'checked' if current_user.notify_event_start else '' }}>
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                    </label>
+                </div>
+
+                <div class="flex items-center justify-between pl-4 border-l-2 border-gray-100 dark:border-gray-700">
+                    <span class="text-gray-600 dark:text-gray-400 text-sm">Heads Up Timing</span>
+                    <select id="event-notify-minutes" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <option value="30" {{ 'selected' if current_user.event_notify_minutes == 30 else '' }}>30 Minutes</option>
+                        <option value="60" {{ 'selected' if current_user.event_notify_minutes == 60 else '' }}>1 Hour</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <hr class="border-gray-200 dark:border-gray-700">
+
         <!-- Theme Settings -->
         <section>
              <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200 flex items-center gap-2">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"></path></svg>
                 Appearance
             </h2>
-             <div class="flex items-center justify-between">
+             <div class="flex items-center justify-between mb-6">
                 <span class="block font-medium text-gray-700 dark:text-gray-300">Theme</span>
                 <div class="flex gap-2">
-                    <button class="px-4 py-2 rounded border {{ 'bg-indigo-50 border-indigo-500 text-indigo-700' if current_user.theme_preference == 'light' else 'border-gray-300 text-gray-600' }} hover:bg-indigo-50" onclick="setTheme('light')">Light</button>
-                    <button class="px-4 py-2 rounded border {{ 'bg-indigo-900 border-indigo-500 text-white' if current_user.theme_preference == 'dark' else 'border-gray-300 text-gray-600' }} hover:bg-gray-700 hover:text-white" onclick="setTheme('dark')">Dark</button>
+                    <button class="px-4 py-2 rounded border {{ 'bg-indigo-50 border-indigo-500 text-indigo-700' if current_user.theme_preference == 'light' else 'border-gray-300 text-gray-600' }} hover:bg-indigo-50 transition" onclick="setTheme('light')">Light</button>
+                    <button class="px-4 py-2 rounded border {{ 'bg-indigo-900 border-indigo-500 text-white' if current_user.theme_preference == 'dark' else 'border-gray-300 text-gray-600' }} hover:bg-gray-700 hover:text-white transition" onclick="setTheme('dark')">Dark</button>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between">
+                <span class="block font-medium text-gray-700 dark:text-gray-300">Accent Color</span>
+                <div class="flex gap-3 flex-wrap">
+                    {% for color in ['indigo', 'blue', 'green', 'red', 'purple', 'pink', 'orange'] %}
+                    <label class="cursor-pointer">
+                        <input type="radio" name="accent_color" value="{{ color }}" class="sr-only peer" {{ 'checked' if (current_user.accent_color or 'indigo') == color else '' }}>
+                        <div class="w-8 h-8 rounded-full bg-{{ color }}-600 border-2 border-transparent peer-checked:border-gray-900 dark:peer-checked:border-white shadow-sm ring-2 ring-transparent peer-checked:ring-offset-2 peer-checked:ring-{{ color }}-500 transition-all transform hover:scale-110"></div>
+                    </label>
+                    {% endfor %}
                 </div>
             </div>
         </section>
@@ -104,7 +157,11 @@
             auto_start_focus: document.getElementById('auto-focus').checked,
             auto_select_priority: document.getElementById('auto-priority').checked,
             focus_duration: document.getElementById('focus-duration').value,
-            break_duration: document.getElementById('break-duration').value
+            break_duration: document.getElementById('break-duration').value,
+            notify_pomodoro: document.getElementById('notify-pomodoro').checked,
+            notify_event_start: document.getElementById('notify-event').checked,
+            event_notify_minutes: document.getElementById('event-notify-minutes').value,
+            accent_color: document.querySelector('input[name="accent_color"]:checked').value
         };
 
         fetch('/api/update_settings', {
@@ -116,12 +173,9 @@
                 alert('Settings saved successfully!');
                 // Update global userSettings if available
                 if (window.userSettings) {
-                    window.userSettings.autoStartBreak = settings.auto_start_break;
-                    window.userSettings.autoStartFocus = settings.auto_start_focus;
-                    window.userSettings.autoSelectPriority = settings.auto_select_priority;
-                    window.userSettings.focusDuration = parseInt(settings.focus_duration);
-                    window.userSettings.breakDuration = parseInt(settings.break_duration);
+                    // ... (existing update logic) ...
                 }
+                location.reload(); // Reload to apply accent color
             } else {
                 alert('Failed to save settings.');
             }

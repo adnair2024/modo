@@ -15,7 +15,7 @@
             theme: {
                 extend: {
                     colors: {
-                        // basic dark mode mapping setup if needed
+                        indigo: tailwind.colors.{{ current_user.accent_color or 'indigo' }}
                     }
                 }
             }
@@ -32,46 +32,120 @@
         [data-theme="dark"] input, [data-theme="dark"] textarea, [data-theme="dark"] select { background-color: #374151; color: white; border-color: #4b5563; }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-900 font-sans transition-colors duration-200">
+<body class="bg-gray-100 text-gray-900 font-sans transition-colors duration-200" x-data="{ mobileSidebarOpen: false, desktopSidebarOpen: true }">
     <div class="flex h-screen overflow-hidden">
         {% if current_user.is_authenticated %}
         <!-- Sidebar -->
-        <aside class="w-64 bg-white border-r border-gray-200 hidden md:flex md:flex-col h-screen overflow-y-auto">
-            <div class="p-6">
-                <h1 class="text-2xl font-bold text-indigo-600">Modo</h1>
+        <aside :class="{'translate-x-0': mobileSidebarOpen, '-translate-x-full': !mobileSidebarOpen, 'md:translate-x-0': true, 'md:w-64': desktopSidebarOpen, 'md:w-20': !desktopSidebarOpen}" 
+               class="fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transition-all duration-300 transform md:static md:inset-0 flex flex-col h-screen overflow-y-auto overflow-x-hidden">
+            <div class="h-16 flex items-center justify-between px-6 bg-white border-b border-gray-200">
+                <h1 class="text-2xl font-bold text-indigo-600 truncate transition-all duration-300" x-show="desktopSidebarOpen">Modo</h1>
+                <h1 class="text-xl font-bold text-indigo-600 truncate transition-all duration-300" x-show="!desktopSidebarOpen" style="display: none;">M</h1>
+                <button @click="mobileSidebarOpen = false" class="md:hidden text-gray-500 hover:text-gray-700 focus:outline-none">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
             </div>
-            <nav class="mt-6 flex-1">
-                <a href="{{ url_for('index') }}" class="block py-2.5 px-6 rounded transition duration-200 hover:bg-indigo-50 hover:text-indigo-600">To-Do List</a>
-                <a href="{{ url_for('timer') }}" class="block py-2.5 px-6 rounded transition duration-200 hover:bg-indigo-50 hover:text-indigo-600">Timer</a>
-                <a href="{{ url_for('personal_stats') }}" class="block py-2.5 px-6 rounded transition duration-200 hover:bg-indigo-50 hover:text-indigo-600">My Stats</a>
-                <a href="{{ url_for('leaderboard') }}" class="block py-2.5 px-6 rounded transition duration-200 hover:bg-indigo-50 hover:text-indigo-600">Leaderboard</a>
-                <a href="{{ url_for('settings') }}" class="block py-2.5 px-6 rounded transition duration-200 hover:bg-indigo-50 hover:text-indigo-600">Settings</a>
-                <a href="{{ url_for('auth.logout') }}" class="block py-2.5 px-6 rounded transition duration-200 hover:bg-red-50 hover:text-red-600 mt-10">Logout</a>
+            <nav class="mt-6 flex-1 px-4 space-y-2">
+                <a href="{{ url_for('index') }}" class="flex items-center gap-4 py-2.5 px-4 rounded transition duration-200 hover:bg-indigo-50 hover:text-indigo-600 group" title="To-Do List">
+                    <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                    <span class="whitespace-nowrap transition-all duration-300 origin-left" :class="desktopSidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 hidden'">To-Do List</span>
+                </a>
+                <a href="{{ url_for('timer') }}" class="flex items-center gap-4 py-2.5 px-4 rounded transition duration-200 hover:bg-indigo-50 hover:text-indigo-600 group" title="Timer">
+                    <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <span class="whitespace-nowrap transition-all duration-300 origin-left" :class="desktopSidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 hidden'">Timer</span>
+                </a>
+                <a href="{{ url_for('schedule') }}" class="flex items-center gap-4 py-2.5 px-4 rounded transition duration-200 hover:bg-indigo-50 hover:text-indigo-600 group" title="Schedule">
+                    <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    <span class="whitespace-nowrap transition-all duration-300 origin-left" :class="desktopSidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 hidden'">Schedule</span>
+                </a>
+                <a href="{{ url_for('personal_stats') }}" class="flex items-center gap-4 py-2.5 px-4 rounded transition duration-200 hover:bg-indigo-50 hover:text-indigo-600 group" title="My Stats">
+                    <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                    <span class="whitespace-nowrap transition-all duration-300 origin-left" :class="desktopSidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 hidden'">My Stats</span>
+                </a>
+                <a href="{{ url_for('leaderboard') }}" class="flex items-center gap-4 py-2.5 px-4 rounded transition duration-200 hover:bg-indigo-50 hover:text-indigo-600 group" title="Leaderboard">
+                    <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                    <span class="whitespace-nowrap transition-all duration-300 origin-left" :class="desktopSidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 hidden'">Leaderboard</span>
+                </a>
+                <a href="{{ url_for('settings') }}" class="flex items-center gap-4 py-2.5 px-4 rounded transition duration-200 hover:bg-indigo-50 hover:text-indigo-600 group" title="Settings">
+                    <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    <span class="whitespace-nowrap transition-all duration-300 origin-left" :class="desktopSidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 hidden'">Settings</span>
+                </a>
+                <a href="{{ url_for('auth.logout') }}" class="flex items-center gap-4 py-2.5 px-4 rounded transition duration-200 hover:bg-red-50 hover:text-red-600 mt-10 group" title="Logout">
+                    <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                    <span class="whitespace-nowrap transition-all duration-300 origin-left" :class="desktopSidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 hidden'">Logout</span>
+                </a>
             </nav>
             
             <div class="p-6 border-t border-gray-200 mb-16">
-                <button id="theme-toggle" class="flex items-center gap-2 text-gray-600 hover:text-indigo-600 transition w-full">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
-                    <span>Toggle Theme</span>
+                <button id="theme-toggle" class="flex items-center gap-2 text-gray-600 hover:text-indigo-600 transition w-full justify-center md:justify-start">
+                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                    <span :class="desktopSidebarOpen ? 'inline' : 'hidden md:hidden'">Toggle Theme</span>
                 </button>
             </div>
         </aside>
+
+        <!-- Overlay -->
+        <div x-show="mobileSidebarOpen" @click="mobileSidebarOpen = false" x-transition:enter="transition-opacity ease-linear duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition-opacity ease-linear duration-300" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-40 md:hidden"></div>
         {% endif %}
 
         <!-- Content -->
-        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6 pb-24 transition-colors duration-200">
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        <div class="bg-white border-l-4 border-{{ 'red' if category == 'error' else 'green' }}-500 text-{{ 'red' if category == 'error' else 'green' }}-700 p-4 mb-4" role="alert">
-                            <p>{{ message }}</p>
+        <div class="flex-1 flex flex-col overflow-hidden h-screen">
+            {% if current_user.is_authenticated %}
+            <header class="flex items-center justify-between p-4 bg-white border-b border-gray-200 z-20">
+                <div class="flex items-center">
+                    <button @click="window.innerWidth < 768 ? mobileSidebarOpen = true : desktopSidebarOpen = !desktopSidebarOpen" class="text-gray-500 hover:text-indigo-600 focus:outline-none mr-4">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    </button>
+                    <span class="font-bold text-xl text-indigo-600 md:hidden">Modo</span>
+                </div>
+                
+                <!-- Notifications -->
+                <div class="relative" x-data="{ notifOpen: false, unreadCount: 0 }" 
+                     x-init="fetch('/api/notifications').then(r => r.json()).then(data => unreadCount = data.length); setInterval(() => fetch('/api/notifications').then(r => r.json()).then(data => unreadCount = data.length), 60000)">
+                    
+                    <button @click="notifOpen = !notifOpen" class="text-gray-500 hover:text-indigo-600 focus:outline-none relative p-1 rounded-full hover:bg-gray-100 transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                        <span x-show="unreadCount > 0" x-text="unreadCount" class="absolute top-0 right-0 block h-4 w-4 transform -translate-y-1/2 translate-x-1/2 rounded-full ring-2 ring-white bg-red-500 text-white text-[10px] font-bold flex items-center justify-center"></span>
+                    </button>
+                    
+                    <div x-show="notifOpen" 
+                         @click.away="notifOpen = false" 
+                         x-transition:enter="transition ease-out duration-200"
+                         x-transition:enter-start="opacity-0 translate-y-1"
+                         x-transition:enter-end="opacity-100 translate-y-0"
+                         x-transition:leave="transition ease-in duration-150"
+                         x-transition:leave-start="opacity-100 translate-y-0"
+                         x-transition:leave-end="opacity-0 translate-y-1"
+                         class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl ring-1 ring-black ring-opacity-5 z-50 overflow-hidden" 
+                         style="display: none;">
+                        
+                        <div class="px-4 py-3 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                            <h3 class="text-sm font-semibold text-gray-700">Notifications</h3>
+                            <button @click="fetch('/api/notifications/mark_all_read', {method: 'POST'}).then(() => { unreadCount = 0; })" class="text-xs text-indigo-600 hover:text-indigo-800">Mark all read</button>
                         </div>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
-            
-            {% block content %}{% endblock %}
-        </main>
+                        
+                        <div class="max-h-60 overflow-y-auto" hx-get="/api/notifications" hx-trigger="intersect once">
+                            <div class="p-4 text-center text-gray-400 text-sm">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            {% endif %}
+
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6 pb-24 transition-colors duration-200">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="bg-white border-l-4 border-{{ 'red' if category == 'error' else 'green' }}-500 text-{{ 'red' if category == 'error' else 'green' }}-700 p-4 mb-4" role="alert">
+                                <p>{{ message }}</p>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+                
+                {% block content %}{% endblock %}
+            </main>
+        </div>
     </div>
     
     <script>

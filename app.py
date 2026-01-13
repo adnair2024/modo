@@ -1,11 +1,12 @@
 import os
-from datetime import datetime
-from flask import Flask, render_template, request, jsonify, abort
+import calendar
+from datetime import datetime, timedelta
+from flask import Flask, render_template, request, jsonify, abort, redirect, url_for
 from flask_login import LoginManager, login_required, current_user
 from flask_migrate import Migrate
 from sqlalchemy import func
 from dotenv import load_dotenv
-from models import db, User, Task, Subtask, FocusSession, Tag
+from models import db, User, Task, Subtask, FocusSession, Tag, Event, Notification
 from auth import auth
 
 load_dotenv()
@@ -22,9 +23,49 @@ login_manager = LoginManager()
 login_manager.login_view = 'auth.login'
 login_manager.init_app(app)
 
+@app.template_filter('format_minutes')
+def format_minutes(value):
+    if not value:
+        return "0mins"
+    value = int(value)
+    hours = value // 60
+    minutes = value % 60
+    if hours > 0:
+        return f"{hours}hrs {minutes}mins"
+    return f"{minutes}mins"
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
+def create_notification(user_id, message, type='info', event_id=None):
+    notif = Notification(user_id=user_id, message=message, type=type, event_id=event_id)
+    db.session.add(notif)
+    db.session.commit()
+
+def check_event_notifications(user):
+    if not user.notify_event_start:
+        return
+
+    notify_window = user.event_notify_minutes or 30
+    limit = datetime.now() + timedelta(minutes=notify_window)
+    
+    # Find events starting between now and limit
+    events = Event.query.filter_by(user_id=user.id)\
+        .filter(Event.start_time >= datetime.now())\
+        .filter(Event.start_time <= limit)\
+        .all()
+        
+    for event in events:
+        # Check if notification already exists for this event
+        existing = Notification.query.filter_by(user_id=user.id, event_id=event.id).first()
+        if not existing:
+            create_notification(
+                user.id, 
+                f"Upcoming Event: {event.title} starts in less than {notify_window} minutes.", 
+                type='warning',
+                event_id=event.id
+            )
 
 app.register_blueprint(auth)
 
@@ -134,7 +175,11 @@ def index():
     if request.headers.get('HX-Request'):
         return render_template('partials/task_list.html', tasks=tasks, has_more_completed=has_more_completed, now=datetime.now())
 
-    return render_template('index.html', tasks=tasks, all_tags=all_tags, has_more_completed=has_more_completed, now=datetime.now())
+    upcoming_events = Event.query.filter_by(user_id=current_user.id)\
+        .filter(Event.start_time >= datetime.now())\
+        .order_by(Event.start_time).limit(3).all()
+
+    return render_template('index.html', tasks=tasks, all_tags=all_tags, has_more_completed=has_more_completed, now=datetime.now(), upcoming_events=upcoming_events)
 
 @app.route('/timer')
 @login_required
@@ -171,6 +216,9 @@ def log_session():
                 if task.completed_pomodoros >= task.estimated_pomodoros:
                     task.status = 'done'
         
+        if current_user.notify_pomodoro:
+            create_notification(current_user.id, f"Focus session of {minutes} mins completed!", type='success')
+
         db.session.commit()
         return jsonify({'status': 'success'})
     return jsonify({'status': 'error'}), 400
@@ -416,6 +464,8 @@ def update_settings():
     data = request.json
     if 'theme' in data:
         current_user.theme_preference = data['theme']
+    if 'accent_color' in data:
+        current_user.accent_color = data['accent_color']
     if 'auto_start_break' in data:
         current_user.auto_start_break = data['auto_start_break']
     if 'auto_start_focus' in data:
@@ -426,9 +476,109 @@ def update_settings():
         current_user.focus_duration = int(data['focus_duration'])
     if 'break_duration' in data:
         current_user.break_duration = int(data['break_duration'])
+    if 'notify_pomodoro' in data:
+        current_user.notify_pomodoro = data['notify_pomodoro']
+    if 'notify_event_start' in data:
+        current_user.notify_event_start = data['notify_event_start']
+    if 'event_notify_minutes' in data:
+        current_user.event_notify_minutes = int(data['event_notify_minutes'])
         
     db.session.commit()
     return jsonify({'status': 'success'})
+
+@app.route('/api/notifications')
+@login_required
+def get_notifications():
+    check_event_notifications(current_user)
+    
+    notifications = Notification.query.filter_by(user_id=current_user.id, is_read=False)\
+        .order_by(Notification.created_at.desc()).all()
+        
+    if request.headers.get('HX-Request'):
+        return render_template('partials/notification_list.html', notifications=notifications)
+    
+    return jsonify([{
+        'id': n.id, 
+        'message': n.message, 
+        'type': n.type,
+        'created_at': n.created_at.isoformat()
+    } for n in notifications])
+
+@app.route('/api/notifications/mark_read/<int:notif_id>', methods=['POST'])
+@login_required
+def mark_notification_read(notif_id):
+    notif = Notification.query.get_or_404(notif_id)
+    if notif.user_id != current_user.id:
+        abort(403)
+    notif.is_read = True
+    db.session.commit()
+    return ''
+
+@app.route('/api/notifications/mark_all_read', methods=['POST'])
+@login_required
+def mark_all_read():
+    Notification.query.filter_by(user_id=current_user.id, is_read=False).update({'is_read': True})
+    db.session.commit()
+    return ''
+
+@app.route('/schedule')
+@login_required
+def schedule():
+    year = request.args.get('year', datetime.now().year, type=int)
+    month = request.args.get('month', datetime.now().month, type=int)
+    
+    if month > 12:
+        month = 1
+        year += 1
+    elif month < 1:
+        month = 12
+        year -= 1
+        
+    cal_matrix = calendar.monthcalendar(year, month)
+    month_name = calendar.month_name[month]
+    
+    events = Event.query.filter_by(user_id=current_user.id).all()
+    
+    return render_template('schedule.html', 
+                           year=year, month=month, month_name=month_name, 
+                           calendar_matrix=cal_matrix, events=events)
+
+@app.route('/schedule/add', methods=['POST'])
+@login_required
+def add_event():
+    title = request.form.get('title')
+    start_time_str = request.form.get('start_time')
+    end_time_str = request.form.get('end_time')
+    recurrence = request.form.get('recurrence', 'none')
+    
+    if title and start_time_str and end_time_str:
+        try:
+            start_time = datetime.strptime(start_time_str, '%Y-%m-%dT%H:%M')
+            end_time = datetime.strptime(end_time_str, '%Y-%m-%dT%H:%M')
+            
+            new_event = Event(
+                title=title,
+                start_time=start_time,
+                end_time=end_time,
+                recurrence=recurrence,
+                user_id=current_user.id
+            )
+            db.session.add(new_event)
+            db.session.commit()
+        except ValueError:
+            pass
+            
+    return redirect(url_for('schedule'))
+
+@app.route('/schedule/delete/<int:event_id>', methods=['POST'])
+@login_required
+def delete_event(event_id):
+    event = Event.query.get_or_404(event_id)
+    if event.user_id != current_user.id:
+        abort(403)
+    db.session.delete(event)
+    db.session.commit()
+    return redirect(url_for('schedule'))
 
 if __name__ == '__main__':
     app.run(debug=True)

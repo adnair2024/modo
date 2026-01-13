@@ -29,7 +29,7 @@
                         <p class="text-gray-900 whitespace-no-wrap font-bold">{{ user }}</p>
                     </td>
                     <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-                        <p class="text-gray-900 whitespace-no-wrap">{{ total_minutes }} mins</p>
+                        <p class="text-gray-900 whitespace-no-wrap">{{ total_minutes | format_minutes }}</p>
                     </td>
                 </tr>
                 {% else %}

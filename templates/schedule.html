@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mx-auto max-w-4xl" x-data="{ showForm: false }">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-indigo-700">Schedule</h1>
+        <button @click="showForm = !showForm" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition">
+            <span x-text="showForm ? 'Cancel' : 'Add Event'"></span>
+        </button>
+    </div>
+
+    <!-- Add Event Form -->
+    <div x-show="showForm" class="bg-white p-6 rounded-lg shadow-md mb-8" style="display: none;">
+        <h2 class="text-xl font-semibold mb-4">Add New Event</h2>
+        <form action="{{ url_for('add_event') }}" method="POST">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="col-span-2">
+                    <label class="block text-sm font-medium text-gray-700">Title</label>
+                    <input type="text" name="title" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 border p-2">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Start Time</label>
+                    <input type="datetime-local" name="start_time" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 border p-2">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">End Time</label>
+                    <input type="datetime-local" name="end_time" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 border p-2">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Recurrence</label>
+                    <select name="recurrence" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 border p-2">
+                        <option value="none">None</option>
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mt-4 flex justify-end">
+                <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded hover:bg-indigo-700">Save Event</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Upcoming Events List -->
+    <div class="bg-white shadow rounded-lg overflow-hidden">
+        <h2 class="text-xl font-semibold p-6 border-b">Upcoming Events</h2>
+        <ul>
+            {% for event in events %}
+            <li class="border-b last:border-b-0 p-4 hover:bg-gray-50 flex justify-between items-center">
+                <div>
+                    <h3 class="font-bold text-lg text-gray-800">{{ event.title }}</h3>
+                    <p class="text-sm text-gray-600">
+                        {{ event.start_time.strftime('%b %d, %Y %I:%M %p') }} - {{ event.end_time.strftime('%I:%M %p') }}
+                        {% if event.recurrence != 'none' %}
+                        <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 capitalize">
+                            {{ event.recurrence }}
+                        </span>
+                        {% endif %}
+                    </p>
+                </div>
+                <form action="{{ url_for('delete_event', event_id=event.id) }}" method="POST" onsubmit="return confirm('Are you sure?');">
+                    <button type="submit" class="text-red-500 hover:text-red-700">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </form>
+            </li>
+            {% else %}
+            <li class="p-6 text-center text-gray-500">No upcoming events scheduled.</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %}
