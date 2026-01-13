@@ -550,17 +550,21 @@ def add_event():
     start_time_str = request.form.get('start_time')
     end_time_str = request.form.get('end_time')
     recurrence = request.form.get('recurrence', 'none')
+    recurrence_days_list = request.form.getlist('recurrence_days')
     
     if title and start_time_str and end_time_str:
         try:
             start_time = datetime.strptime(start_time_str, '%Y-%m-%dT%H:%M')
             end_time = datetime.strptime(end_time_str, '%Y-%m-%dT%H:%M')
             
+            recurrence_days_str = ",".join(recurrence_days_list) if recurrence_days_list else None
+
             new_event = Event(
                 title=title,
                 start_time=start_time,
                 end_time=end_time,
                 recurrence=recurrence,
+                recurrence_days=recurrence_days_str,
                 user_id=current_user.id
             )
             db.session.add(new_event)
@@ -569,6 +573,48 @@ def add_event():
             pass
             
     return redirect(url_for('schedule'))
+
+@app.route('/schedule/event/<int:event_id>/edit', methods=['GET'])
+@login_required
+def edit_event(event_id):
+    event = Event.query.get_or_404(event_id)
+    if event.user_id != current_user.id:
+        abort(403)
+    return render_template('partials/event_edit.html', event=event)
+
+@app.route('/schedule/event/<int:event_id>/update', methods=['POST'])
+@login_required
+def update_event(event_id):
+    event = Event.query.get_or_404(event_id)
+    if event.user_id != current_user.id:
+        abort(403)
+
+    title = request.form.get('title')
+    start_time_str = request.form.get('start_time')
+    end_time_str = request.form.get('end_time')
+    recurrence = request.form.get('recurrence')
+    recurrence_days_list = request.form.getlist('recurrence_days')
+
+    if title: event.title = title
+    if recurrence: event.recurrence = recurrence
+    
+    # Always update recurrence_days, even if empty (clearing it)
+    event.recurrence_days = ",".join(recurrence_days_list) if recurrence_days_list else None
+
+    if start_time_str:
+        try:
+            event.start_time = datetime.strptime(start_time_str, '%Y-%m-%dT%H:%M')
+        except ValueError:
+            pass
+            
+    if end_time_str:
+        try:
+            event.end_time = datetime.strptime(end_time_str, '%Y-%m-%dT%H:%M')
+        except ValueError:
+            pass
+
+    db.session.commit()
+    return render_template('partials/event_item.html', event=event)
 
 @app.route('/schedule/delete/<int:event_id>', methods=['POST'])
 @login_required

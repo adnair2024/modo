@@ -1,0 +1,49 @@
+<form hx-post="{{ url_for('update_event', event_id=event.id) }}" hx-target="#event-{{ event.id }}" hx-swap="outerHTML" class="bg-white p-6 rounded-lg shadow-xl">
+    <h2 class="text-xl font-semibold mb-4">Edit Event</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="col-span-2">
+            <label class="block text-sm font-medium text-gray-700">Title</label>
+            <input type="text" name="title" value="{{ event.title }}" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 border p-2">
+        </div>
+        
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Start Time</label>
+            <input type="datetime-local" name="start_time" value="{{ event.start_time.strftime('%Y-%m-%dT%H:%M') }}" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 border p-2">
+        </div>
+        
+        <div>
+            <label class="block text-sm font-medium text-gray-700">End Time</label>
+            <input type="datetime-local" name="end_time" value="{{ event.end_time.strftime('%Y-%m-%dT%H:%M') }}" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 border p-2">
+        </div>
+        
+        <div class="col-span-2" x-data="{ recurrence: '{{ event.recurrence }}' }">
+            <label class="block text-sm font-medium text-gray-700">Recurrence</label>
+            <select name="recurrence" x-model="recurrence" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 border p-2">
+                <option value="none">None</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="custom">Custom (Select Days)</option>
+            </select>
+
+            <div x-show="recurrence === 'custom'" class="mt-3 p-3 border rounded bg-gray-50">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Repeat On:</label>
+                <div class="flex flex-wrap gap-4">
+                    {% set days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] %}
+                    {% set selected_days = event.recurrence_days.split(',') if event.recurrence_days else [] %}
+                    {% for i in range(7) %}
+                    <label class="inline-flex items-center">
+                        <input type="checkbox" name="recurrence_days" value="{{ i }}" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                        {% if i|string in selected_days %}checked{% endif %}>
+                        <span class="ml-2 text-sm text-gray-700">{{ days[i] }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="mt-6 flex justify-end gap-3">
+        <button type="button" @click="editing = false" class="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300">Cancel</button>
+        <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded hover:bg-indigo-700">Save Changes</button>
+    </div>
+</form>

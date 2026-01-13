@@ -67,8 +67,10 @@ class Event(db.Model):
     description = db.Column(db.Text, nullable=True)
     start_time = db.Column(db.DateTime, nullable=False)
     end_time = db.Column(db.DateTime, nullable=False)
-    # Recurrence: 'none', 'daily', 'weekly', 'monthly'
+    # Recurrence: 'none', 'daily', 'weekly', 'monthly', 'custom'
     recurrence = db.Column(db.String(20), default='none')
+    # Stores comma-separated days for custom recurrence (0=Mon, 6=Sun) e.g., "0,2,4"
+    recurrence_days = db.Column(db.String(50), nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
 class Notification(db.Model):

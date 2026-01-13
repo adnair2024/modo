@@ -1,0 +1,34 @@
+<li id="event-{{ event.id }}" class="border-b last:border-b-0 p-4 hover:bg-gray-50 flex justify-between items-center" x-data="{ editing: false }">
+    <div x-show="!editing" class="w-full flex justify-between items-center">
+        <div>
+            <h3 class="font-bold text-lg text-gray-800">{{ event.title }}</h3>
+            <p class="text-sm text-gray-600">
+                {{ event.start_time.strftime('%b %d, %Y %I:%M %p') }} - {{ event.end_time.strftime('%I:%M %p') }}
+                {% if event.recurrence != 'none' %}
+                <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 capitalize">
+                    {{ event.recurrence }}
+                    {% if event.recurrence == 'custom' and event.recurrence_days %}
+                        {% set days_map = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] %}
+                        {% set day_indices = event.recurrence_days.split(',') %}
+                        ({% for d in day_indices %}{{ days_map[d|int] }}{% if not loop.last %}, {% endif %}{% endfor %})
+                    {% endif %}
+                </span>
+                {% endif %}
+            </p>
+        </div>
+        <div class="flex items-center gap-2">
+            <button @click="editing = true" hx-get="{{ url_for('edit_event', event_id=event.id) }}" hx-target="#edit-form-container-{{ event.id }}" hx-swap="innerHTML" class="text-indigo-600 hover:text-indigo-900">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+            </button>
+            <form action="{{ url_for('delete_event', event_id=event.id) }}" method="POST" onsubmit="return confirm('Are you sure?');" class="inline">
+                <button type="submit" class="text-red-500 hover:text-red-700">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                </button>
+            </form>
+        </div>
+    </div>
+    <div x-show="editing" id="edit-form-container-{{ event.id }}" class="w-full">
+        <!-- Edit form will be loaded here -->
+        Loading...
+    </div>
+</li>
