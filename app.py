@@ -616,6 +616,14 @@ def update_event(event_id):
     db.session.commit()
     return render_template('partials/event_item.html', event=event)
 
+@app.route('/schedule/event/<int:event_id>/item', methods=['GET'])
+@login_required
+def get_event_item(event_id):
+    event = Event.query.get_or_404(event_id)
+    if event.user_id != current_user.id:
+        abort(403)
+    return render_template('partials/event_item.html', event=event)
+
 @app.route('/schedule/delete/<int:event_id>', methods=['POST'])
 @login_required
 def delete_event(event_id):

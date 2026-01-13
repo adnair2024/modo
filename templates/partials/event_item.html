@@ -1,5 +1,5 @@
-<li id="event-{{ event.id }}" class="border-b last:border-b-0 p-4 hover:bg-gray-50 flex justify-between items-center" x-data="{ editing: false }">
-    <div x-show="!editing" class="w-full flex justify-between items-center">
+<li id="event-{{ event.id }}" class="border-b last:border-b-0 p-4 hover:bg-gray-50 flex justify-between items-center">
+    <div class="w-full flex justify-between items-center">
         <div>
             <h3 class="font-bold text-lg text-gray-800">{{ event.title }}</h3>
             <p class="text-sm text-gray-600">
@@ -17,7 +17,7 @@
             </p>
         </div>
         <div class="flex items-center gap-2">
-            <button @click="editing = true" hx-get="{{ url_for('edit_event', event_id=event.id) }}" hx-target="#edit-form-container-{{ event.id }}" hx-swap="innerHTML" class="text-indigo-600 hover:text-indigo-900">
+            <button hx-get="{{ url_for('edit_event', event_id=event.id) }}" hx-target="closest li" hx-swap="outerHTML" class="text-indigo-600 hover:text-indigo-900">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
             </button>
             <form action="{{ url_for('delete_event', event_id=event.id) }}" method="POST" onsubmit="return confirm('Are you sure?');" class="inline">
@@ -26,9 +26,5 @@
                 </button>
             </form>
         </div>
-    </div>
-    <div x-show="editing" id="edit-form-container-{{ event.id }}" class="w-full">
-        <!-- Edit form will be loaded here -->
-        Loading...
     </div>
 </li>
