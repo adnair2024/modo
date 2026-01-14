@@ -73,6 +73,16 @@ class Event(db.Model):
     # Stores comma-separated days for custom recurrence (0=Mon, 6=Sun) e.g., "0,2,4"
     recurrence_days = db.Column(db.String(50), nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    completions = db.relationship('EventCompletion', backref='event', lazy=True, cascade="all, delete-orphan")
+
+class EventCompletion(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    date = db.Column(db.Date, nullable=False) # Stores the specific date of the occurrence
+    completed_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (db.UniqueConstraint('event_id', 'date', name='_event_date_uc'),)
 
 class Notification(db.Model):
     id = db.Column(db.Integer, primary_key=True)

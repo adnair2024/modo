@@ -1,0 +1,14 @@
+<div class="flex items-start gap-3 group">
+    <button hx-post="{{ url_for('toggle_event', event_id=event.id, date=event.date_str) }}"
+            hx-swap="outerHTML"
+            hx-target="closest div.flex"
+            class="mt-1 w-5 h-5 border-2 border-indigo-200 hover:border-indigo-400 rounded-full flex items-center justify-center flex-shrink-0 transition-colors {{ 'bg-indigo-500 border-indigo-500' if event.is_completed else 'bg-white bg-opacity-80' }}">
+        {% if event.is_completed %}
+        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+        {% endif %}
+    </button>
+    <div>
+        <p class="font-semibold text-sm {{ 'line-through opacity-70' if event.is_completed }}">{{ event.title }}</p>
+        <p class="text-xs opacity-80">{{ event.start_time.strftime('%I:%M %p') }}</p>
+    </div>
+</div>

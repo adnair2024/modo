@@ -17,17 +17,7 @@
                     <h3 class="font-bold text-lg mb-3 border-b border-white border-opacity-20 pb-2">{{ group }}</h3>
                     <div class="space-y-3">
                         {% for event in events %}
-                        <div class="flex items-start gap-3 group">
-                            <input type="checkbox" 
-                                   hx-post="{{ url_for('toggle_event', event_id=event.id) }}"
-                                   hx-swap="outerHTML"
-                                   hx-target="closest div.flex"
-                                   class="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer bg-white bg-opacity-80">
-                            <div>
-                                <p class="font-semibold text-sm">{{ event.title }}</p>
-                                <p class="text-xs opacity-80">{{ event.start_time.strftime('%I:%M %p') }}</p>
-                            </div>
-                        </div>
+                            {% include "partials/event_item_small.html" %}
                         {% endfor %}
                     </div>
                 </div>

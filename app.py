@@ -6,7 +6,7 @@ from flask_login import LoginManager, login_required, current_user
 from flask_migrate import Migrate
 from sqlalchemy import func
 from dotenv import load_dotenv
-from models import db, User, Task, Subtask, FocusSession, Tag, Event, Notification
+from models import db, User, Task, Subtask, FocusSession, Tag, Event, Notification, EventCompletion
 from auth import auth
 
 load_dotenv()
@@ -22,6 +22,80 @@ migrate = Migrate(app, db)
 login_manager = LoginManager()
 login_manager.login_view = 'auth.login'
 login_manager.init_app(app)
+
+class EventOccurrence:
+    def __init__(self, event, start_datetime, is_completed):
+        self.id = event.id
+        self.title = event.title
+        self.start_time = start_datetime
+        self.is_completed = is_completed
+        self.event_obj = event
+        self.date_str = start_datetime.strftime('%Y-%m-%d')
+
+def expand_events(events, start_date, end_date):
+    occurrences = []
+    
+    # Pre-fetch completions for these events in this range to avoid N+1
+    # For simplicity, we might just fetch all completions for these events
+    event_ids = [e.id for e in events]
+    completions = EventCompletion.query.filter(EventCompletion.event_id.in_(event_ids)).all()
+    completion_map = {(c.event_id, c.date): True for c in completions}
+
+    for event in events:
+        event_start_date = event.start_time.date()
+        
+        # Determine range intersection
+        # We need to iterate from max(start_date, event_start_date) to end_date
+        
+        current_date = max(start_date, event_start_date)
+        
+        while current_date <= end_date:
+            match = False
+            
+            if event.recurrence == 'none':
+                if current_date == event_start_date:
+                    match = True
+                # Non-recurring only happens once, so we can break if we passed it
+                if current_date > event_start_date:
+                    break
+            
+            elif event.recurrence == 'daily':
+                match = True
+                
+            elif event.recurrence == 'weekly':
+                if current_date.weekday() == event.start_time.weekday():
+                    match = True
+                    
+            elif event.recurrence == 'monthly':
+                if current_date.day == event.start_time.day:
+                    match = True
+                    
+            elif event.recurrence == 'custom':
+                if event.recurrence_days:
+                    days = [int(d) for d in event.recurrence_days.split(',') if d.strip()]
+                    if current_date.weekday() in days:
+                        match = True
+
+            if match:
+                # Calculate specific start datetime for this occurrence
+                # Combine current_date with event.start_time time
+                occ_start = datetime.combine(current_date, event.start_time.time())
+                
+                # Check completion
+                # For non-recurring, we can check event.is_completed too for backward compatibility
+                is_done = False
+                if event.recurrence == 'none':
+                    is_done = event.is_completed
+                
+                # Check specific completion record
+                if (event.id, current_date) in completion_map:
+                    is_done = True
+                
+                occurrences.append(EventOccurrence(event, occ_start, is_done))
+
+            current_date += timedelta(days=1)
+            
+    return occurrences
 
 @app.template_filter('format_minutes')
 def format_minutes(value):
@@ -51,6 +125,8 @@ def check_event_notifications(user):
     limit = datetime.now() + timedelta(minutes=notify_window)
     
     # Find events starting between now and limit
+    # This logic only finds BASE events. Ideally we should check expanded events.
+    # For now, keeping as is for base non-recurring events or if recurrence matches today.
     events = Event.query.filter_by(user_id=user.id)\
         .filter(Event.start_time >= datetime.now())\
         .filter(Event.start_time <= limit)\
@@ -177,14 +253,21 @@ def index():
 
     # Upcoming Events Logic
     now = datetime.now()
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = now.date()
+    week_end = today_start + timedelta(days=7)
     
-    # Fetch upcoming events starting from today (completed=False to show active ones)
-    # We'll fetch a bit more to fill the groups
-    upcoming_query = Event.query.filter_by(user_id=current_user.id)\
-        .filter(Event.start_time >= today_start)\
-        .filter(Event.is_completed == False)\
-        .order_by(Event.start_time).limit(20).all()
+    # 1. Fetch all events that *could* be relevant. 
+    #    This includes:
+    #    - Non-recurring events starting in the range [today, week_end]
+    #    - Recurring events starting BEFORE week_end (since they might repeat into the window)
+    
+    # Actually, simpler: just fetch ALL user events and let the python expander handle filtering efficiently
+    # unless there are thousands. For a personal app, hundreds is fine.
+    
+    all_events = Event.query.filter_by(user_id=current_user.id).all()
+    
+    occurrences = expand_events(all_events, today_start, week_end)
+    occurrences.sort(key=lambda x: x.start_time)
 
     grouped_events = {
         'Today': [],
@@ -192,19 +275,17 @@ def index():
         'This Week': []
     }
     
-    tomorrow_start = today_start + timedelta(days=1)
-    week_end = today_start + timedelta(days=7)
-
-    for event in upcoming_query:
-        if event.start_time < tomorrow_start:
-            grouped_events['Today'].append(event)
-        elif event.start_time < tomorrow_start + timedelta(days=1):
-            grouped_events['Tomorrow'].append(event)
-        elif event.start_time < week_end:
-            grouped_events['This Week'].append(event)
-            
-    # Remove empty keys if you want, or handle in template
+    tomorrow_start = datetime.combine(today_start + timedelta(days=1), datetime.min.time())
+    week_end_dt = datetime.combine(today_start + timedelta(days=7), datetime.min.time())
     
+    for occ in occurrences:
+        if occ.start_time < tomorrow_start:
+            grouped_events['Today'].append(occ)
+        elif occ.start_time < tomorrow_start + timedelta(days=1):
+            grouped_events['Tomorrow'].append(occ)
+        elif occ.start_time < week_end_dt:
+            grouped_events['This Week'].append(occ)
+            
     return render_template('index.html', tasks=tasks, all_tags=all_tags, has_more_completed=has_more_completed, now=datetime.now(), grouped_events=grouped_events)
 
 @app.route('/toggle_event/<int:event_id>', methods=['POST'])
@@ -213,13 +294,43 @@ def toggle_event(event_id):
     event = Event.query.get_or_404(event_id)
     if event.user_id != current_user.id:
         abort(403)
+        
+    date_str = request.args.get('date')
+    if not date_str:
+        # Fallback for old calls or simple non-recurring toggle without date
+        # Just toggle the base event status
+        event.is_completed = not event.is_completed
+        db.session.commit()
+        # Create a dummy occurrence for response
+        occ = EventOccurrence(event, event.start_time, event.is_completed)
+        return render_template('partials/event_item_small.html', event=occ)
+
+    try:
+        target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return '', 400
+
+    # Check if completion exists
+    completion = EventCompletion.query.filter_by(event_id=event.id, date=target_date).first()
     
-    event.is_completed = not event.is_completed
+    is_done = False
+    if completion:
+        db.session.delete(completion)
+        is_done = False
+    else:
+        new_comp = EventCompletion(event_id=event.id, user_id=current_user.id, date=target_date)
+        db.session.add(new_comp)
+        is_done = True
+        
     db.session.commit()
     
-    # Return empty string to remove element, or we could re-render list.
-    # For now, let's just remove it from the view if we are "checking it off"
-    return ''
+    # Construct occurrence object for re-rendering
+    # We need the correct datetime.
+    # We assume the time is same as base event.
+    occ_start = datetime.combine(target_date, event.start_time.time())
+    occ = EventOccurrence(event, occ_start, is_done)
+    
+    return render_template('partials/event_item_small.html', event=occ)
 
 @app.route('/timer')
 @login_required
