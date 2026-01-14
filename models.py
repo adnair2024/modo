@@ -67,6 +67,7 @@ class Event(db.Model):
     description = db.Column(db.Text, nullable=True)
     start_time = db.Column(db.DateTime, nullable=False)
     end_time = db.Column(db.DateTime, nullable=False)
+    is_completed = db.Column(db.Boolean, default=False)
     # Recurrence: 'none', 'daily', 'weekly', 'monthly', 'custom'
     recurrence = db.Column(db.String(20), default='none')
     # Stores comma-separated days for custom recurrence (0=Mon, 6=Sun) e.g., "0,2,4"

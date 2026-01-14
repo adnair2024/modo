@@ -175,11 +175,51 @@ def index():
     if request.headers.get('HX-Request'):
         return render_template('partials/task_list.html', tasks=tasks, has_more_completed=has_more_completed, now=datetime.now())
 
-    upcoming_events = Event.query.filter_by(user_id=current_user.id)\
-        .filter(Event.start_time >= datetime.now())\
-        .order_by(Event.start_time).limit(3).all()
+    # Upcoming Events Logic
+    now = datetime.now()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    # Fetch upcoming events starting from today (completed=False to show active ones)
+    # We'll fetch a bit more to fill the groups
+    upcoming_query = Event.query.filter_by(user_id=current_user.id)\
+        .filter(Event.start_time >= today_start)\
+        .filter(Event.is_completed == False)\
+        .order_by(Event.start_time).limit(20).all()
 
-    return render_template('index.html', tasks=tasks, all_tags=all_tags, has_more_completed=has_more_completed, now=datetime.now(), upcoming_events=upcoming_events)
+    grouped_events = {
+        'Today': [],
+        'Tomorrow': [],
+        'This Week': []
+    }
+    
+    tomorrow_start = today_start + timedelta(days=1)
+    week_end = today_start + timedelta(days=7)
+
+    for event in upcoming_query:
+        if event.start_time < tomorrow_start:
+            grouped_events['Today'].append(event)
+        elif event.start_time < tomorrow_start + timedelta(days=1):
+            grouped_events['Tomorrow'].append(event)
+        elif event.start_time < week_end:
+            grouped_events['This Week'].append(event)
+            
+    # Remove empty keys if you want, or handle in template
+    
+    return render_template('index.html', tasks=tasks, all_tags=all_tags, has_more_completed=has_more_completed, now=datetime.now(), grouped_events=grouped_events)
+
+@app.route('/toggle_event/<int:event_id>', methods=['POST'])
+@login_required
+def toggle_event(event_id):
+    event = Event.query.get_or_404(event_id)
+    if event.user_id != current_user.id:
+        abort(403)
+    
+    event.is_completed = not event.is_completed
+    db.session.commit()
+    
+    # Return empty string to remove element, or we could re-render list.
+    # For now, let's just remove it from the view if we are "checking it off"
+    return ''
 
 @app.route('/timer')
 @login_required
