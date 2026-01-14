@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
             pause: document.getElementById('global-timer-pause'),
             reset: document.getElementById('global-timer-reset'),
             skip: document.getElementById('global-timer-skip'),
+            end: document.getElementById('global-timer-end'),
             task: document.getElementById('global-timer-task')
         },
         page: {
@@ -15,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
             pause: document.getElementById('page-timer-pause'),
             reset: document.getElementById('page-timer-reset'),
             skip: document.getElementById('page-timer-skip'),
+            end: document.getElementById('page-timer-end'),
             task: document.getElementById('page-timer-task')
         }
     };
@@ -128,6 +130,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        // Show/Hide End Session (Only in Focus mode and if started)
+        if (els.end) {
+            const settings = window.userSettings || { focusDuration: 25 };
+            const fullDuration = settings.focusDuration * 60;
+            // Show if in focus mode AND (running OR (paused AND some time elapsed))
+            if (currentMode === 'focus' && (isRunning || secondsLeft < fullDuration)) {
+                els.end.classList.remove('hidden');
+            } else {
+                els.end.classList.add('hidden');
+            }
+        }
+
         // Only disable task selection during BREAK, allow it during FOCUS even if running
         if (els.task) {
             els.task.disabled = (currentMode === 'break'); 
@@ -187,6 +201,31 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('timerStatus', 'paused');
         localStorage.removeItem('timerEnd');
         updateUI();
+    }
+
+    function endSession() {
+        pauseTimer();
+        const settings = window.userSettings || { focusDuration: 25, breakDuration: 5 };
+        const totalSeconds = settings.focusDuration * 60;
+        const elapsedSeconds = totalSeconds - secondsLeft;
+        
+        if (elapsedSeconds <= 0) {
+             resetTimer(); // Just reset if nothing happened
+             return;
+        }
+
+        const minutesLogged = Math.max(1, Math.round(elapsedSeconds / 60));
+
+        if (confirm(`End session and log ${minutesLogged} minutes?`)) {
+             fetch('/api/log_session', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ minutes: minutesLogged, task_id: currentTaskId })
+            }).then(() => {
+                alert('Session logged!');
+                resetTimer();
+            });
+        }
     }
 
     function resetTimer() {
@@ -294,6 +333,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (elements.global.pause) elements.global.pause.addEventListener('click', pauseTimer);
         if (elements.global.reset) elements.global.reset.addEventListener('click', resetTimer);
         if (elements.global.skip) elements.global.skip.addEventListener('click', skipBreak);
+        if (elements.global.end) elements.global.end.addEventListener('click', endSession);
         if (elements.global.task) elements.global.task.addEventListener('change', (e) => {
             currentTaskId = e.target.value;
             updateTaskSelects(currentTaskId);
@@ -305,6 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (elements.page.pause) elements.page.pause.addEventListener('click', pauseTimer);
         if (elements.page.reset) elements.page.reset.addEventListener('click', resetTimer);
         if (elements.page.skip) elements.page.skip.addEventListener('click', skipBreak);
+        if (elements.page.end) elements.page.end.addEventListener('click', endSession);
         if (elements.page.task) elements.page.task.addEventListener('change', (e) => {
             currentTaskId = e.target.value;
             updateTaskSelects(currentTaskId);
