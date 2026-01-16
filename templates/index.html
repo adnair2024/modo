@@ -27,6 +27,26 @@
     </div>
     {% endif %}
 
+    <!-- Daily Habits -->
+    {% if daily_habits %}
+    <div class="mb-8 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-bold flex items-center gap-2 text-gray-800 dark:text-white">
+                <svg class="w-6 h-6 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Daily Habits
+            </h2>
+            <a href="{{ url_for('habits') }}" class="text-xs text-indigo-600 hover:underline">View All</a>
+        </div>
+        <div class="flex flex-wrap gap-4">
+            {% for habit in daily_habits %}
+                {% with day={'date': today_str, 'is_done': habit.is_done} %}
+                    {% include "partials/habit_item_home.html" %}
+                {% endwith %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
     <h2 class="text-3xl font-bold mb-6">My Tasks</h2>
     
     <!-- Add Task Form -->

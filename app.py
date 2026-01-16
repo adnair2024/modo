@@ -6,7 +6,7 @@ from flask_login import LoginManager, login_required, current_user
 from flask_migrate import Migrate
 from sqlalchemy import func
 from dotenv import load_dotenv
-from models import db, User, Task, Subtask, FocusSession, Tag, Event, Notification, EventCompletion
+from models import db, User, Task, Subtask, FocusSession, Tag, Event, Notification, EventCompletion, Habit, HabitCompletion
 from auth import auth
 
 load_dotenv()
@@ -286,7 +286,31 @@ def index():
         elif occ.start_time < week_end_dt:
             grouped_events['This Week'].append(occ)
             
-    return render_template('index.html', tasks=tasks, all_tags=all_tags, has_more_completed=has_more_completed, now=datetime.now(), grouped_events=grouped_events)
+    # Daily Habits for Home Screen
+    today = datetime.now().date()
+    all_user_habits = Habit.query.filter_by(user_id=current_user.id).all()
+    today_completions = HabitCompletion.query.filter(
+        HabitCompletion.habit_id.in_([h.id for h in all_user_habits]),
+        HabitCompletion.date == today
+    ).all()
+    today_comp_ids = {c.habit_id for c in today_completions}
+    
+    daily_habits = []
+    for h in all_user_habits:
+        daily_habits.append({
+            'id': h.id,
+            'title': h.title,
+            'is_done': h.id in today_comp_ids
+        })
+
+    return render_template('index.html', 
+                           tasks=tasks, 
+                           all_tags=all_tags, 
+                           has_more_completed=has_more_completed, 
+                           now=datetime.now(), 
+                           grouped_events=grouped_events,
+                           daily_habits=daily_habits,
+                           today_str=today.strftime('%Y-%m-%d'))
 
 @app.route('/toggle_event/<int:event_id>', methods=['POST'])
 @login_required
@@ -822,6 +846,138 @@ def delete_event(event_id):
     db.session.delete(event)
     db.session.commit()
     return redirect(url_for('schedule'))
+
+@app.route('/habits')
+@login_required
+def habits():
+    user_habits = Habit.query.filter_by(user_id=current_user.id).order_by(Habit.created_at.desc()).all()
+    
+    # Generate last 7 days (ending today)
+    today = datetime.now().date()
+    dates = []
+    for i in range(6, -1, -1):
+        d = today - timedelta(days=i)
+        dates.append(d)
+        
+    # Pre-fetch completions
+    # We want completions for these habits in this date range
+    start_date = dates[0]
+    end_date = dates[-1]
+    
+    habit_ids = [h.id for h in user_habits]
+    completions = HabitCompletion.query.filter(
+        HabitCompletion.habit_id.in_(habit_ids),
+        HabitCompletion.date >= start_date,
+        HabitCompletion.date <= end_date
+    ).all()
+    
+    # Map: (habit_id, date) -> True
+    comp_map = {(c.habit_id, c.date): True for c in completions}
+    
+    habits_data = []
+    for h in user_habits:
+        status_list = []
+        streak = 0
+        # Calculate streak (backwards from today)
+        # Check today
+        streak_date = today
+        while True:
+            # Check db for this date
+            # Optimization: could query specifically for streak, but let's stick to simple logic or just showing what we have loaded
+            # For "current streak", we check if today is done (or yesterday if today not over).
+            # Let's just count consecutive days in the past that are done.
+            # Simple approach: Query specifically for streak if needed, or just calc from `comp_map` if we had more history.
+            # Let's rely on a separate query for accurate streaks if we want > 7 days.
+            # For now, let's just show the grid.
+            break
+
+        # Build grid data
+        for d in dates:
+            is_done = (h.id, d) in comp_map
+            status_list.append({
+                'date': d.strftime('%Y-%m-%d'),
+                'is_done': is_done,
+                'is_today': (d == today),
+                'day_name': d.strftime('%a') # Mon, Tue...
+            })
+            
+        habits_data.append({
+            'habit': h,
+            'days': status_list
+        })
+        
+    return render_template('habits.html', habits=habits_data, dates=dates)
+
+@app.route('/habits/add', methods=['POST'])
+@login_required
+def add_habit():
+    title = request.form.get('title')
+    if title:
+        habit = Habit(title=title, user_id=current_user.id)
+        db.session.add(habit)
+        db.session.commit()
+    return redirect(url_for('habits'))
+
+@app.route('/habits/toggle/<int:habit_id>', methods=['POST'])
+@login_required
+def toggle_habit(habit_id):
+    habit = Habit.query.get_or_404(habit_id)
+    if habit.user_id != current_user.id:
+        abort(403)
+        
+    date_str = request.args.get('date')
+    if not date_str:
+        target_date = datetime.now().date()
+    else:
+        try:
+            target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            return '', 400
+            
+    completion = HabitCompletion.query.filter_by(habit_id=habit.id, date=target_date).first()
+    
+    is_done = False
+    if completion:
+        db.session.delete(completion)
+        is_done = False
+    else:
+        new_comp = HabitCompletion(habit_id=habit.id, date=target_date)
+        db.session.add(new_comp)
+        is_done = True
+        
+    db.session.commit()
+    
+    # Return a partial for the cell if using HTMX, or the whole row.
+    # For simplicity, returning a button state or we can just reload.
+    # Let's try to return just the button/cell HTML.
+    # We'll construct the button HTML manually or use a tiny template.
+    # Actually, simpler to just return a JSON status or tiny HTML fragment.
+    
+    # UI Logic: The clicked element is the circle. We swap it.
+    
+    # Return the new state class/html
+    if request.headers.get('HX-Request'):
+        is_today = (target_date == datetime.now().date())
+        day_data = {'date': target_date.strftime('%Y-%m-%d'), 'is_done': is_done, 'is_today': is_today}
+        
+        # Check if it's from the home screen pill or the habits grid
+        target = request.headers.get('HX-Target', '')
+        if target.startswith('habit-home-'):
+            return render_template('partials/habit_item_home.html', habit=habit, day=day_data)
+            
+        return render_template('partials/habit_cell.html', habit=habit, day=day_data)
+
+    return redirect(url_for('habits'))
+
+@app.route('/habits/delete/<int:habit_id>', methods=['POST'])
+@login_required
+def delete_habit(habit_id):
+    habit = Habit.query.get_or_404(habit_id)
+    if habit.user_id != current_user.id:
+        abort(403)
+    db.session.delete(habit)
+    db.session.commit()
+    return redirect(url_for('habits'))
 
 if __name__ == '__main__':
     app.run(debug=True)

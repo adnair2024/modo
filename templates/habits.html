@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-800 dark:text-white">Habit Tracker</h1>
+    </div>
+
+    <!-- Add Habit Form -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
+        <form action="{{ url_for('add_habit') }}" method="POST" class="flex gap-4">
+            <input type="text" name="title" placeholder="New Habit (e.g., Drink Water, Read)" required
+                   class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-50 p-2 border dark:bg-gray-700 dark:text-white dark:border-gray-600">
+            <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition">
+                Add Habit
+            </button>
+        </form>
+    </div>
+
+    <!-- Habits List -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+        <!-- Header -->
+        <div class="flex items-center justify-between px-6 py-3 bg-gray-50 border-b border-gray-200 dark:bg-gray-700 dark:border-gray-600">
+            <div class="font-semibold text-gray-500 text-sm uppercase tracking-wider dark:text-gray-300">Habit</div>
+            <div class="flex gap-2">
+                {% for d in dates %}
+                <div class="w-8 text-center text-xs font-bold text-gray-400 uppercase">
+                    {{ d.strftime('%a') }}<br>
+                    <span class="font-normal">{{ d.day }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        {% for item in habits %}
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors group">
+            <div class="flex items-center gap-3">
+                <form action="{{ url_for('delete_habit', habit_id=item.habit.id) }}" method="POST" class="opacity-0 group-hover:opacity-100 transition-opacity" onsubmit="return confirm('Delete this habit?');">
+                    <button type="submit" class="text-gray-400 hover:text-red-500">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </form>
+                <span class="font-medium text-gray-800 text-lg dark:text-white">{{ item.habit.title }}</span>
+            </div>
+            
+            <div class="flex gap-2">
+                {% for day in item.days %}
+                    {% with habit=item.habit, day=day %}
+                        {% include 'partials/habit_cell.html' %}
+                    {% endwith %}
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <div class="p-8 text-center text-gray-500">
+            You haven't added any habits yet. Start small!
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
