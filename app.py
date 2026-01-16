@@ -342,12 +342,25 @@ def timer():
 @login_required
 def leaderboard():
     from sqlalchemy import func
-    results = db.session.query(
+    
+    filter_type = request.args.get('filter', 'all')
+    
+    query = db.session.query(
         User.username,
         func.sum(FocusSession.minutes).label('total_minutes')
-    ).join(FocusSession).group_by(User.id).order_by(func.sum(FocusSession.minutes).desc()).limit(10).all()
+    ).join(FocusSession).group_by(User.id).order_by(func.sum(FocusSession.minutes).desc())
+
+    if filter_type == 'weekly':
+        now = datetime.now()
+        start_of_week = now - timedelta(days=now.weekday())
+        start_of_week = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_of_week = start_of_week + timedelta(days=6, hours=23, minutes=59, seconds=59)
+        
+        query = query.filter(FocusSession.date >= start_of_week, FocusSession.date <= end_of_week)
+
+    results = query.limit(10).all()
     
-    return render_template('leaderboard.html', leaders=results)
+    return render_template('leaderboard.html', leaders=results, filter_type=filter_type)
 
 @app.route('/api/log_session', methods=['POST'])
 @login_required
@@ -602,7 +615,32 @@ def get_next_priority_task():
 def personal_stats():
     total_minutes = db.session.query(func.sum(FocusSession.minutes)).filter_by(user_id=current_user.id).scalar() or 0
     total_sessions = FocusSession.query.filter_by(user_id=current_user.id).count()
-    return render_template('stats.html', total_minutes=total_minutes, total_sessions=total_sessions)
+    
+    # Weekly Stats
+    now = datetime.now()
+    start_of_week = now - timedelta(days=now.weekday())
+    start_of_week = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    weekly_minutes = db.session.query(func.sum(FocusSession.minutes))\
+        .filter_by(user_id=current_user.id)\
+        .filter(FocusSession.date >= start_of_week).scalar() or 0
+
+    # Heatmap Data (Last 365 Days)
+    year_ago = now - timedelta(days=365)
+    sessions = db.session.query(FocusSession.date, FocusSession.minutes)\
+        .filter_by(user_id=current_user.id)\
+        .filter(FocusSession.date >= year_ago).all()
+    
+    heatmap_data = {}
+    for s in sessions:
+        date_str = s.date.strftime('%Y-%m-%d')
+        heatmap_data[date_str] = heatmap_data.get(date_str, 0) + s.minutes
+
+    return render_template('stats.html', 
+                           total_minutes=total_minutes, 
+                           total_sessions=total_sessions,
+                           weekly_minutes=weekly_minutes,
+                           heatmap_data=heatmap_data)
 
 @app.route('/settings')
 @login_required
