@@ -660,11 +660,29 @@ def personal_stats():
         date_str = s.date.strftime('%Y-%m-%d')
         heatmap_data[date_str] = heatmap_data.get(date_str, 0) + s.minutes
 
+    # Habit Heatmap (Current Year)
+    current_year = now.year
+    year_start = datetime(current_year, 1, 1).date()
+    year_end = datetime(current_year, 12, 31).date()
+    
+    habit_completions = HabitCompletion.query.join(Habit).filter(
+        Habit.user_id == current_user.id,
+        HabitCompletion.date >= year_start,
+        HabitCompletion.date <= year_end
+    ).all()
+    
+    habit_heatmap_data = {}
+    for c in habit_completions:
+        d_str = c.date.strftime('%Y-%m-%d')
+        habit_heatmap_data[d_str] = habit_heatmap_data.get(d_str, 0) + 1
+
     return render_template('stats.html', 
                            total_minutes=total_minutes, 
                            total_sessions=total_sessions,
                            weekly_minutes=weekly_minutes,
-                           heatmap_data=heatmap_data)
+                           heatmap_data=heatmap_data,
+                           habit_heatmap_data=habit_heatmap_data,
+                           current_year=current_year)
 
 @app.route('/settings')
 @login_required
@@ -877,20 +895,6 @@ def habits():
     habits_data = []
     for h in user_habits:
         status_list = []
-        streak = 0
-        # Calculate streak (backwards from today)
-        # Check today
-        streak_date = today
-        while True:
-            # Check db for this date
-            # Optimization: could query specifically for streak, but let's stick to simple logic or just showing what we have loaded
-            # For "current streak", we check if today is done (or yesterday if today not over).
-            # Let's just count consecutive days in the past that are done.
-            # Simple approach: Query specifically for streak if needed, or just calc from `comp_map` if we had more history.
-            # Let's rely on a separate query for accurate streaks if we want > 7 days.
-            # For now, let's just show the grid.
-            break
-
         # Build grid data
         for d in dates:
             is_done = (h.id, d) in comp_map
@@ -905,8 +909,24 @@ def habits():
             'habit': h,
             'days': status_list
         })
+
+    # Year Heatmap Data
+    current_year = today.year
+    year_start = datetime(current_year, 1, 1).date()
+    year_end = datetime(current_year, 12, 31).date()
+    
+    year_completions = HabitCompletion.query.filter(
+        HabitCompletion.habit_id.in_(habit_ids),
+        HabitCompletion.date >= year_start,
+        HabitCompletion.date <= year_end
+    ).all()
+    
+    heatmap_data = {}
+    for c in year_completions:
+        d_str = c.date.strftime('%Y-%m-%d')
+        heatmap_data[d_str] = heatmap_data.get(d_str, 0) + 1
         
-    return render_template('habits.html', habits=habits_data, dates=dates)
+    return render_template('habits.html', habits=habits_data, dates=dates, heatmap_data=heatmap_data, current_year=current_year)
 
 @app.route('/habits/add', methods=['POST'])
 @login_required
