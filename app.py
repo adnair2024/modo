@@ -649,11 +649,15 @@ def personal_stats():
         .filter_by(user_id=current_user.id)\
         .filter(FocusSession.date >= start_of_week).scalar() or 0
 
-    # Heatmap Data (Last 365 Days)
-    year_ago = now - timedelta(days=365)
+    # Define Year Boundaries
+    current_year = now.year
+    year_start = datetime(current_year, 1, 1).date()
+    year_end = datetime(current_year, 12, 31).date()
+
+    # Heatmap Data (Current Year)
     sessions = db.session.query(FocusSession.date, FocusSession.minutes)\
         .filter_by(user_id=current_user.id)\
-        .filter(FocusSession.date >= year_ago).all()
+        .filter(FocusSession.date >= year_start, FocusSession.date <= year_end).all()
     
     heatmap_data = {}
     for s in sessions:
@@ -661,10 +665,6 @@ def personal_stats():
         heatmap_data[date_str] = heatmap_data.get(date_str, 0) + s.minutes
 
     # Habit Heatmap (Current Year)
-    current_year = now.year
-    year_start = datetime(current_year, 1, 1).date()
-    year_end = datetime(current_year, 12, 31).date()
-    
     habit_completions = HabitCompletion.query.join(Habit).filter(
         Habit.user_id == current_user.id,
         HabitCompletion.date >= year_start,

@@ -93,6 +93,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (elements.global.display) elements.global.display.textContent = text;
         if (elements.page.display) elements.page.display.textContent = text.padStart(5, '0');
 
+        // External API (Data Attributes for PreMiD/Extensions)
+        document.body.dataset.modoStatus = isRunning ? 'running' : 'paused';
+        document.body.dataset.modoMode = currentMode;
+        document.body.dataset.modoTime = text;
+        
+        let taskTitle = "No Task Selected";
+        if (elements.global.task && elements.global.task.selectedIndex >= 0) {
+            const selected = elements.global.task.options[elements.global.task.selectedIndex];
+            if (selected && selected.value) taskTitle = selected.text;
+        }
+        document.body.dataset.modoTask = taskTitle;
+
         // Color/Mode Indication (Optional visual cue)
         const isBreak = currentMode === 'break';
         if (elements.global.display) elements.global.display.style.color = isBreak ? '#10B981' : ''; // Green for break
