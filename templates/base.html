@@ -62,6 +62,10 @@
                     <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                     <span class="whitespace-nowrap transition-all duration-300 origin-left" :class="desktopSidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 hidden'">Habits</span>
                 </a>
+                <a href="{{ url_for('friends_list') }}" class="flex items-center gap-4 py-2.5 px-4 rounded transition duration-200 hover:bg-indigo-50 hover:text-indigo-600 group" title="Friends">
+                    <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    <span class="whitespace-nowrap transition-all duration-300 origin-left" :class="desktopSidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 hidden'">Friends</span>
+                </a>
                 <a href="{{ url_for('personal_stats') }}" class="flex items-center gap-4 py-2.5 px-4 rounded transition duration-200 hover:bg-indigo-50 hover:text-indigo-600 group" title="My Stats">
                     <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                     <span class="whitespace-nowrap transition-all duration-300 origin-left" :class="desktopSidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 hidden'">My Stats</span>
@@ -81,6 +85,16 @@
             </nav>
             
             <div class="p-6 border-t border-gray-200 mb-16">
+                {% if active_sync_room %}
+                <style>
+                    body[data-modo-mode="break"] #sync-badge { color: #EF4444; }
+                    body[data-modo-mode="focus"] #sync-badge { color: #10B981; }
+                </style>
+                <a href="{{ url_for('study_room', room_id=active_sync_room.id) }}" id="sync-badge" class="flex items-center gap-2 text-indigo-600 hover:text-indigo-800 font-bold mb-4 animate-pulse justify-center md:justify-start transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    <span :class="desktopSidebarOpen ? 'inline' : 'hidden md:hidden'">Sync Active</span>
+                </a>
+                {% endif %}
                 <button id="theme-toggle" class="flex items-center gap-2 text-gray-600 hover:text-indigo-600 transition w-full justify-center md:justify-start">
                     <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
                     <span :class="desktopSidebarOpen ? 'inline' : 'hidden md:hidden'">Toggle Theme</span>
@@ -176,13 +190,18 @@
             autoStartBreak: {{ 'true' if current_user.auto_start_break else 'false' }},
             autoStartFocus: {{ 'true' if current_user.auto_start_focus else 'false' }},
             autoSelectPriority: {{ 'true' if current_user.auto_select_priority else 'false' }},
-            focusDuration: {{ current_user.focus_duration or 25 }},
-            breakDuration: {{ current_user.break_duration or 5 }}
+            focusDuration: {{ active_sync_room.focus_duration if active_sync_room else (current_user.focus_duration or 25) }},
+            breakDuration: {{ active_sync_room.break_duration if active_sync_room else (current_user.break_duration or 5) }},
+            syncMode: {{ 'true' if active_sync_room else 'false' }},
+            activeRoomId: {{ active_sync_room.id if active_sync_room else 'null' }}
         };
     </script>
     <div id="global-timer-container" class="fixed bottom-0 left-0 right-0 bg-gray-900 text-white p-2 flex justify-between items-center shadow-lg border-t border-gray-700 z-50">
         <div class="flex items-center space-x-4">
-            <span class="font-bold text-xl font-mono" id="global-timer-display">{{ '%02d' % (current_user.focus_duration or 25) }}:00</span>
+            {% if active_sync_room %}
+            <span class="bg-indigo-600 text-xs font-bold px-2 py-1 rounded animate-pulse">SYNC</span>
+            {% endif %}
+            <span class="font-bold text-xl font-mono" id="global-timer-display">{{ '%02d' % (active_sync_room.focus_duration if active_sync_room else (current_user.focus_duration or 25)) }}:00</span>
             <select id="global-timer-task" class="bg-gray-800 text-sm p-1 rounded border border-gray-600 max-w-xs">
                 <option value="">Select Task...</option>
                     {% for task in current_user.tasks %}

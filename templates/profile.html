@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <!-- Header Card -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 flex flex-col md:flex-row items-center justify-between gap-6">
+        <div class="flex items-center gap-4">
+            <div class="w-20 h-20 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-3xl font-bold">
+                {{ user.username[0].upper() }}
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                    {{ user.username }}
+                    {% if user.is_verified %}
+                    <svg class="w-6 h-6 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                    </svg>
+                    {% endif %}
+                </h1>
+                <p class="text-gray-500 dark:text-gray-400">Joined {{ user.date_joined if user.date_joined else 'recently' }}</p>
+            </div>
+        </div>
+        
+        <!-- Actions -->
+        <div class="flex gap-3">
+            {% if user.id != current_user.id %}
+                {% if status == 'none' %}
+                    <form action="{{ url_for('send_friend_request', user_id=user.id) }}" method="POST">
+                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition">
+                            Add Friend
+                        </button>
+                    </form>
+                {% elif status == 'sent' %}
+                    <button disabled class="bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed px-4 py-2 rounded-lg font-medium">
+                        Request Sent
+                    </button>
+                {% elif status == 'received' %}
+                    <div class="flex gap-2">
+                        <form action="{{ url_for('respond_friend_request', user_id=user.id, action='accept') }}" method="POST">
+                            <button class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium">Accept</button>
+                        </form>
+                        <form action="{{ url_for('respond_friend_request', user_id=user.id, action='reject') }}" method="POST">
+                            <button class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium">Reject</button>
+                        </form>
+                    </div>
+                {% elif status == 'accepted' %}
+                    <form action="{{ url_for('respond_friend_request', user_id=user.id, action='remove') }}" method="POST">
+                         <button class="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 px-4 py-2 rounded-lg font-medium">
+                            Unfriend
+                        </button>
+                    </form>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow text-center">
+            <h3 class="text-gray-500 dark:text-gray-400 text-sm font-uppercase tracking-wide">Total Focus Time</h3>
+            <p class="text-4xl font-bold text-indigo-600 mt-2">{{ total_minutes | format_minutes }}</p>
+        </div>
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow text-center">
+            <h3 class="text-gray-500 dark:text-gray-400 text-sm font-uppercase tracking-wide">Sessions Completed</h3>
+            <p class="text-4xl font-bold text-green-600 mt-2">{{ total_sessions }}</p>
+        </div>
+    </div>
+
+    <!-- Recent Activity Log -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+            <h2 class="text-lg font-bold text-gray-800 dark:text-gray-100">Recent Activity</h2>
+        </div>
+        <div class="p-4">
+            {% if recent_sessions %}
+                <ul class="space-y-4">
+                {% for session in recent_sessions %}
+                    <li class="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-700 last:border-0 last:pb-0">
+                        <div class="flex items-center gap-3">
+                            <div class="bg-indigo-50 dark:bg-gray-700 p-2 rounded-lg text-indigo-600 dark:text-indigo-400">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            </div>
+                            <div>
+                                <p class="text-gray-800 dark:text-gray-200 font-medium">Focused for {{ session.minutes }} mins</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ session.date.strftime('%b %d, %Y %I:%M %p') }}</p>
+                            </div>
+                        </div>
+                    </li>
+                {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-gray-500 dark:text-gray-400 text-center py-4">No recent activity.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

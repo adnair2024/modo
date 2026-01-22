@@ -1,0 +1,30 @@
+{% if results %}
+<ul class="absolute z-10 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto">
+    {% for item in results %}
+    <li class="p-3 hover:bg-gray-50 dark:hover:bg-gray-700 flex justify-between items-center border-b last:border-0 dark:border-gray-700">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold text-sm">
+                {{ item.user.username[0].upper() }}
+            </div>
+            <span class="font-medium text-gray-900 dark:text-gray-100">{{ item.user.username }}</span>
+        </div>
+        
+        {% if item.status == 'none' %}
+        <form action="{{ url_for('send_friend_request', user_id=item.user.id) }}" method="POST">
+            <button class="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded">Add</button>
+        </form>
+        {% elif item.status == 'sent' %}
+        <span class="text-xs text-gray-400">Sent</span>
+        {% elif item.status == 'received' %}
+        <span class="text-xs text-yellow-600">Request Received</span>
+        {% else %}
+        <span class="text-xs text-green-600">Friend</span>
+        {% endif %}
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<div class="absolute z-10 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg mt-1 p-3 text-center text-sm text-gray-500">
+    No users found.
+</div>
+{% endif %}
