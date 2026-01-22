@@ -8,7 +8,17 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
-    tasks = db.relationship('Task', backref='author', lazy=True)
+    date_joined = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Presence & Live Status
+    last_seen = db.Column(db.DateTime, default=datetime.utcnow)
+    current_focus_start = db.Column(db.DateTime, nullable=True) # When they started
+    current_focus_end = db.Column(db.DateTime, nullable=True)   # When it will end
+    current_focus_mode = db.Column(db.String(20), default='none') # none, focus, break
+    current_task_id = db.Column(db.Integer, db.ForeignKey('task.id'), nullable=True)
+    
+    current_task = db.relationship('Task', foreign_keys=[current_task_id], backref='working_users', lazy=True)
+    tasks = db.relationship('Task', backref='author', lazy=True, foreign_keys="[Task.user_id]")
     focus_sessions = db.relationship('FocusSession', backref='user', lazy=True)
     theme_preference = db.Column(db.String(50), default='light')
     accent_color = db.Column(db.String(20), default='indigo')
@@ -23,7 +33,35 @@ class User(UserMixin, db.Model):
     notify_event_start = db.Column(db.Boolean, default=True)
     event_notify_minutes = db.Column(db.Integer, default=30)
     
+    is_verified = db.Column(db.Boolean, default=False)
+
     notifications = db.relationship('Notification', backref='user', lazy=True, cascade="all, delete-orphan")
+
+class Friendship(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    friend_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    status = db.Column(db.String(20), default='pending') # pending, accepted
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (db.UniqueConstraint('user_id', 'friend_id', name='_user_friend_uc'),)
+
+class StudyRoom(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    host_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    guest_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    status = db.Column(db.String(20), default='waiting') # waiting, active, finished
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Sync Settings
+    focus_duration = db.Column(db.Integer, default=25)
+    break_duration = db.Column(db.Integer, default=5)
+    sessions_count = db.Column(db.Integer, default=1)
+    
+    # Live State
+    active_mode = db.Column(db.String(20), default='focus') # focus, break
+    active_start_time = db.Column(db.DateTime, nullable=True) # If set, timer is running
+    seconds_remaining = db.Column(db.Integer, nullable=True) # Snapshot when paused
 
 task_tags = db.Table('task_tags',
     db.Column('task_id', db.Integer, db.ForeignKey('task.id'), primary_key=True),

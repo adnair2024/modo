@@ -71,12 +71,96 @@ document.addEventListener('DOMContentLoaded', () => {
              if (currentMode === 'break') secondsLeft = settings.breakDuration * 60;
              else secondsLeft = settings.focusDuration * 60;
         }
+        
+        // Force sync duration if in sync mode and not running (to override any local stale state or defaults)
+        if (settings.syncMode && !isRunning && !savedSeconds) {
+             if (currentMode === 'break') secondsLeft = settings.breakDuration * 60;
+             else secondsLeft = settings.focusDuration * 60;
+        }
 
         updateUI();
     }
 
     function checkExternalUpdates() {
-        // Placeholder for cross-tab sync if needed
+        const settings = window.userSettings || {};
+        const now = Date.now();
+        
+        // 1. Sync Presence (Push my status)
+        if (!lastSync || now - lastSync > 5000) {
+            syncPresence();
+        }
+        
+        // 2. Sync FROM Room (Pull shared status)
+        // If we are in a sync room (settings.activeRoomId should be set in base.html)
+        if (settings.syncMode && settings.activeRoomId) {
+             if (!lastRoomSync || now - lastRoomSync > 2000) {
+                syncWithRoom(settings.activeRoomId);
+             }
+        }
+    }
+    
+    let lastSync = 0;
+    let lastRoomSync = 0;
+    
+    function syncWithRoom(roomId) {
+        fetch(`/api/study/state/${roomId}`)
+            .then(r => r.json())
+            .then(data => {
+                lastRoomSync = Date.now();
+                
+                // Update local state to match server
+                if (data.mode !== currentMode) {
+                    currentMode = data.mode;
+                    localStorage.setItem('timerMode', currentMode);
+                }
+                
+                // Update Tasks
+                const myTaskEl = document.getElementById('sync-my-task');
+                const otherTaskEl = document.getElementById('sync-other-task');
+                if (myTaskEl) myTaskEl.textContent = data.my_task || 'No Task';
+                if (otherTaskEl) otherTaskEl.textContent = data.other_task || 'No Task';
+                
+                // If server is running, we must be running
+                if (data.is_running) {
+                    if (!isRunning) {
+                        isRunning = true;
+                        localStorage.setItem('timerStatus', 'running');
+                        startInterval(); 
+                    }
+                    // Sync time roughly
+                    if (Math.abs(secondsLeft - data.seconds_remaining) > 2) {
+                        secondsLeft = data.seconds_remaining;
+                    }
+                } else {
+                    // Server paused/stopped
+                    if (isRunning) {
+                        pauseTimer(false); // Don't notify server, just pause local
+                    }
+                    // Sync time exactly
+                    if (secondsLeft !== data.seconds_remaining) {
+                        secondsLeft = data.seconds_remaining;
+                        updateUI();
+                    }
+                }
+                updateUI();
+            });
+    }
+    
+    function syncPresence() {
+        const status = isRunning ? 'running' : 'paused'; 
+        
+        fetch('/api/sync_presence', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                status: status,
+                mode: currentMode,
+                seconds_left: secondsLeft,
+                task_id: currentTaskId
+            })
+        }).then(() => {
+            lastSync = Date.now();
+        }).catch(() => {});
     }
 
     function updateTaskSelects(value) {
@@ -161,6 +245,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function startTimer(setNewEndTime = true) {
+        const settings = window.userSettings || {};
+        
+        // SYNC OVERRIDE
+        if (settings.syncMode && settings.activeRoomId) {
+            fetch('/api/study/control', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ room_id: settings.activeRoomId, action: 'start' })
+            });
+            // Don't start locally; wait for poll
+            return; 
+        }
+
         if (currentMode === 'focus') {
              if (!currentTaskId) {
                 if (elements.global.task && elements.global.task.value) currentTaskId = elements.global.task.value;
@@ -187,6 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         updateUI();
         startInterval();
+        syncPresence();
     }
 
     function startInterval() {
@@ -207,22 +305,34 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 1000);
     }
 
-    function pauseTimer() {
+    function pauseTimer(notifyServer = true) {
+        const settings = window.userSettings || {};
+        
+        if (notifyServer && settings.syncMode && settings.activeRoomId) {
+             fetch('/api/study/control', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ room_id: settings.activeRoomId, action: 'pause' })
+            });
+            return;
+        }
+        
         if (timerInterval) clearInterval(timerInterval);
         isRunning = false;
         localStorage.setItem('timerStatus', 'paused');
         localStorage.removeItem('timerEnd');
         updateUI();
+        syncPresence();
     }
 
     function endSession() {
-        pauseTimer();
+        pauseTimer(); // Local pause
         const settings = window.userSettings || { focusDuration: 25, breakDuration: 5 };
         const totalSeconds = settings.focusDuration * 60;
         const elapsedSeconds = totalSeconds - secondsLeft;
         
         if (elapsedSeconds <= 0) {
-             resetTimer(); // Just reset if nothing happened
+             resetTimer(); 
              return;
         }
 
@@ -241,25 +351,42 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function resetTimer() {
-        pauseTimer();
+        const settings = window.userSettings || {};
+        
+        if (settings.syncMode && settings.activeRoomId) {
+             fetch('/api/study/control', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ room_id: settings.activeRoomId, action: 'reset' })
+            });
+            return;
+        }
+
+        pauseTimer(false);
         // Reset to default of current mode
-        const settings = window.userSettings || { focusDuration: 25, breakDuration: 5 };
         secondsLeft = currentMode === 'break' ? settings.breakDuration * 60 : settings.focusDuration * 60;
         localStorage.removeItem('timerSecondsLeft');
         updateUI();
     }
     
     function skipBreak() {
-        pauseTimer();
-        const settings = window.userSettings || { focusDuration: 25, breakDuration: 5 };
+        const settings = window.userSettings || {};
+        
+        if (settings.syncMode && settings.activeRoomId) {
+             fetch('/api/study/control', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ room_id: settings.activeRoomId, action: 'skip' })
+            });
+            return;
+        }
+        
+        pauseTimer(false);
         currentMode = 'focus';
         secondsLeft = settings.focusDuration * 60;
         localStorage.setItem('timerMode', currentMode);
         localStorage.removeItem('timerSecondsLeft');
         updateUI();
-        
-        // Optionally ask to start immediately?
-        // startTimer(true); 
     }
 
     function completeTimer() {

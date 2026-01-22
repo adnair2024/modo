@@ -4,9 +4,9 @@ from datetime import datetime, timedelta
 from flask import Flask, render_template, request, jsonify, abort, redirect, url_for
 from flask_login import LoginManager, login_required, current_user
 from flask_migrate import Migrate
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from dotenv import load_dotenv
-from models import db, User, Task, Subtask, FocusSession, Tag, Event, Notification, EventCompletion, Habit, HabitCompletion
+from models import db, User, Task, Subtask, FocusSession, Tag, Event, Notification, EventCompletion, Habit, HabitCompletion, Friendship, StudyRoom
 from auth import auth
 
 load_dotenv()
@@ -370,7 +370,7 @@ def leaderboard():
     filter_type = request.args.get('filter', 'all')
     
     query = db.session.query(
-        User.username,
+        User,
         func.sum(FocusSession.minutes).label('total_minutes')
     ).join(FocusSession).group_by(User.id).order_by(func.sum(FocusSession.minutes).desc())
 
@@ -999,5 +999,465 @@ def delete_habit(habit_id):
     db.session.commit()
     return redirect(url_for('habits'))
 
-if __name__ == '__main__':
-    app.run(debug=True)
+@app.route('/u/<username>')
+@login_required
+def profile(username):
+    user = User.query.filter_by(username=username).first_or_404()
+    
+    # Check friendship status
+    friendship = Friendship.query.filter(
+        or_(
+            (Friendship.user_id == current_user.id) & (Friendship.friend_id == user.id),
+            (Friendship.user_id == user.id) & (Friendship.friend_id == current_user.id)
+        )
+    ).first()
+    
+    status = 'none'
+    if friendship:
+        status = friendship.status
+        if status == 'pending':
+            if friendship.user_id == current_user.id:
+                status = 'sent'
+            else:
+                status = 'received'
+
+    # Stats
+    total_minutes = db.session.query(func.sum(FocusSession.minutes)).filter_by(user_id=user.id).scalar() or 0
+    total_sessions = FocusSession.query.filter_by(user_id=user.id).count()
+
+    # Recent activity (simple log)
+    recent_sessions = FocusSession.query.filter_by(user_id=user.id).order_by(FocusSession.date.desc()).limit(5).all()
+    
+    return render_template('profile.html', user=user, status=status, total_minutes=total_minutes, 
+                           total_sessions=total_sessions, recent_sessions=recent_sessions)
+
+@app.route('/friend/request/<int:user_id>', methods=['POST'])
+@login_required
+def send_friend_request(user_id):
+    target_user = User.query.get_or_404(user_id)
+    if target_user.id == current_user.id:
+        return '', 400
+        
+    existing = Friendship.query.filter(
+        or_(
+            (Friendship.user_id == current_user.id) & (Friendship.friend_id == target_user.id),
+            (Friendship.user_id == target_user.id) & (Friendship.friend_id == current_user.id)
+        )
+    ).first()
+    
+    if not existing:
+        friendship = Friendship(user_id=current_user.id, friend_id=target_user.id, status='pending')
+        db.session.add(friendship)
+        
+        create_notification(
+            target_user.id,
+            f"{current_user.username} sent you a friend request.",
+            type='friend_request'
+        )
+        
+        db.session.commit()
+        
+    return redirect(url_for('profile', username=target_user.username))
+
+@app.route('/friend/respond/<int:user_id>/<action>', methods=['POST'])
+@login_required
+def respond_friend_request(user_id, action):
+    # Find the friendship where I am the friend_id and user_id is the requester
+    friendship = Friendship.query.filter_by(user_id=user_id, friend_id=current_user.id, status='pending').first()
+    
+    if not friendship and action != 'remove':
+        abort(404)
+        
+    if action == 'accept':
+        friendship.status = 'accepted'
+        create_notification(
+            user_id,
+            f"{current_user.username} accepted your friend request!",
+            type='success'
+        )
+    elif action == 'reject':
+        db.session.delete(friendship)
+    elif action == 'remove':
+        # Find any friendship between them
+        friendship = Friendship.query.filter(
+            or_(
+                (Friendship.user_id == current_user.id) & (Friendship.friend_id == user_id),
+                (Friendship.user_id == user_id) & (Friendship.friend_id == current_user.id)
+            )
+        ).first()
+        if friendship:
+            db.session.delete(friendship)
+            
+    db.session.commit()
+    
+    # Redirect back to where we came from if possible
+    referrer = request.referrer
+    if referrer and 'friends' in referrer:
+        return redirect(url_for('friends_list'))
+        
+    target_user = User.query.get(user_id)
+    return redirect(url_for('profile', username=target_user.username))
+
+@app.route('/study/join/<int:room_id>')
+@login_required
+def join_study_room(room_id):
+    room = StudyRoom.query.get_or_404(room_id)
+    if room.guest_id != current_user.id:
+        abort(403)
+        
+    if room.status == 'waiting':
+        room.status = 'active'
+        db.session.commit()
+        
+    return redirect(url_for('study_room', room_id=room.id))
+
+@app.route('/study/room/<int:room_id>')
+@login_required
+def study_room(room_id):
+    room = StudyRoom.query.get_or_404(room_id)
+    if current_user.id not in [room.host_id, room.guest_id]:
+        abort(403)
+        
+    other_user_id = room.guest_id if room.host_id == current_user.id else room.host_id
+    other_user = User.query.get(other_user_id)
+    
+    return render_template('study_room.html', room=room, other_user=other_user)
+
+@app.route('/study/room/<int:room_id>/poll')
+@login_required
+def study_room_poll(room_id):
+    room = StudyRoom.query.get_or_404(room_id)
+    # Simple polling to update status
+    if request.headers.get('HX-Request'):
+        if room.status == 'active':
+             return render_template('partials/study_active.html', room=room)
+        return '' # No change
+    return ''
+
+@app.route('/api/study/control', methods=['POST'])
+@login_required
+def study_control():
+    data = request.json
+    room_id = data.get('room_id')
+    action = data.get('action') # start, pause, reset, skip
+    
+    room = StudyRoom.query.get_or_404(room_id)
+    if current_user.id not in [room.host_id, room.guest_id]:
+        abort(403)
+        
+    duration = (room.focus_duration if room.active_mode == 'focus' else room.break_duration) * 60
+        
+    if action == 'start':
+        if not room.active_start_time:
+            # Starting (or Resuming)
+            # If seconds_remaining is set (paused state), use it. Else full duration.
+            if room.seconds_remaining is None:
+                room.seconds_remaining = duration
+                
+            room.active_start_time = datetime.utcnow()
+            
+    elif action == 'pause':
+        if room.active_start_time:
+            # Calculate elapsed and save remaining
+            elapsed = (datetime.utcnow() - room.active_start_time).total_seconds()
+            current_rem = room.seconds_remaining if room.seconds_remaining is not None else duration
+            room.seconds_remaining = max(0, int(current_rem - elapsed))
+            room.active_start_time = None
+        
+    elif action == 'reset':
+        room.active_start_time = None
+        room.seconds_remaining = None # Will reset to full duration on next start
+        room.active_mode = 'focus'
+        
+    elif action == 'skip':
+        room.active_start_time = None
+        room.seconds_remaining = None
+        room.active_mode = 'break' if room.active_mode == 'focus' else 'focus'
+        
+    db.session.commit()
+    return jsonify({'status': 'ok'})
+
+@app.route('/api/study/state/<int:room_id>')
+@login_required
+def study_state(room_id):
+    room = StudyRoom.query.get_or_404(room_id)
+    if current_user.id not in [room.host_id, room.guest_id]:
+        abort(403)
+        
+    duration = (room.focus_duration if room.active_mode == 'focus' else room.break_duration) * 60
+    
+    seconds_remaining = duration
+    is_running = False
+    
+    if room.active_start_time:
+        # Running
+        elapsed = (datetime.utcnow() - room.active_start_time).total_seconds()
+        start_rem = room.seconds_remaining if room.seconds_remaining is not None else duration
+        seconds_remaining = max(0, start_rem - elapsed)
+        is_running = True
+    else:
+        # Paused or Stopped
+        if room.seconds_remaining is not None:
+            seconds_remaining = room.seconds_remaining
+        else:
+            seconds_remaining = duration
+            
+    # Resolve Tasks
+    host = User.query.get(room.host_id)
+    guest = User.query.get(room.guest_id) if room.guest_id else None
+    
+    my_task = "No Task"
+    other_task = "No Task"
+    
+    if current_user.id == room.host_id:
+        if host.current_task: my_task = host.current_task.title
+        if guest and guest.current_task: other_task = guest.current_task.title
+    else:
+        if guest and guest.current_task: my_task = guest.current_task.title
+        if host.current_task: other_task = host.current_task.title
+
+    return jsonify({
+        'mode': room.active_mode,
+        'is_running': is_running,
+        'seconds_remaining': int(seconds_remaining),
+        'duration': duration,
+        'my_task': my_task,
+        'other_task': other_task
+    })
+
+@app.route('/study/leave/<int:room_id>', methods=['POST'])
+@login_required
+def leave_study_room(room_id):
+    room = StudyRoom.query.get_or_404(room_id)
+    if current_user.id in [room.host_id, room.guest_id]:
+        db.session.delete(room)
+        db.session.commit()
+    return redirect(url_for('index'))
+
+@app.route('/api/sync_presence', methods=['POST'])
+@login_required
+def sync_presence():
+    data = request.json
+    status = data.get('status') # 'running', 'paused', 'stopped'
+    mode = data.get('mode') # 'focus', 'break'
+    seconds_left = data.get('seconds_left')
+    task_id = data.get('task_id')
+    
+    current_user.last_seen = datetime.utcnow()
+    current_user.current_focus_mode = mode
+    
+    if status == 'running' and seconds_left is not None:
+        # Calculate expected end time
+        current_user.current_focus_end = datetime.utcnow() + timedelta(seconds=int(seconds_left))
+        # Start time is roughly now - (duration - seconds_left) but strictly we only care about end for countdown
+        if not current_user.current_focus_start: 
+             current_user.current_focus_start = datetime.utcnow() # Reset if new session
+    else:
+        current_user.current_focus_end = None # Not running
+        
+    if task_id:
+        current_user.current_task_id = int(task_id)
+    else:
+        current_user.current_task_id = None
+        
+    db.session.commit()
+    return jsonify({'status': 'ok'})
+
+@app.route('/friends/search', methods=['POST'])
+@login_required
+def search_friends():
+    query = request.form.get('username')
+    if not query:
+        return ''
+        
+    # Find users matching query, excluding self
+    # Also ideally indicate if already friends/pending
+    users = User.query.filter(User.username.ilike(f'%{query}%'), User.id != current_user.id).limit(5).all()
+    
+    results = []
+    for u in users:
+        # Check status
+        friendship = Friendship.query.filter(
+            or_(
+                (Friendship.user_id == current_user.id) & (Friendship.friend_id == u.id),
+                (Friendship.user_id == u.id) & (Friendship.friend_id == current_user.id)
+            )
+        ).first()
+        
+        status = 'none'
+        if friendship:
+            status = friendship.status
+            if status == 'pending':
+                status = 'sent' if friendship.user_id == current_user.id else 'received'
+                
+        results.append({'user': u, 'status': status})
+        
+    return render_template('partials/friend_search_results.html', results=results)
+
+@app.route('/friends')
+@login_required
+def friends_list():
+    # Fetch friends
+    friendships = Friendship.query.filter(
+        or_(
+            (Friendship.user_id == current_user.id),
+            (Friendship.friend_id == current_user.id)
+        ),
+        Friendship.status == 'accepted'
+    ).all()
+    
+    friend_ids = []
+    for f in friendships:
+        if f.user_id == current_user.id:
+            friend_ids.append(f.friend_id)
+        else:
+            friend_ids.append(f.user_id)
+            
+    friends = User.query.filter(User.id.in_(friend_ids)).all()
+    
+    # Fetch Pending Requests (Received)
+    pending_friendships = Friendship.query.filter_by(friend_id=current_user.id, status='pending').all()
+    pending_ids = [f.user_id for f in pending_friendships]
+    pending_requests = User.query.filter(User.id.in_(pending_ids)).all()
+    
+    suggested_users = []
+    if not friends and not pending_requests:
+        # Find random users who are not me and not already pending
+        # Exclude existing requests (pending)
+        all_related = Friendship.query.filter(
+            or_(Friendship.user_id == current_user.id, Friendship.friend_id == current_user.id)
+        ).all()
+        exclude_ids = {current_user.id}
+        for f in all_related:
+            exclude_ids.add(f.user_id)
+            exclude_ids.add(f.friend_id)
+            
+        suggested_users = User.query.filter(~User.id.in_(exclude_ids))\
+            .order_by(func.random())\
+            .limit(3).all()
+    
+    # Calculate statuses for display
+    friends_data = []
+    now = datetime.utcnow()
+    
+    for friend in friends:
+        is_online = (now - friend.last_seen).total_seconds() < 300 # 5 minutes threshold
+        
+        status_msg = "Offline"
+        if is_online:
+            status_msg = "Online"
+            
+        timer_info = None
+        if friend.current_focus_end and friend.current_focus_end > now:
+            remaining = (friend.current_focus_end - now).total_seconds()
+            minutes = int(remaining // 60)
+            seconds = int(remaining % 60)
+            timer_info = {
+                'mode': friend.current_focus_mode,
+                'minutes': minutes,
+                'seconds': seconds,
+                'task': None
+            }
+            if friend.current_task_id:
+                task = Task.query.get(friend.current_task_id)
+                if task:
+                    timer_info['task'] = task.title
+        
+        friends_data.append({
+            'user': friend,
+            'is_online': is_online,
+            'status_msg': status_msg,
+            'timer': timer_info
+        })
+        
+    return render_template('friends.html', friends=friends_data, suggested_users=suggested_users, pending_requests=pending_requests)
+
+@app.route('/study/sync/request/<int:user_id>', methods=['POST'])
+@login_required
+def sync_request(user_id):
+    target_user = User.query.get_or_404(user_id)
+    
+    focus_duration = request.form.get('focus_duration', type=int, default=25)
+    break_duration = request.form.get('break_duration', type=int, default=5)
+    sessions_count = request.form.get('sessions_count', type=int, default=1)
+    
+    # Create Room (Pending Sync)
+    room = StudyRoom(
+        host_id=current_user.id, 
+        guest_id=target_user.id, 
+        status='pending_sync',
+        focus_duration=focus_duration,
+        break_duration=break_duration,
+        sessions_count=sessions_count
+    )
+    db.session.add(room)
+    db.session.commit()
+    
+    # Notify Friend with Actionable Request
+    accept_url = url_for('sync_accept', room_id=room.id)
+    reject_url = url_for('sync_reject', room_id=room.id)
+    
+    msg = f"""
+    <strong>{current_user.username}</strong> wants to sync study!<br>
+    <span class='text-xs'>Focus: {focus_duration}m | Break: {break_duration}m | Sessions: {sessions_count}</span><br>
+    <div class='mt-2 flex gap-2'>
+        <button hx-post='{accept_url}' class='bg-green-500 text-white px-3 py-1 rounded text-xs'>Accept</button>
+        <button hx-post='{reject_url}' class='bg-red-500 text-white px-3 py-1 rounded text-xs'>Decline</button>
+    </div>
+    """
+    
+    create_notification(target_user.id, msg, type='info') # Use info type but html content
+    
+    return '', 204 # No content, managed via modal/htmx
+
+@app.route('/study/sync/accept/<int:room_id>', methods=['POST'])
+@login_required
+def sync_accept(room_id):
+    room = StudyRoom.query.get_or_404(room_id)
+    if room.guest_id != current_user.id:
+        abort(403)
+        
+    # Check if already in active room? (Skipped for brevity, assume yes)
+    
+    room.status = 'active'
+    db.session.commit()
+    
+    # Notify Host
+    join_url = url_for('study_room', room_id=room.id)
+    create_notification(
+        room.host_id,
+        f"{current_user.username} accepted your sync request! <a href='{join_url}' class='underline font-bold'>Join Now</a>",
+        type='success'
+    )
+    
+    # Redirect Guest (Current User) to Room
+    # HTMX can handle redirect via HX-Redirect header
+    response = jsonify({'status': 'success'})
+    response.headers['HX-Redirect'] = join_url
+    return response
+
+@app.route('/study/sync/reject/<int:room_id>', methods=['POST'])
+@login_required
+def sync_reject(room_id):
+    room = StudyRoom.query.get_or_404(room_id)
+    if room.guest_id != current_user.id:
+        abort(403)
+        
+    db.session.delete(room)
+    db.session.commit()
+    
+    create_notification(room.host_id, f"{current_user.username} declined your sync request.", type='warning')
+    return '', 200
+
+@app.context_processor
+def inject_active_sync():
+    if not current_user.is_authenticated:
+        return {}
+    # Check if user is in an active study room
+    active_room = StudyRoom.query.filter(
+        ((StudyRoom.host_id == current_user.id) | (StudyRoom.guest_id == current_user.id)),
+        StudyRoom.status == 'active'
+    ).first()
+    return {'active_sync_room': active_room}
+
+if __name__ == '__main__':    app.run(debug=True)
