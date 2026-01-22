@@ -13,7 +13,7 @@
             </div>
             <div class="ml-3 w-0 flex-1">
                 <p class="text-sm leading-5 font-medium text-gray-900 dark:text-gray-200">{{ notif.message | safe }}</p>
-                <p class="text-xs leading-4 text-gray-500 dark:text-gray-400 mt-1">{{ notif.created_at.strftime('%H:%M') }}</p>
+                <p class="text-xs leading-4 text-gray-500 dark:text-gray-400 mt-1"><span class="utc-time" data-ts="{{ notif.created_at.isoformat() }}Z">{{ notif.created_at.strftime('%H:%M') }}</span></p>
             </div>
         </div>
         <button class="absolute top-2 right-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 opacity-0 group-hover:opacity-100 transition"

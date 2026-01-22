@@ -221,5 +221,29 @@
     </div>
     {% endif %}
     <script src="{{ url_for('static', filename='js/timer.js') }}"></script>
+    <script>
+        function formatLocalTimes() {
+            document.querySelectorAll('.utc-time').forEach(el => {
+                const ts = el.getAttribute('data-ts');
+                if (ts) {
+                    const date = new Date(ts);
+                    el.textContent = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    el.classList.remove('utc-time'); // Prevent double format
+                }
+            });
+            document.querySelectorAll('.utc-date-time').forEach(el => {
+                const ts = el.getAttribute('data-ts');
+                if (ts) {
+                    const date = new Date(ts);
+                    el.textContent = date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) + ' ' + 
+                                     date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    el.classList.remove('utc-date-time');
+                }
+            });
+        }
+        
+        document.addEventListener('DOMContentLoaded', formatLocalTimes);
+        document.addEventListener('htmx:afterSwap', formatLocalTimes); // Run on HTMX updates
+    </script>
 </body>
 </html>

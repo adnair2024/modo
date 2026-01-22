@@ -82,7 +82,7 @@
                             </div>
                             <div>
                                 <p class="text-gray-800 dark:text-gray-200 font-medium">Focused for {{ session.minutes }} mins</p>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ session.date.strftime('%b %d, %Y %I:%M %p') }}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400"><span class="utc-date-time" data-ts="{{ session.date.isoformat() }}Z">{{ session.date.strftime('%b %d, %Y %I:%M %p') }}</span></p>
                             </div>
                         </div>
                     </li>

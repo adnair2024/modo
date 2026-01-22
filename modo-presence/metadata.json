@@ -1,0 +1,14 @@
+{
+  "$schema": "https://schemas.premid.app/metadata/1.0",
+  "name": "Modo Local",
+  "author": "Modo Team",
+  "service": "Modo",
+  "description": "Displays your Modo timer status on Discord.",
+  "version": "1.0.0",
+  "urls": [
+    "http://localhost:5000/*",
+    "https://p01--modo--w87x9wdr7kmw.code.run/*"
+  ],
+  "iframe": false,
+  "contributors": []
+}
