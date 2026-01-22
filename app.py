@@ -112,6 +112,12 @@ def format_minutes(value):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+def get_username_html(user):
+    badge = ""
+    if user.is_verified:
+        badge = '<svg class="w-4 h-4 text-blue-500 inline-block align-middle ml-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>'
+    return f"<strong>{user.username}</strong>{badge}"
+
 def create_notification(user_id, message, type='info', event_id=None):
     notif = Notification(user_id=user_id, message=message, type=type, event_id=event_id)
     db.session.add(notif)
@@ -1049,9 +1055,25 @@ def send_friend_request(user_id):
         friendship = Friendship(user_id=current_user.id, friend_id=target_user.id, status='pending')
         db.session.add(friendship)
         
+        accept_url = url_for('respond_friend_request', user_id=current_user.id, action='accept')
+        reject_url = url_for('respond_friend_request', user_id=current_user.id, action='reject')
+        
+        user_html = get_username_html(current_user)
+        msg = f"""
+        {user_html} sent you a friend request.<br>
+        <div class='mt-2 flex gap-2'>
+            <form action='{accept_url}' method='POST' style='display:inline'>
+                <button class='bg-indigo-600 text-white px-3 py-1 rounded text-xs hover:bg-indigo-700'>Accept</button>
+            </form>
+            <form action='{reject_url}' method='POST' style='display:inline'>
+                <button class='bg-gray-300 text-gray-700 px-3 py-1 rounded text-xs hover:bg-gray-400'>Decline</button>
+            </form>
+        </div>
+        """
+        
         create_notification(
             target_user.id,
-            f"{current_user.username} sent you a friend request.",
+            msg,
             type='friend_request'
         )
         
@@ -1072,7 +1094,7 @@ def respond_friend_request(user_id, action):
         friendship.status = 'accepted'
         create_notification(
             user_id,
-            f"{current_user.username} accepted your friend request!",
+            f"{get_username_html(current_user)} accepted your friend request!",
             type='success'
         )
     elif action == 'reject':
@@ -1397,8 +1419,9 @@ def sync_request(user_id):
     accept_url = url_for('sync_accept', room_id=room.id)
     reject_url = url_for('sync_reject', room_id=room.id)
     
+    user_html = get_username_html(current_user)
     msg = f"""
-    <strong>{current_user.username}</strong> wants to sync study!<br>
+    {user_html} wants to sync study!<br>
     <span class='text-xs'>Focus: {focus_duration}m | Break: {break_duration}m | Sessions: {sessions_count}</span><br>
     <div class='mt-2 flex gap-2'>
         <button hx-post='{accept_url}' class='bg-green-500 text-white px-3 py-1 rounded text-xs'>Accept</button>
