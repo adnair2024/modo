@@ -23,6 +23,12 @@ login_manager = LoginManager()
 login_manager.login_view = 'auth.login'
 login_manager.init_app(app)
 
+@app.before_request
+def update_last_seen():
+    if current_user.is_authenticated:
+        current_user.last_seen = datetime.utcnow()
+        db.session.commit()
+
 class EventOccurrence:
     def __init__(self, event, start_datetime, is_completed):
         self.id = event.id
@@ -719,6 +725,8 @@ def update_settings():
         current_user.notify_event_start = data['notify_event_start']
     if 'event_notify_minutes' in data:
         current_user.event_notify_minutes = int(data['event_notify_minutes'])
+    if 'show_last_seen' in data:
+        current_user.show_last_seen = data['show_last_seen']
         
     db.session.commit()
     return jsonify({'status': 'success'})
@@ -1035,7 +1043,7 @@ def profile(username):
     recent_sessions = FocusSession.query.filter_by(user_id=user.id).order_by(FocusSession.date.desc()).limit(5).all()
     
     return render_template('profile.html', user=user, status=status, total_minutes=total_minutes, 
-                           total_sessions=total_sessions, recent_sessions=recent_sessions)
+                           total_sessions=total_sessions, recent_sessions=recent_sessions, now=datetime.utcnow())
 
 @app.route('/friend/request/<int:user_id>', methods=['POST'])
 @login_required

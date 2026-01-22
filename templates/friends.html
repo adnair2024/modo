@@ -85,6 +85,9 @@
                             </span>
                         {% else %}
                             {{ item.status_msg }}
+                            {% if not item.is_online and item.user.show_last_seen %}
+                                · Last online at <span class="utc-time" data-ts="{{ item.user.last_seen.isoformat() }}Z">{{ item.user.last_seen.strftime('%H:%M') }}</span>
+                            {% endif %}
                         {% endif %}
                     </p>
                     {% if item.timer and item.timer.task %}

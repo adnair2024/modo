@@ -12,6 +12,7 @@ class User(UserMixin, db.Model):
     
     # Presence & Live Status
     last_seen = db.Column(db.DateTime, default=datetime.utcnow)
+    show_last_seen = db.Column(db.Boolean, default=True)
     current_focus_start = db.Column(db.DateTime, nullable=True) # When they started
     current_focus_end = db.Column(db.DateTime, nullable=True)   # When it will end
     current_focus_mode = db.Column(db.String(20), default='none') # none, focus, break

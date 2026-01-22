@@ -17,7 +17,17 @@
                     </svg>
                     {% endif %}
                 </h1>
-                <p class="text-gray-500 dark:text-gray-400">Joined {{ user.date_joined if user.date_joined else 'recently' }}</p>
+                <p class="text-gray-500 dark:text-gray-400">
+                    Joined {{ user.date_joined.strftime('%B %Y') if user.date_joined else 'recently' }}
+                    {% if user.show_last_seen %}
+                        {% set is_online = (now - user.last_seen).total_seconds() < 300 if now else false %}
+                        {% if not is_online %}
+                            · Last online at <span class="utc-time" data-ts="{{ user.last_seen.isoformat() }}Z">{{ user.last_seen.strftime('%H:%M') }}</span>
+                        {% else %}
+                            · <span class="text-green-500 font-medium">Online</span>
+                        {% endif %}
+                    {% endif %}
+                </p>
             </div>
         </div>
         

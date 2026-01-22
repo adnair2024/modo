@@ -138,6 +138,28 @@
             </div>
         </section>
 
+        <hr class="border-gray-200 dark:border-gray-700">
+
+        <!-- Privacy Settings -->
+        <section>
+            <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                Privacy
+            </h2>
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <span class="block font-medium text-gray-700 dark:text-gray-300">Show Last Online Status</span>
+                        <span class="text-sm text-gray-500 dark:text-gray-400">Allow friends to see when you were last active.</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="show-last-seen" class="sr-only peer" {{ 'checked' if current_user.show_last_seen else '' }}>
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                    </label>
+                </div>
+            </div>
+        </section>
+
         <!-- Save Button -->
         <div class="flex justify-end pt-4">
             <button id="save-settings" class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition font-medium shadow-sm">
@@ -161,6 +183,7 @@
             notify_pomodoro: document.getElementById('notify-pomodoro').checked,
             notify_event_start: document.getElementById('notify-event').checked,
             event_notify_minutes: document.getElementById('event-notify-minutes').value,
+            show_last_seen: document.getElementById('show-last-seen').checked,
             accent_color: document.querySelector('input[name="accent_color"]:checked').value
         };
 
