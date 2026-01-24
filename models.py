@@ -99,6 +99,7 @@ class FocusSession(db.Model):
     date = db.Column(db.DateTime, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     task_id = db.Column(db.Integer, db.ForeignKey('task.id'), nullable=True)
+    partner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
 
 class Event(db.Model):
     id = db.Column(db.Integer, primary_key=True)

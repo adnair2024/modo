@@ -339,10 +339,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const minutesLogged = Math.max(1, Math.round(elapsedSeconds / 60));
 
         if (confirm(`End session and log ${minutesLogged} minutes?`)) {
+             const payload = { minutes: minutesLogged, task_id: currentTaskId };
+             if (settings.syncMode && settings.activeRoomId) payload.room_id = settings.activeRoomId;
+
              fetch('/api/log_session', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ minutes: minutesLogged, task_id: currentTaskId })
+                body: JSON.stringify(payload)
             }).then(() => {
                 alert('Session logged!');
                 resetTimer();
@@ -395,10 +398,13 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (currentMode === 'focus') {
             // Log Session
+            const payload = { minutes: settings.focusDuration, task_id: currentTaskId };
+            if (settings.syncMode && settings.activeRoomId) payload.room_id = settings.activeRoomId;
+
             fetch('/api/log_session', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ minutes: settings.focusDuration, task_id: currentTaskId })
+                body: JSON.stringify(payload)
             }).then(() => {
                 // Switch to Break
                 currentMode = 'break';

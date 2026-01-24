@@ -404,9 +404,23 @@ def log_session():
     data = request.json
     minutes = data.get('minutes')
     task_id = data.get('task_id')
+    room_id = data.get('room_id')
     
     if minutes:
         session = FocusSession(minutes=minutes, user_id=current_user.id, task_id=task_id)
+        
+        if room_id:
+            room = StudyRoom.query.get(room_id)
+            if room:
+                # Identify partner
+                partner_id = None
+                if room.host_id == current_user.id:
+                    partner_id = room.guest_id
+                elif room.guest_id == current_user.id:
+                    partner_id = room.host_id
+                
+                session.partner_id = partner_id
+
         db.session.add(session)
         
         if task_id:
@@ -471,6 +485,14 @@ def delete_task(task_id):
     task = Task.query.get_or_404(task_id)
     if task.user_id != current_user.id:
         abort(403)
+    
+    # Decouple dependencies to prevent Foreign Key errors
+    # 1. Unset current_task for any user (specifically current_user, but safely check all)
+    User.query.filter_by(current_task_id=task.id).update({'current_task_id': None})
+    
+    # 2. Unset task_id for any linked focus sessions
+    FocusSession.query.filter_by(task_id=task.id).update({'task_id': None})
+
     db.session.delete(task)
     db.session.commit()
     return ''
@@ -652,6 +674,27 @@ def personal_stats():
     total_minutes = db.session.query(func.sum(FocusSession.minutes)).filter_by(user_id=current_user.id).scalar() or 0
     total_sessions = FocusSession.query.filter_by(user_id=current_user.id).count()
     
+    # Sync Stats
+    sync_sessions_query = FocusSession.query.filter_by(user_id=current_user.id).filter(FocusSession.partner_id.isnot(None))
+    sync_sessions_count = sync_sessions_query.count()
+    sync_minutes = db.session.query(func.sum(FocusSession.minutes))\
+        .filter_by(user_id=current_user.id)\
+        .filter(FocusSession.partner_id.isnot(None)).scalar() or 0
+        
+    # Top Partner
+    top_partner = None
+    if sync_sessions_count > 0:
+        # Group by partner_id, count
+        top_partner_id = db.session.query(FocusSession.partner_id, func.count(FocusSession.partner_id))\
+            .filter_by(user_id=current_user.id)\
+            .filter(FocusSession.partner_id.isnot(None))\
+            .group_by(FocusSession.partner_id)\
+            .order_by(func.count(FocusSession.partner_id).desc())\
+            .first()
+            
+        if top_partner_id:
+            top_partner = User.query.get(top_partner_id[0])
+
     # Weekly Stats
     now = datetime.now()
     start_of_week = now - timedelta(days=now.weekday())
@@ -692,6 +735,9 @@ def personal_stats():
                            total_minutes=total_minutes, 
                            total_sessions=total_sessions,
                            weekly_minutes=weekly_minutes,
+                           sync_sessions_count=sync_sessions_count,
+                           sync_minutes=sync_minutes,
+                           top_partner=top_partner,
                            heatmap_data=heatmap_data,
                            habit_heatmap_data=habit_heatmap_data,
                            current_year=current_year)
@@ -875,6 +921,10 @@ def delete_event(event_id):
     event = Event.query.get_or_404(event_id)
     if event.user_id != current_user.id:
         abort(403)
+        
+    # Decouple dependencies
+    Notification.query.filter_by(event_id=event.id).update({'event_id': None})
+    
     db.session.delete(event)
     db.session.commit()
     return redirect(url_for('schedule'))
@@ -1345,6 +1395,19 @@ def friends_list():
             
     friends = User.query.filter(User.id.in_(friend_ids)).all()
     
+    # Active Sync Status Map
+    active_rooms = StudyRoom.query.filter(
+        StudyRoom.status == 'active',
+        or_(StudyRoom.host_id.in_(friend_ids), StudyRoom.guest_id.in_(friend_ids))
+    ).all()
+    
+    sync_map = {}
+    for room in active_rooms:
+        if room.host_id in friend_ids:
+            sync_map[room.host_id] = True
+        if room.guest_id and room.guest_id in friend_ids:
+            sync_map[room.guest_id] = True
+    
     # Fetch Pending Requests (Received)
     pending_friendships = Friendship.query.filter_by(friend_id=current_user.id, status='pending').all()
     pending_ids = [f.user_id for f in pending_friendships]
@@ -1372,6 +1435,7 @@ def friends_list():
     
     for friend in friends:
         is_online = (now - friend.last_seen).total_seconds() < 300 # 5 minutes threshold
+        is_syncing = sync_map.get(friend.id, False)
         
         status_msg = "Offline"
         if is_online:
@@ -1396,6 +1460,7 @@ def friends_list():
         friends_data.append({
             'user': friend,
             'is_online': is_online,
+            'is_syncing': is_syncing,
             'status_msg': status_msg,
             'timer': timer_info
         })
@@ -1457,7 +1522,7 @@ def sync_accept(room_id):
     join_url = url_for('study_room', room_id=room.id)
     create_notification(
         room.host_id,
-        f"{current_user.username} accepted your sync request! <a href='{join_url}' class='underline font-bold'>Join Now</a>",
+        f"{get_username_html(current_user)} accepted your sync request! <a href='{join_url}' class='underline font-bold'>Join Now</a>",
         type='success'
     )
     
