@@ -20,7 +20,7 @@ class User(UserMixin, db.Model):
     
     current_task = db.relationship('Task', foreign_keys=[current_task_id], backref='working_users', lazy=True)
     tasks = db.relationship('Task', backref='author', lazy=True, foreign_keys="[Task.user_id]")
-    focus_sessions = db.relationship('FocusSession', backref='user', lazy=True)
+    focus_sessions = db.relationship('FocusSession', backref='user', lazy=True, foreign_keys="[FocusSession.user_id]")
     theme_preference = db.Column(db.String(50), default='light')
     accent_color = db.Column(db.String(20), default='indigo')
     auto_start_break = db.Column(db.Boolean, default=False)
