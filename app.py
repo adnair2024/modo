@@ -380,23 +380,51 @@ def leaderboard():
     from sqlalchemy import func
     
     filter_type = request.args.get('filter', 'all')
+    category = request.args.get('category', 'focus')
     
-    query = db.session.query(
-        User,
-        func.sum(FocusSession.minutes).label('total_minutes')
-    ).join(FocusSession).group_by(User.id).order_by(func.sum(FocusSession.minutes).desc())
+    now = datetime.now()
+    start_of_week = now - timedelta(days=now.weekday())
+    start_of_week = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_of_week = start_of_week + timedelta(days=6, hours=23, minutes=59, seconds=59)
 
-    if filter_type == 'weekly':
-        now = datetime.now()
-        start_of_week = now - timedelta(days=now.weekday())
-        start_of_week = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
-        end_of_week = start_of_week + timedelta(days=6, hours=23, minutes=59, seconds=59)
+    if category == 'habits':
+        query = db.session.query(
+            User,
+            func.count(HabitCompletion.id).label('score')
+        ).join(Habit, User.id == Habit.user_id)\
+         .join(HabitCompletion, Habit.id == HabitCompletion.habit_id)\
+         .group_by(User.id)\
+         .order_by(func.count(HabitCompletion.id).desc())
         
-        query = query.filter(FocusSession.date >= start_of_week, FocusSession.date <= end_of_week)
+        if filter_type == 'weekly':
+            query = query.filter(HabitCompletion.date >= start_of_week.date(), HabitCompletion.date <= end_of_week.date())
+            
+    elif category == 'sync':
+        query = db.session.query(
+            User,
+            func.sum(FocusSession.minutes).label('score')
+        ).join(FocusSession, User.id == FocusSession.user_id)\
+         .filter(FocusSession.partner_id.isnot(None))\
+         .group_by(User.id)\
+         .order_by(func.sum(FocusSession.minutes).desc())
+        
+        if filter_type == 'weekly':
+            query = query.filter(FocusSession.date >= start_of_week, FocusSession.date <= end_of_week)
+            
+    else: # focus
+        query = db.session.query(
+            User,
+            func.sum(FocusSession.minutes).label('score')
+        ).join(FocusSession, User.id == FocusSession.user_id)\
+         .group_by(User.id)\
+         .order_by(func.sum(FocusSession.minutes).desc())
+
+        if filter_type == 'weekly':
+            query = query.filter(FocusSession.date >= start_of_week, FocusSession.date <= end_of_week)
 
     results = query.limit(10).all()
     
-    return render_template('leaderboard.html', leaders=results, filter_type=filter_type)
+    return render_template('leaderboard.html', leaders=results, filter_type=filter_type, category=category)
 
 @app.route('/api/log_session', methods=['POST'])
 @login_required

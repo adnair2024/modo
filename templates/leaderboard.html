@@ -2,62 +2,107 @@
 
 {% block content %}
 <div class="max-w-2xl mx-auto">
-    <div class="flex justify-between items-center mb-6">
-        <h2 class="text-3xl font-bold text-center">Leaderboard</h2>
-        <div class="flex bg-gray-200 rounded-lg p-1">
-            <a href="{{ url_for('leaderboard', filter='all') }}" 
-               class="px-4 py-2 rounded-md text-sm font-medium transition-colors {{ 'bg-white text-indigo-600 shadow-sm' if filter_type == 'all' else 'text-gray-600 hover:text-gray-900' }}">
-               All Time
-            </a>
-            <a href="{{ url_for('leaderboard', filter='weekly') }}" 
-               class="px-4 py-2 rounded-md text-sm font-medium transition-colors {{ 'bg-white text-indigo-600 shadow-sm' if filter_type == 'weekly' else 'text-gray-600 hover:text-gray-900' }}">
-               This Week
-            </a>
+    <div class="mb-8">
+        <h2 class="text-3xl font-bold text-center mb-6">Leaderboard</h2>
+        
+        <!-- Category Tabs -->
+        <div class="flex justify-center mb-6">
+            <div class="inline-flex bg-gray-100 rounded-xl p-1 shadow-inner">
+                <a href="{{ url_for('leaderboard', category='focus', filter=filter_type) }}" 
+                   class="px-6 py-2 rounded-lg text-sm font-semibold transition-all {{ 'bg-white text-indigo-600 shadow-sm' if category == 'focus' else 'text-gray-500 hover:text-gray-700' }}">
+                   Focus Time
+                </a>
+                <a href="{{ url_for('leaderboard', category='habits', filter=filter_type) }}" 
+                   class="px-6 py-2 rounded-lg text-sm font-semibold transition-all {{ 'bg-white text-indigo-600 shadow-sm' if category == 'habits' else 'text-gray-500 hover:text-gray-700' }}">
+                   Habits
+                </a>
+                <a href="{{ url_for('leaderboard', category='sync', filter=filter_type) }}" 
+                   class="px-6 py-2 rounded-lg text-sm font-semibold transition-all {{ 'bg-white text-indigo-600 shadow-sm' if category == 'sync' else 'text-gray-500 hover:text-gray-700' }}">
+                   Sync Study
+                </a>
+            </div>
+        </div>
+
+        <!-- Time Filters -->
+        <div class="flex justify-end mb-4">
+            <div class="flex bg-gray-200 rounded-lg p-1">
+                <a href="{{ url_for('leaderboard', filter='all', category=category) }}" 
+                   class="px-4 py-1.5 rounded-md text-xs font-bold transition-colors {{ 'bg-white text-indigo-600 shadow-sm' if filter_type == 'all' else 'text-gray-600 hover:text-gray-900' }}">
+                   ALL TIME
+                </a>
+                <a href="{{ url_for('leaderboard', filter='weekly', category=category) }}" 
+                   class="px-4 py-1.5 rounded-md text-xs font-bold transition-colors {{ 'bg-white text-indigo-600 shadow-sm' if filter_type == 'weekly' else 'text-gray-600 hover:text-gray-900' }}">
+                   WEEKLY
+                </a>
+            </div>
         </div>
     </div>
     
-    <div class="bg-white shadow rounded-lg overflow-hidden">
+    <div class="bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-100">
         <table class="min-w-full leading-normal">
             <thead>
                 <tr>
-                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    <th class="px-5 py-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
                         Rank
                     </th>
-                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    <th class="px-5 py-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
                         User
                     </th>
-                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                        Total Focus Time
+                    <th class="px-5 py-4 border-b border-gray-200 bg-gray-50 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">
+                        {% if category == 'habits' %}
+                            Completions
+                        {% elif category == 'sync' %}
+                            Sync Time
+                        {% else %}
+                            Total Focus
+                        {% endif %}
                     </th>
                 </tr>
             </thead>
             <tbody>
-                {% for user, total_minutes in leaders %}
-                <tr>
-                    <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-                        <p class="text-gray-900 whitespace-no-wrap">{{ loop.index }}</p>
+                {% for user, score in leaders %}
+                <tr class="{{ 'bg-indigo-50/30' if user.id == current_user.id else '' }}">
+                    <td class="px-5 py-5 border-b border-gray-100 bg-transparent text-sm">
+                        <div class="flex items-center">
+                            {% if loop.index == 1 %}
+                                <span class="text-xl">🥇</span>
+                            {% elif loop.index == 2 %}
+                                <span class="text-xl">🥈</span>
+                            {% elif loop.index == 3 %}
+                                <span class="text-xl">🥉</span>
+                            {% else %}
+                                <span class="font-mono text-gray-400">#{{ loop.index }}</span>
+                            {% endif %}
+                        </div>
                     </td>
-                    <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-                        <a href="{{ url_for('profile', username=user.username) }}" class="text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1">
+                    <td class="px-5 py-5 border-b border-gray-100 bg-transparent text-sm">
+                        <a href="{{ url_for('profile', username=user.username) }}" class="text-gray-900 hover:text-indigo-600 font-bold flex items-center gap-1 transition-colors">
                             {{ user.username }}
                             {% if user.is_verified %}
                             <svg class="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
                             </svg>
                             {% endif %}
-                            {% if filter_type == 'weekly' and loop.index == 1 %}
-                            <span title="Weekly Champion">👑</span>
+                            {% if user.id == current_user.id %}
+                                <span class="ml-2 px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] rounded-full uppercase tracking-tighter">You</span>
                             {% endif %}
                         </a>
                     </td>
-                    <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-                        <p class="text-gray-900 whitespace-no-wrap">{{ total_minutes | format_minutes }}</p>
+                    <td class="px-5 py-5 border-b border-gray-100 bg-transparent text-sm text-right font-semibold">
+                        {% if category == 'habits' %}
+                            <span class="text-indigo-600">{{ score }}</span> <span class="text-gray-400 text-xs">done</span>
+                        {% else %}
+                            {{ score | format_minutes }}
+                        {% endif %}
                     </td>
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="3" class="px-5 py-5 border-b border-gray-200 bg-white text-sm text-center">
-                        No data yet.
+                    <td colspan="3" class="px-5 py-10 border-b border-gray-100 bg-white text-sm text-center">
+                        <div class="flex flex-col items-center opacity-40">
+                            <span class="text-4xl mb-2">📊</span>
+                            <p class="text-gray-500">No data found for this category yet.</p>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
