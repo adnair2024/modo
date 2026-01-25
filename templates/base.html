@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <script>
         tailwind.config = {
-            darkMode: ['class', '[data-theme="dark"]'],
+            darkMode: ['class', '[data-theme="dark"], [data-theme="amoled"]'],
             theme: {
                 extend: {
                     colors: {
@@ -30,6 +30,19 @@
         [data-theme="dark"] .border-gray-200 { border-color: #4b5563; }
         [data-theme="dark"] .bg-gray-100 { background-color: #111827; }
         [data-theme="dark"] input, [data-theme="dark"] textarea, [data-theme="dark"] select { background-color: #374151; color: white; border-color: #4b5563; }
+
+        [data-theme="amoled"] body { background-color: #000000; color: #f3f4f6; }
+        [data-theme="amoled"] .bg-white { background-color: #000000; color: #f3f4f6; border-color: #262626; }
+        [data-theme="amoled"] .text-gray-900 { color: #f3f4f6; }
+        [data-theme="amoled"] .text-gray-800 { color: #e5e7eb; }
+        [data-theme="amoled"] .text-gray-600 { color: #a3a3a3; }
+        [data-theme="amoled"] .border-gray-200 { border-color: #262626; }
+        [data-theme="amoled"] .bg-gray-100 { background-color: #000000; }
+        [data-theme="amoled"] input, [data-theme="amoled"] textarea, [data-theme="amoled"] select { background-color: #121212; color: white; border-color: #262626; }
+        [data-theme="amoled"] aside { background-color: #000000; border-color: #262626; }
+        [data-theme="amoled"] header { background-color: #000000; border-color: #262626; }
+        [data-theme="amoled"] .bg-gray-50 { background-color: #121212; }
+        [data-theme="amoled"] #global-timer-container { background-color: #000000; border-top-color: #262626; }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-900 font-sans transition-colors duration-200" x-data="{ mobileSidebarOpen: false, desktopSidebarOpen: true }">
@@ -184,7 +197,17 @@
             themeToggle.addEventListener('click', () => {
                 const html = document.documentElement;
                 const currentTheme = html.getAttribute('data-theme');
-                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+                const amoledUnlocked = {{ 'true' if amoled_unlocked else 'false' }};
+                
+                let newTheme;
+                if (currentTheme === 'light') {
+                    newTheme = 'dark';
+                } else if (currentTheme === 'dark') {
+                    newTheme = amoledUnlocked ? 'amoled' : 'light';
+                } else {
+                    newTheme = 'light';
+                }
+                
                 html.setAttribute('data-theme', newTheme);
                 
                 // Persist

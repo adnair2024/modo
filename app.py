@@ -1786,6 +1786,9 @@ def inject_active_sync():
         ((StudyRoom.host_id == current_user.id) | (StudyRoom.guest_id == current_user.id)),
         StudyRoom.status == 'active'
     ).first()
-    return {'active_sync_room': active_room}
+    return {
+        'active_sync_room': active_room,
+        'amoled_unlocked': current_user.total_focus_hours >= 10
+    }
 
 if __name__ == '__main__':    app.run(debug=True)

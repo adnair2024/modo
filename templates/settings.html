@@ -122,6 +122,14 @@
                 <div class="flex gap-2">
                     <button class="px-4 py-2 rounded border {{ 'bg-indigo-50 border-indigo-500 text-indigo-700' if current_user.theme_preference == 'light' else 'border-gray-300 text-gray-600' }} hover:bg-indigo-50 transition" onclick="setTheme('light')">Light</button>
                     <button class="px-4 py-2 rounded border {{ 'bg-indigo-900 border-indigo-500 text-white' if current_user.theme_preference == 'dark' else 'border-gray-300 text-gray-600' }} hover:bg-gray-700 hover:text-white transition" onclick="setTheme('dark')">Dark</button>
+                    {% if amoled_unlocked %}
+                    <button class="px-4 py-2 rounded border {{ 'bg-black border-indigo-500 text-white' if current_user.theme_preference == 'amoled' else 'border-gray-300 text-gray-600' }} hover:bg-black hover:text-white transition" onclick="setTheme('amoled')">AMOLED</button>
+                    {% else %}
+                    <button class="px-4 py-2 rounded border border-gray-200 text-gray-400 cursor-not-allowed flex items-center gap-2" title="Unlock with 10 focus hours (You have {{ "%.1f"|format(current_user.total_focus_hours) }}h)">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                        AMOLED
+                    </button>
+                    {% endif %}
                 </div>
             </div>
 
@@ -207,8 +215,13 @@
 
     function setTheme(theme) {
         document.documentElement.setAttribute('data-theme', theme);
-        updateSetting('theme', theme);
-        location.reload(); 
+        fetch('/api/update_settings', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({theme: theme})
+        }).then(() => {
+            location.reload(); 
+        });
     }
 </script>
 {% endblock %}

@@ -52,6 +52,10 @@ class User(UserMixin, db.Model):
         all_tasks.sort(key=lambda t: (t.priority or 0, t.created_at or datetime.min), reverse=True)
         return all_tasks
 
+    @property
+    def total_focus_hours(self):
+        return sum(session.minutes for session in self.focus_sessions) / 60
+
 class Friendship(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
