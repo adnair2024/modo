@@ -6,12 +6,21 @@ from flask_login import LoginManager, login_required, current_user
 from flask_migrate import Migrate
 from sqlalchemy import func, or_
 from dotenv import load_dotenv
-from models import db, User, Task, Subtask, FocusSession, Tag, Event, Notification, EventCompletion, Habit, HabitCompletion, Friendship, StudyRoom
+from models import db, User, Task, Subtask, FocusSession, Tag, Event, Notification, EventCompletion, Habit, HabitCompletion, Friendship, StudyRoom, Project, ProjectMember, ProjectSection, ProjectInvite, ProjectActivity
 from auth import auth
 
 load_dotenv()
 
 app = Flask(__name__)
+
+def log_project_action(project_id, action):
+    activity = ProjectActivity(project_id=project_id, user_id=current_user.id, action=action)
+    db.session.add(activity)
+
+@app.template_filter('get_pending_invite')
+
+def get_pending_invite(user_id, project_id):
+    return ProjectInvite.query.filter_by(recipient_id=user_id, project_id=project_id, status='pending').first()
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_key_change_in_prod')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI', 'sqlite:///db.sqlite3')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -124,8 +133,8 @@ def get_username_html(user):
         badge = '<svg class="w-4 h-4 text-blue-500 inline-block align-middle ml-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>'
     return f"<strong>{user.username}</strong>{badge}"
 
-def create_notification(user_id, message, type='info', event_id=None):
-    notif = Notification(user_id=user_id, message=message, type=type, event_id=event_id)
+def create_notification(user_id, message, type='info', event_id=None, project_id=None):
+    notif = Notification(user_id=user_id, message=message, type=type, event_id=event_id, project_id=project_id)
     db.session.add(notif)
     db.session.commit()
 
@@ -453,7 +462,7 @@ def log_session():
         
         if task_id:
             task = Task.query.get(task_id)
-            if task and task.user_id == current_user.id:
+            if task and check_task_access(task):
                 task.completed_pomodoros += 1
                 if task.completed_pomodoros >= task.estimated_pomodoros:
                     task.status = 'done'
@@ -507,13 +516,27 @@ def add_task():
         return render_template('partials/task_item.html', task=new_task, now=datetime.now())
     return '', 400
 
+def check_task_access(task):
+    if task.user_id == current_user.id:
+        return True
+    if task.section_id:
+        # Check if user is a member of the project this section belongs to
+        project_id = task.section.project_id
+        is_member = ProjectMember.query.filter_by(project_id=project_id, user_id=current_user.id).first()
+        if is_member:
+            return True
+    return False
+
 @app.route('/delete_task/<int:task_id>', methods=['DELETE'])
 @login_required
 def delete_task(task_id):
     task = Task.query.get_or_404(task_id)
-    if task.user_id != current_user.id:
+    if not check_task_access(task):
         abort(403)
     
+    if task.section_id:
+        log_project_action(task.section.project_id, f"Deleted task: {task.title}")
+
     # Decouple dependencies to prevent Foreign Key errors
     # 1. Unset current_task for any user (specifically current_user, but safely check all)
     User.query.filter_by(current_task_id=task.id).update({'current_task_id': None})
@@ -529,17 +552,27 @@ def delete_task(task_id):
 @login_required
 def toggle_task(task_id):
     task = Task.query.get_or_404(task_id)
-    if task.user_id != current_user.id:
+    if not check_task_access(task):
         abort(403)
     
     if task.status == 'done':
         task.status = 'todo'
+        if task.section_id:
+            log_project_action(task.section.project_id, f"Reopened task: {task.title}")
     else:
         task.status = 'done'
+        if task.section_id:
+            log_project_action(task.section.project_id, f"Completed task: {task.title}")
     
     db.session.commit()
     
-    # Re-fetch with filters and pagination logic
+    # If it's a project task, and we are not on the index page, we might want to just return the item
+    # But for now, if the target is task-list, we do the full re-fetch.
+    # If not, we can return just the item.
+    if request.headers.get('HX-Target') != 'task-list':
+        return render_template('partials/task_item.html', task=task, now=datetime.now())
+
+    # Re-fetch with filters and pagination logic for index page
     query = Task.query.filter_by(user_id=current_user.id)
 
     # Search
@@ -632,7 +665,7 @@ def toggle_task(task_id):
 @login_required
 def get_edit_task(task_id):
     task = Task.query.get_or_404(task_id)
-    if task.user_id != current_user.id:
+    if not check_task_access(task):
         abort(403)
     return render_template('partials/task_edit.html', task=task)
 
@@ -640,7 +673,7 @@ def get_edit_task(task_id):
 @login_required
 def update_task(task_id):
     task = Task.query.get_or_404(task_id)
-    if task.user_id != current_user.id:
+    if not check_task_access(task):
         abort(403)
 
     title = request.form.get('title')
@@ -683,7 +716,7 @@ def update_task(task_id):
 @login_required
 def get_task_item(task_id):
     task = Task.query.get_or_404(task_id)
-    if task.user_id != current_user.id:
+    if not check_task_access(task):
         abort(403)
     return render_template('partials/task_item.html', task=task, now=datetime.now())
 
@@ -1401,6 +1434,177 @@ def search_friends():
         results.append({'user': u, 'status': status})
         
     return render_template('partials/friend_search_results.html', results=results)
+
+# --- PROJECTS ---
+
+@app.route('/projects')
+@login_required
+def projects_list():
+    # Projects I am a member of (includes owner)
+    member_projects = Project.query.join(ProjectMember).filter(ProjectMember.user_id == current_user.id).all()
+    # Find invites
+    pending_invites = ProjectInvite.query.filter_by(recipient_id=current_user.id, status='pending').all()
+    return render_template('projects.html', projects=member_projects, pending_invites=pending_invites)
+
+@app.route('/projects/create', methods=['POST'])
+@login_required
+def create_project():
+    name = request.form.get('name')
+    description = request.form.get('description')
+    if not name:
+        return redirect(url_for('projects_list'))
+    
+    project = Project(name=name, description=description, owner_id=current_user.id)
+    db.session.add(project)
+    db.session.commit()
+    
+    # Add owner as member
+    member = ProjectMember(project_id=project.id, user_id=current_user.id, role='owner')
+    db.session.add(member)
+    log_project_action(project.id, "Created the project")
+    db.session.commit()
+    
+    return redirect(url_for('project_detail', project_id=project.id))
+
+@app.route('/projects/<int:project_id>')
+@login_required
+def project_detail(project_id):
+    project = Project.query.get_or_404(project_id)
+    # Check if user is a member
+    member = ProjectMember.query.filter_by(project_id=project_id, user_id=current_user.id).first()
+    if not member:
+        abort(403)
+    
+    # Get all project members for the invite modal/form
+    members = ProjectMember.query.filter_by(project_id=project_id).all()
+    member_ids = [m.user_id for m in members]
+    
+    return render_template('project_detail.html', project=project, member_ids=member_ids)
+
+@app.route('/projects/<int:project_id>/sections', methods=['POST'])
+@login_required
+def add_project_section(project_id):
+    project = Project.query.get_or_404(project_id)
+    member = ProjectMember.query.filter_by(project_id=project_id, user_id=current_user.id).first()
+    if not member:
+        abort(403)
+    
+    name = request.form.get('name')
+    if name:
+        order = len(project.sections)
+        section = ProjectSection(project_id=project_id, name=name, order=order)
+        db.session.add(section)
+        log_project_action(project_id, f"Added section: {name}")
+        db.session.commit()
+    
+    return redirect(url_for('project_detail', project_id=project_id))
+
+@app.route('/projects/sections/<int:section_id>/tasks', methods=['POST'])
+@login_required
+def add_project_task(section_id):
+    section = ProjectSection.query.get_or_404(section_id)
+    project = section.project
+    member = ProjectMember.query.filter_by(project_id=project.id, user_id=current_user.id).first()
+    if not member:
+        abort(403)
+    
+    title = request.form.get('title')
+    description = request.form.get('description')
+    priority = request.form.get('priority', type=int, default=1)
+    due_date_str = request.form.get('due_date')
+    
+    due_date = None
+    if due_date_str:
+        try:
+            due_date = datetime.strptime(due_date_str, '%Y-%m-%dT%H:%M')
+        except ValueError:
+            pass
+
+    if title:
+        task = Task(title=title, description=description, section_id=section_id, user_id=current_user.id, priority=priority, due_date=due_date)
+        db.session.add(task)
+        log_project_action(project.id, f"Added task: {title}")
+        db.session.commit()
+    
+    return redirect(url_for('project_detail', project_id=project.id))
+
+@app.route('/projects/<int:project_id>/invite', methods=['POST'])
+@login_required
+def invite_to_project(project_id):
+    project = Project.query.get_or_404(project_id)
+    if project.owner_id != current_user.id:
+        return jsonify({'error': 'Only the owner can invite others'}), 403
+    
+    # Check member limit (up to 5 OTHER users = 6 total)
+    if ProjectMember.query.filter_by(project_id=project_id).count() >= 6:
+        return jsonify({'error': 'Member limit reached (max 6 total)'}), 400
+    
+    username = request.form.get('username')
+    target_user = User.query.filter_by(username=username).first()
+    if not target_user:
+        return jsonify({'error': 'User not found'}), 404
+    
+    # Check if already a member
+    existing_member = ProjectMember.query.filter_by(project_id=project_id, user_id=target_user.id).first()
+    if existing_member:
+        return jsonify({'error': 'User is already a member'}), 400
+        
+    # Check if already invited
+    existing_invite = ProjectInvite.query.filter_by(project_id=project_id, recipient_id=target_user.id, status='pending').first()
+    if existing_invite:
+        return jsonify({'error': 'Invite already sent'}), 400
+    
+    invite = ProjectInvite(project_id=project_id, sender_id=current_user.id, recipient_id=target_user.id)
+    db.session.add(invite)
+    
+    # Create notification
+    msg = f"{get_username_html(current_user)} invited you to project: <strong>{project.name}</strong>"
+    create_notification(target_user.id, msg, type='project_invite', project_id=project.id)
+    
+    log_project_action(project_id, f"Invited {target_user.username}")
+    db.session.commit()
+    return jsonify({'message': 'Invite sent!'}), 200
+
+@app.route('/projects/invite/respond/<int:invite_id>/<action>', methods=['POST'])
+@login_required
+def respond_project_invite(invite_id, action):
+    invite = ProjectInvite.query.filter_by(id=invite_id, recipient_id=current_user.id, status='pending').first_or_404()
+    
+    if action == 'accept':
+        # Check limit again
+        if ProjectMember.query.filter_by(project_id=invite.project_id).count() >= 6:
+            invite.status = 'declined'
+            db.session.commit()
+            return "Project is full", 400
+            
+        invite.status = 'accepted'
+        member = ProjectMember(project_id=invite.project_id, user_id=current_user.id)
+        db.session.add(member)
+        
+        # Notify sender
+        msg = f"{get_username_html(current_user)} joined your project: <strong>{invite.project.name}</strong>"
+        create_notification(invite.sender_id, msg, type='success', project_id=invite.project_id)
+        log_project_action(invite.project_id, "Joined the project")
+    else:
+        invite.status = 'declined'
+        
+    db.session.commit()
+    return redirect(url_for('projects_list'))
+
+@app.route('/projects/<int:project_id>/kick/<int:user_id>', methods=['POST'])
+@login_required
+def kick_project_member(project_id, user_id):
+    project = Project.query.get_or_404(project_id)
+    if project.owner_id != current_user.id:
+        abort(403)
+    if user_id == project.owner_id:
+        return "Cannot kick owner", 400
+    member = ProjectMember.query.filter_by(project_id=project_id, user_id=user_id).first_or_404()
+    username = member.user.username
+    db.session.delete(member)
+    log_project_action(project_id, f"Kicked member: {username}")
+    db.session.commit()
+    return redirect(url_for('project_detail', project_id=project_id))
 
 @app.route('/friends')
 @login_required

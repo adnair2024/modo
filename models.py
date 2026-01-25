@@ -38,6 +38,20 @@ class User(UserMixin, db.Model):
 
     notifications = db.relationship('Notification', backref='user', lazy=True, cascade="all, delete-orphan")
 
+    @property
+    def all_accessible_tasks(self):
+        # Personal tasks
+        personal_tasks = Task.query.filter_by(user_id=self.id, section_id=None).all()
+        
+        # Project tasks
+        project_tasks = Task.query.join(ProjectSection).join(Project).join(ProjectMember).filter(ProjectMember.user_id == self.id).all()
+        
+        # Return unique tasks sorted by priority/creation
+        all_tasks = list(set(personal_tasks + project_tasks))
+        # Use (0, datetime.min) as fallback for None values
+        all_tasks.sort(key=lambda t: (t.priority or 0, t.created_at or datetime.min), reverse=True)
+        return all_tasks
+
 class Friendship(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -84,6 +98,7 @@ class Task(db.Model):
     estimated_pomodoros = db.Column(db.Integer, default=1)
     completed_pomodoros = db.Column(db.Integer, default=0)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    section_id = db.Column(db.Integer, db.ForeignKey('project_section.id'), nullable=True)
     subtasks = db.relationship('Subtask', backref='parent', lazy=True, cascade="all, delete-orphan")
     tags = db.relationship('Tag', secondary=task_tags, backref=db.backref('tasks', lazy='dynamic'))
 
@@ -92,6 +107,54 @@ class Subtask(db.Model):
     title = db.Column(db.String(200), nullable=False)
     is_completed = db.Column(db.Boolean, default=False)
     task_id = db.Column(db.Integer, db.ForeignKey('task.id'), nullable=False)
+
+class Project(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    members = db.relationship('ProjectMember', backref='project', lazy=True, cascade="all, delete-orphan")
+    sections = db.relationship('ProjectSection', backref='project', lazy=True, cascade="all, delete-orphan", order_by="ProjectSection.order")
+
+class ProjectMember(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    role = db.Column(db.String(20), default='member') # owner, member
+    joined_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    user = db.relationship('User', foreign_keys=[user_id], backref='project_memberships', lazy=True)
+
+class ProjectSection(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    order = db.Column(db.Integer, default=0)
+    tasks = db.relationship('Task', backref='section', lazy=True)
+
+class ProjectInvite(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
+    sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    recipient_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    status = db.Column(db.String(20), default='pending') # pending, accepted, declined
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_invites', lazy=True)
+    recipient = db.relationship('User', foreign_keys=[recipient_id], backref='received_invites', lazy=True)
+    project = db.relationship('Project', backref='invites', lazy=True)
+
+class ProjectActivity(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    action = db.Column(db.String(500), nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    user = db.relationship('User', backref='project_activities', lazy=True)
+    project = db.relationship('Project', backref='activities', lazy=True, order_by="ProjectActivity.timestamp.desc()")
 
 class FocusSession(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -132,6 +195,7 @@ class Notification(db.Model):
     type = db.Column(db.String(20), default='info')
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=True)
 
 class Habit(db.Model):
     id = db.Column(db.Integer, primary_key=True)
