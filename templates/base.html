@@ -32,17 +32,38 @@
         [data-theme="dark"] input, [data-theme="dark"] textarea, [data-theme="dark"] select { background-color: #374151; color: white; border-color: #4b5563; }
 
         [data-theme="amoled"] body { background-color: #000000; color: #f3f4f6; }
-        [data-theme="amoled"] .bg-white { background-color: #000000; color: #f3f4f6; border-color: #262626; }
+        [data-theme="amoled"] .bg-white, 
+        [data-theme="amoled"] .bg-gray-50, 
+        [data-theme="amoled"] .bg-gray-100, 
+        [data-theme="amoled"] .bg-gray-200,
+        [data-theme="amoled"] .bg-indigo-50\/30 { background-color: #000000 !important; color: #f3f4f6; border-color: #262626 !important; }
+        
         [data-theme="amoled"] .text-gray-900 { color: #f3f4f6; }
         [data-theme="amoled"] .text-gray-800 { color: #e5e7eb; }
         [data-theme="amoled"] .text-gray-600 { color: #a3a3a3; }
-        [data-theme="amoled"] .border-gray-200 { border-color: #262626; }
-        [data-theme="amoled"] .bg-gray-100 { background-color: #000000; }
-        [data-theme="amoled"] input, [data-theme="amoled"] textarea, [data-theme="amoled"] select { background-color: #121212; color: white; border-color: #262626; }
+        [data-theme="amoled"] .text-gray-500 { color: #737373; }
+        [data-theme="amoled"] .text-gray-400 { color: #525252; }
+        
+        [data-theme="amoled"] .border,
+        [data-theme="amoled"] .border-b,
+        [data-theme="amoled"] .border-t,
+        [data-theme="amoled"] .border-l,
+        [data-theme="amoled"] .border-r,
+        [data-theme="amoled"] .border-gray-100,
+        [data-theme="amoled"] .border-gray-200,
+        [data-theme="amoled"] .border-gray-300 { border-color: #262626 !important; }
+        
+        [data-theme="amoled"] .hover\:bg-gray-50:hover,
+        [data-theme="amoled"] .hover\:bg-gray-100:hover { background-color: #0a0a0a !important; }
+        
+        [data-theme="amoled"] input, [data-theme="amoled"] textarea, [data-theme="amoled"] select { background-color: #000000; color: white; border-color: #262626; }
         [data-theme="amoled"] aside { background-color: #000000; border-color: #262626; }
         [data-theme="amoled"] header { background-color: #000000; border-color: #262626; }
-        [data-theme="amoled"] .bg-gray-50 { background-color: #121212; }
         [data-theme="amoled"] #global-timer-container { background-color: #000000; border-top-color: #262626; }
+        [data-theme="amoled"] .shadow-sm, [data-theme="amoled"] .shadow, [data-theme="amoled"] .shadow-md, [data-theme="amoled"] .shadow-lg, [data-theme="amoled"] .shadow-xl { box-shadow: none !important; }
+        
+        /* Specific overrides for buttons and small components */
+        [data-theme="amoled"] .bg-indigo-50 { background-color: #0a0a0a !important; color: #818cf8 !important; }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-900 font-sans transition-colors duration-200" x-data="{ mobileSidebarOpen: false, desktopSidebarOpen: true }">
