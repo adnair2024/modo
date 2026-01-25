@@ -1,5 +1,5 @@
 {% set is_overdue = task.due_date and now and task.due_date < now and task.status != 'done' %}
-<div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow transition-all hover:shadow-md border-l-4 {{ 'border-green-500' if task.status == 'done' else ('border-red-600 animate-pulse' if is_overdue else 'border-transparent') }}" 
+<div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow transition-all hover:shadow-md border-l-4 {{ 'border-green-500' if task.status == 'done' else ('border-red-600 animate-pulse' if is_overdue else 'border-transparent') }} cursor-move" 
      id="task-{{ task.id }}"
      hx-get="{{ url_for('get_edit_task', task_id=task.id) }}" 
      hx-trigger="dblclick" 

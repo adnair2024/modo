@@ -1528,6 +1528,69 @@ def add_project_task(section_id):
     
     return redirect(url_for('project_detail', project_id=project.id))
 
+@app.route('/projects/sections/<int:section_id>/edit', methods=['POST'])
+@login_required
+def edit_project_section(section_id):
+    section = ProjectSection.query.get_or_404(section_id)
+    project = section.project
+    member = ProjectMember.query.filter_by(project_id=project.id, user_id=current_user.id).first()
+    if not member:
+        abort(403)
+    
+    name = request.form.get('name')
+    if name:
+        old_name = section.name
+        section.name = name
+        log_project_action(project.id, f"Renamed section '{old_name}' to '{name}'")
+        db.session.commit()
+        return "", 204
+    
+    return redirect(url_for('project_detail', project_id=project.id))
+
+@app.route('/projects/sections/<int:section_id>/delete', methods=['POST'])
+@login_required
+def delete_project_section(section_id):
+    section = ProjectSection.query.get_or_404(section_id)
+    project = section.project
+    member = ProjectMember.query.filter_by(project_id=project.id, user_id=current_user.id).first()
+    if not member or project.owner_id != current_user.id:
+        abort(403)
+    
+    # Move tasks to "General" or just delete?
+    # Based on cascade="all, delete-orphan" in models.py, tasks will be deleted.
+    # We should probably warn the user or just do it.
+    name = section.name
+    db.session.delete(section)
+    log_project_action(project.id, f"Deleted section: {name}")
+    db.session.commit()
+    
+    return redirect(url_for('project_detail', project_id=project.id))
+
+@app.route('/projects/tasks/<int:task_id>/move', methods=['POST'])
+@login_required
+def move_project_task(task_id):
+    task = Task.query.get_or_404(task_id)
+    if not task.section_id:
+        abort(400)
+    
+    project = task.section.project
+    member = ProjectMember.query.filter_by(project_id=project.id, user_id=current_user.id).first()
+    if not member:
+        abort(403)
+    
+    new_section_id = request.form.get('section_id', type=int)
+    if new_section_id:
+        new_section = ProjectSection.query.get_or_404(new_section_id)
+        if new_section.project_id != project.id:
+            abort(400)
+        
+        old_section_name = task.section.name
+        task.section_id = new_section_id
+        log_project_action(project.id, f"Moved task '{task.title}' from {old_section_name} to {new_section.name}")
+        db.session.commit()
+    
+    return "", 204
+
 @app.route('/projects/<int:project_id>/invite', methods=['POST'])
 @login_required
 def invite_to_project(project_id):

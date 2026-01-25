@@ -30,27 +30,77 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <!-- Main Board -->
-        <div class="lg:col-span-9">
+        <div class="lg:col-span-9" x-data="{ 
+            initSortable() {
+                document.querySelectorAll('.task-list').forEach(el => {
+                    new Sortable(el, {
+                        group: 'tasks',
+                        animation: 150,
+                        ghostClass: 'opacity-50',
+                        onEnd: (evt) => {
+                            const taskId = evt.item.id.replace('task-', '');
+                            const sectionId = evt.to.getAttribute('data-section-id');
+                            const formData = new FormData();
+                            formData.append('section_id', sectionId);
+                            fetch(`/projects/tasks/${taskId}/move`, {
+                                method: 'POST',
+                                body: formData
+                            });
+                        }
+                    });
+                });
+            }
+        }" x-init="initSortable()">
             <div class="flex gap-6 overflow-x-auto pb-8 snap-x">
                 {% for section in project.sections %}
                 <div class="flex-shrink-0 w-80 snap-start">
-                    <div class="flex justify-between items-center mb-4 px-1">
-                        <h3 class="font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-sm">{{ section.name }} <span class="ml-1 text-gray-400 font-normal">({{ section.tasks|length }})</span></h3>
-                        <button @click="activeSectionId = {{ section.id }}; taskModalOpen = true" class="text-gray-400 hover:text-indigo-600 transition">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                        </button>
+                    <div class="flex justify-between items-center mb-4 px-1 group" x-data="{ editing: false, name: '{{ section.name }}' }">
+                        <div class="flex items-center gap-2 overflow-hidden flex-1">
+                            <template x-if="!editing">
+                                <h3 @dblclick="editing = true" class="font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-sm truncate cursor-pointer hover:text-indigo-600 transition" title="Double click to edit">
+                                    <span x-text="name"></span>
+                                    <span class="ml-1 text-gray-400 font-normal">({{ section.tasks|length }})</span>
+                                </h3>
+                            </template>
+                            <template x-if="editing">
+                                <form @submit.prevent="
+                                    const formData = new FormData();
+                                    formData.append('name', name);
+                                    fetch('{{ url_for('edit_project_section', section_id=section.id) }}', {
+                                        method: 'POST',
+                                        body: formData
+                                    }).then(() => editing = false);
+                                " class="flex-1">
+                                    <input x-model="name" @keydown.escape="editing = false" @click.away="editing = false" 
+                                           class="w-full bg-gray-100 dark:bg-gray-800 border-none rounded px-2 py-1 text-sm font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 focus:ring-1 focus:ring-indigo-500 outline-none" 
+                                           x-init="$el.focus()">
+                                </form>
+                            </template>
+                        </div>
+                        <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                            {% if project.owner_id == current_user.id %}
+                            <form action="{{ url_for('delete_project_section', section_id=section.id) }}" method="POST" onsubmit="return confirm('Delete this section and all its tasks?')">
+                                <button type="submit" class="text-gray-400 hover:text-red-500 transition p-1" title="Delete Section">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                </button>
+                            </form>
+                            {% endif %}
+                            <button @click="activeSectionId = {{ section.id }}; taskModalOpen = true" class="text-gray-400 hover:text-indigo-600 transition p-1" title="Add Task">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                            </button>
+                        </div>
                     </div>
                     
-                    <div class="space-y-4 min-h-[100px]">
+                    <div class="space-y-4 min-h-[100px] task-list" data-section-id="{{ section.id }}">
                         {% for task in section.tasks %}
                             {% include 'partials/task_item.html' %}
                         {% endfor %}
-                        
-                        <button @click="activeSectionId = {{ section.id }}; taskModalOpen = true" class="w-full py-3 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg text-gray-400 hover:text-indigo-600 hover:border-indigo-300 dark:hover:border-indigo-800 transition text-sm font-medium flex items-center justify-center gap-2 group">
-                            <svg class="w-4 h-4 group-hover:scale-110 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                            Add Task
-                        </button>
                     </div>
+                    
+                    <button @click="activeSectionId = {{ section.id }}; taskModalOpen = true" class="w-full mt-4 py-3 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg text-gray-400 hover:text-indigo-600 hover:border-indigo-300 dark:hover:border-indigo-800 transition text-sm font-medium flex items-center justify-center gap-2 group">
+                        <svg class="w-4 h-4 group-hover:scale-110 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        Add Task
+                    </button>
                 </div>
                 {% else %}
                 <div class="w-full py-20 text-center bg-white dark:bg-gray-800 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700">
