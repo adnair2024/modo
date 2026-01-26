@@ -314,7 +314,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ room_id: settings.activeRoomId, action: 'pause' })
             });
-            return;
         }
         
         if (timerInterval) clearInterval(timerInterval);
@@ -406,6 +405,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(payload)
             }).then(() => {
+                // Sync: Tell server to switch to break
+                if (settings.syncMode && settings.activeRoomId) {
+                     fetch('/api/study/control', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ room_id: settings.activeRoomId, action: 'skip' })
+                    });
+                }
+
                 // Switch to Break
                 currentMode = 'break';
                 secondsLeft = settings.breakDuration * 60;
@@ -443,6 +451,15 @@ document.addEventListener('DOMContentLoaded', () => {
             secondsLeft = settings.focusDuration * 60;
             localStorage.setItem('timerMode', currentMode);
             localStorage.removeItem('timerSecondsLeft');
+
+            // Sync: Tell server to switch to focus
+            if (settings.syncMode && settings.activeRoomId) {
+                     fetch('/api/study/control', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ room_id: settings.activeRoomId, action: 'skip' })
+                    });
+            }
 
             // If auto-select priority is on, find the next task now
             if (settings.autoSelectPriority) {
