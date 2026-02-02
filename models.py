@@ -15,6 +15,7 @@ class User(UserMixin, db.Model):
     show_last_seen = db.Column(db.Boolean, default=True)
     current_focus_start = db.Column(db.DateTime, nullable=True) # When they started
     current_focus_end = db.Column(db.DateTime, nullable=True)   # When it will end
+    last_focus_end = db.Column(db.DateTime, nullable=True)      # When they last finished
     current_focus_mode = db.Column(db.String(20), default='none') # none, focus, break
     current_task_id = db.Column(db.Integer, db.ForeignKey('task.id'), nullable=True)
     
@@ -33,6 +34,9 @@ class User(UserMixin, db.Model):
     notify_pomodoro = db.Column(db.Boolean, default=True)
     notify_event_start = db.Column(db.Boolean, default=True)
     event_notify_minutes = db.Column(db.Integer, default=30)
+    
+    # Vim Mode
+    enable_vim_mode = db.Column(db.Boolean, default=False)
     
     is_verified = db.Column(db.Boolean, default=False)
 
@@ -81,6 +85,10 @@ class StudyRoom(db.Model):
     active_mode = db.Column(db.String(20), default='focus') # focus, break
     active_start_time = db.Column(db.DateTime, nullable=True) # If set, timer is running
     seconds_remaining = db.Column(db.Integer, nullable=True) # Snapshot when paused
+    last_activity = db.Column(db.DateTime, default=datetime.utcnow)
+
+    host = db.relationship('User', foreign_keys=[host_id], backref='hosted_rooms', lazy=True)
+    guest = db.relationship('User', foreign_keys=[guest_id], backref='guest_rooms', lazy=True)
 
 task_tags = db.Table('task_tags',
     db.Column('task_id', db.Integer, db.ForeignKey('task.id'), primary_key=True),
@@ -215,4 +223,33 @@ class HabitCompletion(db.Model):
     completed_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     __table_args__ = (db.UniqueConstraint('habit_id', 'date', name='_habit_date_uc'),)
+
+class Achievement(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.String(255), nullable=False)
+    icon = db.Column(db.String(50), default='🏆') 
+    criteria_type = db.Column(db.String(50), nullable=False) # 'total_focus_minutes'
+    criteria_value = db.Column(db.Integer, nullable=False)
+    
+    user_achievements = db.relationship('UserAchievement', backref='achievement', lazy=True)
+
+class UserAchievement(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    achievement_id = db.Column(db.Integer, db.ForeignKey('achievement.id'), nullable=False)
+    earned_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    user = db.relationship('User', backref='achievements', lazy=True)
+
+class ChatMessage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    room_id = db.Column(db.Integer, db.ForeignKey('study_room.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    user = db.relationship('User', backref='messages', lazy=True)
+    room = db.relationship('StudyRoom', backref=db.backref('messages', cascade="all, delete-orphan"), lazy=True)
+
 

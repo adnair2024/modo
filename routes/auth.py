@@ -13,7 +13,7 @@ def login():
         user = User.query.filter_by(username=username).first()
         if user and check_password_hash(user.password_hash, password):
             login_user(user)
-            return redirect(url_for('index'))
+            return redirect(url_for('main.index'))
         flash('Invalid username or password', 'error')
     return render_template('login.html')
 
@@ -30,7 +30,7 @@ def signup():
             db.session.add(new_user)
             db.session.commit()
             login_user(new_user)
-            return redirect(url_for('index'))
+            return redirect(url_for('main.index'))
     return render_template('signup.html')
 
 @auth.route('/logout')

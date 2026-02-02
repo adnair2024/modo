@@ -1,7 +1,16 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto">
+<div class="w-full mx-auto">
+    <!-- Active Sync Session -->
+    {% if active_sync_room %}
+        <div class="mb-8">
+            {% with room=active_sync_room, other_user=(active_sync_room.guest if active_sync_room.host_id == current_user.id else active_sync_room.host) %}
+                {% include 'partials/study_active.html' %}
+            {% endwith %}
+        </div>
+    {% endif %}
+
     <!-- Upcoming Events -->
     {% if grouped_events['Today'] or grouped_events['Tomorrow'] or grouped_events['This Week'] %}
     <div class="mb-8 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
@@ -35,7 +44,7 @@
                 <svg class="w-6 h-6 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 Daily Habits
             </h2>
-            <a href="{{ url_for('habits') }}" class="text-xs text-indigo-600 hover:underline">View All</a>
+            <a href="{{ url_for('main.habits') }}" class="text-xs text-indigo-600 hover:underline">View All</a>
         </div>
         <div class="flex flex-wrap gap-4">
             {% for habit in daily_habits %}
@@ -50,7 +59,7 @@
     <h2 class="text-3xl font-bold mb-6">My Tasks</h2>
     
     <!-- Add Task Form -->
-    <form hx-post="{{ url_for('add_task') }}" hx-target="#task-list" hx-swap="afterbegin" hx-on::after-request="this.reset()" class="mb-8 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+    <form hx-post="{{ url_for('main.add_task') }}" hx-target="#task-list" hx-swap="afterbegin" hx-on::after-request="this.reset()" class="mb-8 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
         <div class="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4">
             <div class="md:col-span-8">
                 <input type="text" name="title" placeholder="What needs to be done?" required

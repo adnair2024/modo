@@ -290,19 +290,38 @@ document.addEventListener('DOMContentLoaded', () => {
     function startInterval() {
         if (timerInterval) clearInterval(timerInterval);
         
+        checkDrift(); // Sync immediately
+
         timerInterval = setInterval(() => {
             if (!isRunning) return;
 
-            secondsLeft--;
-            if (secondsLeft < 0) secondsLeft = 0;
+            checkDrift();
             
-            localStorage.setItem('timerSecondsLeft', secondsLeft);
-            updateUI();
-
             if (secondsLeft <= 0) {
                 completeTimer();
+            } else {
+                updateUI();
             }
         }, 1000);
+    }
+
+    function checkDrift() {
+        const savedEnd = localStorage.getItem('timerEnd');
+        if (savedEnd && isRunning) {
+            const now = Date.now();
+            const remaining = Math.ceil((parseInt(savedEnd) - now) / 1000);
+            // Use calculated remaining time to correct any drift
+            if (remaining >= 0) {
+                secondsLeft = remaining;
+            } else {
+                secondsLeft = 0;
+            }
+        } else if (isRunning) {
+            // Fallback if no end time but running
+            secondsLeft--;
+        }
+        if (secondsLeft < 0) secondsLeft = 0;
+        localStorage.setItem('timerSecondsLeft', secondsLeft);
     }
 
     function pauseTimer(notifyServer = true) {

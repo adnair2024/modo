@@ -1,12 +1,12 @@
 {% set is_overdue = task.due_date and now and task.due_date < now and task.status != 'done' %}
 <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow transition-all hover:shadow-md border-l-4 {{ 'border-green-500' if task.status == 'done' else ('border-red-600 animate-pulse' if is_overdue else 'border-transparent') }} cursor-move" 
      id="task-{{ task.id }}"
-     hx-get="{{ url_for('get_edit_task', task_id=task.id) }}" 
+     hx-get="{{ url_for('main.get_edit_task', task_id=task.id) }}" 
      hx-trigger="dblclick" 
      hx-swap="outerHTML">
     <div class="flex items-start justify-between">
         <div class="flex items-start gap-3 flex-1">
-            <button hx-post="{{ url_for('toggle_task', task_id=task.id) }}" 
+            <button hx-post="{{ url_for('main.toggle_task', task_id=task.id) }}" 
                     hx-target="{{ '#task-list' if not task.section_id else '#task-' ~ task.id }}" 
                     hx-swap="outerHTML"
                     hx-include="#filter-form"
@@ -55,7 +55,7 @@
             </div>
         </div>
         
-        <button hx-delete="{{ url_for('delete_task', task_id=task.id) }}" 
+        <button hx-delete="{{ url_for('main.delete_task', task_id=task.id) }}" 
                 hx-target="#task-{{ task.id }}" 
                 hx-swap="outerHTML"
                 class="text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 ml-4 transition">

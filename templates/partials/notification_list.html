@@ -17,10 +17,10 @@
                 <div class="mt-2 flex gap-2">
                     {% set invite = current_user.id | get_pending_invite(notif.project_id) %}
                     {% if invite %}
-                    <form action="{{ url_for('respond_project_invite', invite_id=invite.id, action='accept') }}" method="POST">
+                    <form action="{{ url_for('projects.respond_project_invite', invite_id=invite.id, action='accept') }}" method="POST">
                         <button class="bg-indigo-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-indigo-700 transition">Accept</button>
                     </form>
-                    <form action="{{ url_for('respond_project_invite', invite_id=invite.id, action='decline') }}" method="POST">
+                    <form action="{{ url_for('projects.respond_project_invite', invite_id=invite.id, action='decline') }}" method="POST">
                         <button class="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-1 rounded text-xs font-bold hover:bg-gray-300 dark:hover:bg-gray-600 transition">Decline</button>
                     </form>
                     {% endif %}

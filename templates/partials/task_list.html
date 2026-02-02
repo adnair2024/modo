@@ -5,7 +5,7 @@
     
     {% if has_more_completed %}
     <div class="text-center pt-4">
-        <button hx-get="{{ url_for('index', show_all_done='true') }}" 
+        <button hx-get="{{ url_for('main.index', show_all_done='true') }}" 
                 hx-target="#task-list" 
                 hx-swap="outerHTML"
                 class="text-sm text-indigo-600 hover:text-indigo-800 font-medium bg-indigo-50 px-4 py-2 rounded-full transition">

@@ -8,15 +8,15 @@
         <!-- Category Tabs -->
         <div class="flex justify-center mb-6">
             <div class="inline-flex bg-gray-100 rounded-xl p-1 shadow-inner">
-                <a href="{{ url_for('leaderboard', category='focus', filter=filter_type) }}" 
+                <a href="{{ url_for('main.leaderboard', category='focus', filter=filter_type) }}" 
                    class="px-6 py-2 rounded-lg text-sm font-semibold transition-all {{ 'bg-white text-indigo-600 shadow-sm' if category == 'focus' else 'text-gray-500 hover:text-gray-700' }}">
                    Focus Time
                 </a>
-                <a href="{{ url_for('leaderboard', category='habits', filter=filter_type) }}" 
+                <a href="{{ url_for('main.leaderboard', category='habits', filter=filter_type) }}" 
                    class="px-6 py-2 rounded-lg text-sm font-semibold transition-all {{ 'bg-white text-indigo-600 shadow-sm' if category == 'habits' else 'text-gray-500 hover:text-gray-700' }}">
                    Habits
                 </a>
-                <a href="{{ url_for('leaderboard', category='sync', filter=filter_type) }}" 
+                <a href="{{ url_for('main.leaderboard', category='sync', filter=filter_type) }}" 
                    class="px-6 py-2 rounded-lg text-sm font-semibold transition-all {{ 'bg-white text-indigo-600 shadow-sm' if category == 'sync' else 'text-gray-500 hover:text-gray-700' }}">
                    Sync Study
                 </a>
@@ -26,11 +26,11 @@
         <!-- Time Filters -->
         <div class="flex justify-end mb-4">
             <div class="flex bg-gray-200 rounded-lg p-1">
-                <a href="{{ url_for('leaderboard', filter='all', category=category) }}" 
+                <a href="{{ url_for('main.leaderboard', filter='all', category=category) }}" 
                    class="px-4 py-1.5 rounded-md text-xs font-bold transition-colors {{ 'bg-white text-indigo-600 shadow-sm' if filter_type == 'all' else 'text-gray-600 hover:text-gray-900' }}">
                    ALL TIME
                 </a>
-                <a href="{{ url_for('leaderboard', filter='weekly', category=category) }}" 
+                <a href="{{ url_for('main.leaderboard', filter='weekly', category=category) }}" 
                    class="px-4 py-1.5 rounded-md text-xs font-bold transition-colors {{ 'bg-white text-indigo-600 shadow-sm' if filter_type == 'weekly' else 'text-gray-600 hover:text-gray-900' }}">
                    WEEKLY
                 </a>
@@ -76,7 +76,7 @@
                         </div>
                     </td>
                     <td class="px-5 py-5 border-b border-gray-100 bg-transparent text-sm">
-                        <a href="{{ url_for('profile', username=user.username) }}" class="text-gray-900 hover:text-indigo-600 font-bold flex items-center gap-1 transition-colors">
+                        <a href="{{ url_for('social.profile', username=user.username) }}" class="text-gray-900 hover:text-indigo-600 font-bold flex items-center gap-1 transition-colors">
                             {{ user.username }}
                             {% if user.is_verified %}
                             <svg class="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
