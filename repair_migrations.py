@@ -12,6 +12,24 @@ def masked_url(url):
         return "...@" + url.split('@')[-1]
     return url
 
+def get_sql_type(column):
+    """Simple mapping of SQLAlchemy types to SQL types for ALTER TABLE"""
+    from sqlalchemy.sql import sqltypes
+    t = column.type
+    if isinstance(t, sqltypes.Boolean):
+        return "BOOLEAN"
+    elif isinstance(t, sqltypes.DateTime):
+        return "TIMESTAMP"
+    elif isinstance(t, sqltypes.Date):
+        return "DATE"
+    elif isinstance(t, sqltypes.Integer):
+        return "INTEGER"
+    elif isinstance(t, sqltypes.String):
+        return f"VARCHAR({t.length})"
+    elif isinstance(t, sqltypes.Text):
+        return "TEXT"
+    return str(t)
+
 def repair():
     print("Starting repair_migrations.py...")
     
@@ -41,14 +59,10 @@ def repair():
                 try:
                     result = connection.execute(text("SELECT version_num FROM alembic_version"))
                     row = result.first()
-                    if not row:
-                        print("alembic_version table is empty.")
-                        current_db_version = None
-                    else:
-                        current_db_version = row[0]
+                    current_db_version = row[0] if row else None
+                    if current_db_version:
                         print(f"Current DB version in database: {current_db_version}")
                 except Exception:
-                    print("alembic_version table not found. Might be a fresh DB.")
                     current_db_version = None
 
                 migrations_dir = os.path.join(os.getcwd(), 'migrations')
@@ -56,9 +70,7 @@ def repair():
                 alembic_cfg.set_main_option("script_location", migrations_dir)
                 script = ScriptDirectory.from_config(alembic_cfg)
                 
-                needs_stamp = False
                 new_base = None
-                # Find the baseline migration
                 for rev in script.walk_revisions():
                     if rev.down_revision is None:
                         new_base = rev.revision
@@ -68,52 +80,50 @@ def repair():
                         script.get_revision(current_db_version)
                     except Exception:
                         print(f"Revision {current_db_version} NOT found locally! Repairing revision state...")
-                        needs_stamp = True
-                
-                if needs_stamp and new_base:
-                    print(f"Stamping database to {new_base}...")
-                    connection.execute(text("UPDATE alembic_version SET version_num = :new_base"), {"new_base": new_base})
-                    try: connection.commit()
-                    except: pass
-
-                # 2. Handle Schema Debt (Missing Columns)
-                # We know at least 'user' table is missing columns from the new baseline
-                print("Checking for missing columns in 'user' table...")
-                inspector = inspect(engine)
-                columns = [c['name'] for c in inspector.get_columns('user')]
-                
-                # List of columns that were in fdbb13ae7f30 but might be missing from old DB
-                expected_user_columns = {
-                    'enable_vim_mode': 'BOOLEAN DEFAULT FALSE',
-                    'is_verified': 'BOOLEAN DEFAULT FALSE',
-                    'auto_select_priority': 'BOOLEAN DEFAULT FALSE',
-                    'notify_pomodoro': 'BOOLEAN DEFAULT TRUE',
-                    'notify_event_start': 'BOOLEAN DEFAULT TRUE',
-                    'event_notify_minutes': 'INTEGER DEFAULT 30',
-                    'accent_color': 'VARCHAR(20) DEFAULT \'indigo\'',
-                    'auto_start_break': 'BOOLEAN DEFAULT FALSE',
-                    'auto_start_focus': 'BOOLEAN DEFAULT FALSE'
-                }
-                
-                for col_name, col_type in expected_user_columns.items():
-                    if col_name not in columns:
-                        print(f"Adding missing column 'user.{col_name}'...")
-                        try:
-                            connection.execute(text(f"ALTER TABLE \"user\" ADD COLUMN {col_name} {col_type}"))
+                        if new_base:
+                            print(f"Stamping database to {new_base}...")
+                            connection.execute(text("UPDATE alembic_version SET version_num = :new_base"), {"new_base": new_base})
                             try: connection.commit()
                             except: pass
-                            print(f"Successfully added {col_name}")
-                        except Exception as col_err:
-                            print(f"Could not add {col_name}: {col_err}")
 
-                # Also check 'event' table if it exists
-                if 'event' in inspector.get_table_names():
-                    event_cols = [c['name'] for c in inspector.get_columns('event')]
-                    if 'recurrence_days' not in event_cols:
-                        print("Adding missing column 'event.recurrence_days'...")
-                        connection.execute(text("ALTER TABLE event ADD COLUMN recurrence_days VARCHAR(50)"))
-                        try: connection.commit()
-                        except: pass
+                # 2. Comprehensive Schema Sync
+                print("Syncing schema: checking for missing columns in all tables...")
+                inspector = inspect(engine)
+                existing_tables = inspector.get_table_names()
+                
+                # Iterate through all models defined in the code
+                for table_name, table_obj in db.metadata.tables.items():
+                    if table_name not in existing_tables:
+                        # If table doesn't exist at all, flask db upgrade might handle it,
+                        # but we want to be safe. We'll let Alembic handle new tables usually.
+                        continue
+                    
+                    # Table exists, check columns
+                    existing_cols = [c['name'] for c in inspector.get_columns(table_name)]
+                    for col_name, col_obj in table_obj.columns.items():
+                        if col_name not in existing_cols:
+                            print(f"Adding missing column '{table_name}.{col_name}'...")
+                            sql_type = get_sql_type(col_obj)
+                            
+                            # Handle default values simply
+                            default_clause = ""
+                            if col_obj.default is not None and hasattr(col_obj.default, 'arg'):
+                                if isinstance(col_obj.default.arg, bool):
+                                    default_clause = f" DEFAULT {'TRUE' if col_obj.default.arg else 'FALSE'}"
+                                elif isinstance(col_obj.default.arg, (int, float)):
+                                    default_clause = f" DEFAULT {col_obj.default.arg}"
+                                elif isinstance(col_obj.default.arg, str):
+                                    default_clause = f" DEFAULT '{col_obj.default.arg}'"
+
+                            # Postgres needs double quotes for reserved words like "user"
+                            safe_table_name = f'"{table_name}"' if table_name == 'user' else table_name
+                            try:
+                                connection.execute(text(f"ALTER TABLE {safe_table_name} ADD COLUMN {col_name} {sql_type}{default_clause}"))
+                                try: connection.commit()
+                                except: pass
+                                print(f"Successfully added {col_name} to {table_name}")
+                            except Exception as col_err:
+                                print(f"Could not add {col_name} to {table_name}: {col_err}")
 
         except Exception as e:
             print(f"Error during repair: {e}")
