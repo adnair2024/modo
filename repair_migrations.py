@@ -1,8 +1,8 @@
 import os
 import sys
-from alembic.config import Config
 from alembic.script import ScriptDirectory
-from sqlalchemy import text, create_engine
+from alembic.config import Config
+from sqlalchemy import text, create_engine, inspect
 from app import app
 from models import db
 
@@ -37,54 +37,83 @@ def repair():
             with engine.connect() as connection:
                 print("Connection to database successful.")
                 
+                # 1. Handle Migration Revision Repair
                 try:
                     result = connection.execute(text("SELECT version_num FROM alembic_version"))
                     row = result.first()
+                    if not row:
+                        print("alembic_version table is empty.")
+                        current_db_version = None
+                    else:
+                        current_db_version = row[0]
+                        print(f"Current DB version in database: {current_db_version}")
                 except Exception:
-                    print("alembic_version table not found. Skipping repair.")
-                    return
+                    print("alembic_version table not found. Might be a fresh DB.")
+                    current_db_version = None
 
-                if not row:
-                    print("alembic_version table is empty. Skipping repair.")
-                    return
-                
-                current_db_version = row[0]
-                print(f"Current DB version in database: {current_db_version}")
-
-                # Correct way to load ScriptDirectory in Alembic 1.x
                 migrations_dir = os.path.join(os.getcwd(), 'migrations')
                 alembic_cfg = Config()
                 alembic_cfg.set_main_option("script_location", migrations_dir)
                 script = ScriptDirectory.from_config(alembic_cfg)
                 
-                try:
-                    rev = script.get_revision(current_db_version)
-                    if rev:
-                        print(f"Revision {current_db_version} found locally. No repair needed.")
-                        return
-                except Exception:
-                    print(f"Revision {current_db_version} NOT found locally! Repairing...")
-                    
-                    # Find the baseline migration (the one with down_revision = None)
-                    new_base = None
-                    for rev in script.walk_revisions():
-                        if rev.down_revision is None:
-                            new_base = rev.revision
-                    
-                    if not new_base:
-                        print("Could not find a base migration locally. Cannot repair.")
-                        return
+                needs_stamp = False
+                new_base = None
+                # Find the baseline migration
+                for rev in script.walk_revisions():
+                    if rev.down_revision is None:
+                        new_base = rev.revision
 
-                    print(f"Stamping database from {current_db_version} to {new_base}...")
-                    
-                    connection.execute(text("UPDATE alembic_version SET version_num = :new_base"), {"new_base": new_base})
-                    
+                if current_db_version:
                     try:
-                        connection.commit()
-                    except AttributeError:
-                        pass
-                        
-                    print(f"Successfully stamped DB to {new_base}")
+                        script.get_revision(current_db_version)
+                    except Exception:
+                        print(f"Revision {current_db_version} NOT found locally! Repairing revision state...")
+                        needs_stamp = True
+                
+                if needs_stamp and new_base:
+                    print(f"Stamping database to {new_base}...")
+                    connection.execute(text("UPDATE alembic_version SET version_num = :new_base"), {"new_base": new_base})
+                    try: connection.commit()
+                    except: pass
+
+                # 2. Handle Schema Debt (Missing Columns)
+                # We know at least 'user' table is missing columns from the new baseline
+                print("Checking for missing columns in 'user' table...")
+                inspector = inspect(engine)
+                columns = [c['name'] for c in inspector.get_columns('user')]
+                
+                # List of columns that were in fdbb13ae7f30 but might be missing from old DB
+                expected_user_columns = {
+                    'enable_vim_mode': 'BOOLEAN DEFAULT FALSE',
+                    'is_verified': 'BOOLEAN DEFAULT FALSE',
+                    'auto_select_priority': 'BOOLEAN DEFAULT FALSE',
+                    'notify_pomodoro': 'BOOLEAN DEFAULT TRUE',
+                    'notify_event_start': 'BOOLEAN DEFAULT TRUE',
+                    'event_notify_minutes': 'INTEGER DEFAULT 30',
+                    'accent_color': 'VARCHAR(20) DEFAULT \'indigo\'',
+                    'auto_start_break': 'BOOLEAN DEFAULT FALSE',
+                    'auto_start_focus': 'BOOLEAN DEFAULT FALSE'
+                }
+                
+                for col_name, col_type in expected_user_columns.items():
+                    if col_name not in columns:
+                        print(f"Adding missing column 'user.{col_name}'...")
+                        try:
+                            connection.execute(text(f"ALTER TABLE \"user\" ADD COLUMN {col_name} {col_type}"))
+                            try: connection.commit()
+                            except: pass
+                            print(f"Successfully added {col_name}")
+                        except Exception as col_err:
+                            print(f"Could not add {col_name}: {col_err}")
+
+                # Also check 'event' table if it exists
+                if 'event' in inspector.get_table_names():
+                    event_cols = [c['name'] for c in inspector.get_columns('event')]
+                    if 'recurrence_days' not in event_cols:
+                        print("Adding missing column 'event.recurrence_days'...")
+                        connection.execute(text("ALTER TABLE event ADD COLUMN recurrence_days VARCHAR(50)"))
+                        try: connection.commit()
+                        except: pass
 
         except Exception as e:
             print(f"Error during repair: {e}")
