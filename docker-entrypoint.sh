@@ -4,6 +4,7 @@ set -e
 # Run database migrations
 echo "Running database migrations..."
 python repair_migrations.py
+python sync_achievements.py
 flask db upgrade
 
 # Start the application
