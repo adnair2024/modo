@@ -5,23 +5,50 @@ from alembic.script import ScriptDirectory
 from sqlalchemy import create_engine, text
 from flask import Flask
 from models import db
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def repair():
     app = Flask(__name__)
-    # Use the same DB URI as the app
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgresql://localhost/modo')
-    if app.config['SQLALCHEMY_DATABASE_URI'].startswith("postgres://"):
-        app.config['SQLALCHEMY_DATABASE_URI'] = app.config['SQLALCHEMY_DATABASE_URI'].replace("postgres://", "postgresql://", 1)
+    # Try multiple common environment variables for DB URL
+    db_uri = os.environ.get('SQLALCHEMY_DATABASE_URI') or os.environ.get('DATABASE_URL')
+    
+    if not db_uri:
+        # Fallback to sqlite for local dev if needed, but in prod we expect a URI
+        basedir = os.path.abspath(os.path.dirname(__file__))
+        db_path = os.path.join(basedir, 'db.sqlite3')
+        db_uri = f'sqlite:///{db_path}'
+        print(f"Warning: No database URI found in environment. Using fallback: {db_uri}")
+    else:
+        # Hide password in logs
+        masked_uri = db_uri.split('@')[-1] if '@' in db_uri else db_uri
+        print(f"Using database URI: ...@{masked_uri}")
+
+    if db_uri.startswith("postgres://"):
+        db_uri = db_uri.replace("postgres://", "postgresql://", 1)
+    
+    app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     
     db.init_app(app)
 
     with app.app_context():
         engine = db.engine
+        print(f"Connecting to engine...")
         try:
             with engine.connect() as connection:
+                print("Connection successful.")
                 # Check if alembic_version table exists
-                result = connection.execute(text("SELECT tablename FROM pg_catalog.pg_tables WHERE tablename = 'alembic_version'"))
-                if not result.first():
+                # Different query for Postgres vs SQLite
+                if 'postgresql' in db_uri:
+                    result = connection.execute(text("SELECT tablename FROM pg_catalog.pg_tables WHERE tablename = 'alembic_version'"))
+                else:
+                    result = connection.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='alembic_version'"))
+                
+                table_exists = result.first()
+
+                if not table_exists:
                     print("No alembic_version table found. Skipping repair.")
                     return
 
@@ -59,10 +86,14 @@ def repair():
 
                     print(f"Stamping database to {new_base}...")
                     
-                    # Update the version in the DB manually to avoid Alembic's graph checks
-                    connection.execute(text(f"UPDATE alembic_version SET version_num = '{new_base}'"))
-                    connection.commit()
-                    print(f"Successfully stamped DB to {new_base}")
+                    # Update the version in the DB manually
+                    try:
+                        connection.execute(text("UPDATE alembic_version SET version_num = :new_base"), {"new_base": new_base})
+                        connection.commit()
+                        print(f"Successfully stamped DB to {new_base}")
+                    except Exception as commit_err:
+                        print(f"Commit/Update might have failed or already applied: {commit_err}")
+                        pass
 
         except Exception as e:
             print(f"Error during repair: {e}")
