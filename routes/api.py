@@ -129,6 +129,12 @@ def mark_all_read():
 @login_required
 def update_settings():
     data = request.json
+    if 'profile_pic_url' in data:
+        current_user.profile_pic_url = data['profile_pic_url']
+    if 'profile_pic_position' in data:
+        current_user.profile_pic_position = data['profile_pic_position']
+    if 'bio' in data:
+        current_user.bio = data['bio']
     if 'enable_vim_mode' in data:
         current_user.enable_vim_mode = data['enable_vim_mode']
     if 'theme' in data:

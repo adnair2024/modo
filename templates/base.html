@@ -173,6 +173,12 @@
                     <span :class="desktopSidebarOpen ? 'inline' : 'hidden md:hidden'">Toggle Theme</span>
                 </button>
                 <div class="mt-4 flex items-center gap-2 text-gray-500 text-sm px-1">
+                    {% if current_user.profile_pic_url %}
+                        <img src="{{ current_user.profile_pic_url }}" 
+                             class="w-6 h-6 rounded-full object-cover border border-gray-200" 
+                             alt="{{ current_user.username }}"
+                             style="object-position: {{ current_user.profile_pic_position or '50% 50%' }}">
+                    {% endif %}
                     <span :class="desktopSidebarOpen ? 'inline' : 'hidden md:hidden'">@{{ current_user.username }}</span>
                     {% if current_user.is_verified %}
                     <svg class="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20">

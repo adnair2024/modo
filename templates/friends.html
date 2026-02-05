@@ -61,9 +61,16 @@
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 flex items-center justify-between transition hover:shadow-md">
             <div class="flex items-center gap-4">
                 <div class="relative">
-                    <div class="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-xl font-bold">
-                        {{ item.user.username[0].upper() }}
-                    </div>
+                    {% if item.user.profile_pic_url %}
+                        <img src="{{ item.user.profile_pic_url }}" 
+                             class="w-14 h-14 rounded-full object-cover border-2 border-indigo-100" 
+                             alt="{{ item.user.username }}"
+                             style="object-position: {{ item.user.profile_pic_position or '50% 50%' }}">
+                    {% else %}
+                        <div class="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-xl font-bold">
+                            {{ item.user.username[0].upper() }}
+                        </div>
+                    {% endif %}
                     
                     {% if item.is_syncing %}
                     <span class="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full ring-2 ring-white bg-indigo-500 text-white shadow-sm" title="In Sync Session">
@@ -106,6 +113,11 @@
                             {% endif %}
                         {% endif %}
                     </p>
+                    {% if item.user.bio %}
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 italic line-clamp-1 max-w-xs" title="{{ item.user.bio }}">
+                            "{{ item.user.bio }}"
+                        </p>
+                    {% endif %}
                     {% if item.timer and item.timer.task %}
                     <p class="text-xs text-gray-400 italic truncate max-w-xs">{{ item.timer.task }}</p>
                     {% endif %}

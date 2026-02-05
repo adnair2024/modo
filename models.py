@@ -38,6 +38,9 @@ class User(UserMixin, db.Model):
     # Vim Mode
     enable_vim_mode = db.Column(db.Boolean, default=False)
     
+    profile_pic_url = db.Column(db.String(500), nullable=True)
+    profile_pic_position = db.Column(db.String(20), default='center')
+    bio = db.Column(db.String(255), nullable=True)
     is_verified = db.Column(db.Boolean, default=False)
 
     notifications = db.relationship('Notification', backref='user', lazy=True, cascade="all, delete-orphan")

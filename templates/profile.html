@@ -5,9 +5,16 @@
     <!-- Header Card -->
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 flex flex-col md:flex-row items-center justify-between gap-6">
         <div class="flex items-center gap-4">
-            <div class="w-20 h-20 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-3xl font-bold">
-                {{ user.username[0].upper() }}
-            </div>
+            {% if user.profile_pic_url %}
+                <img src="{{ user.profile_pic_url }}" 
+                     class="w-20 h-20 rounded-full object-cover border-2 border-indigo-500" 
+                     alt="{{ user.username }}"
+                     style="object-position: {{ user.profile_pic_position or '50% 50%' }}">
+            {% else %}
+                <div class="w-20 h-20 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-3xl font-bold">
+                    {{ user.username[0].upper() }}
+                </div>
+            {% endif %}
             <div>
                 <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                     {{ user.username }}
@@ -28,6 +35,11 @@
                         {% endif %}
                     {% endif %}
                 </p>
+                {% if user.bio %}
+                    <p class="mt-2 text-sm italic text-gray-600 dark:text-gray-300 max-w-md">
+                        "{{ user.bio }}"
+                    </p>
+                {% endif %}
             </div>
         </div>
         
@@ -73,6 +85,36 @@
         <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow text-center">
             <h3 class="text-gray-500 dark:text-gray-400 text-sm font-uppercase tracking-wide">Sessions Completed</h3>
             <p class="text-4xl font-bold text-green-600 mt-2">{{ total_sessions }}</p>
+        </div>
+    </div>
+
+    <!-- Badges / Achievements -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+            <h2 class="text-lg font-bold text-gray-800 dark:text-gray-100">Badges & Achievements</h2>
+            <span class="text-sm text-gray-500 dark:text-gray-400">{{ user.achievements | length }} Unlocked</span>
+        </div>
+        <div class="p-6">
+            {% if user.achievements %}
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                    {% for ua in user.achievements %}
+                        <div class="flex flex-col items-center p-3 rounded-xl bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-600 transition hover:scale-105 group relative" title="{{ ua.achievement.description }}">
+                            <div class="text-4xl mb-2">{{ ua.achievement.icon }}</div>
+                            <span class="text-xs font-bold text-gray-700 dark:text-gray-200 text-center">{{ ua.achievement.name }}</span>
+                            <!-- Tooltip/Hover info -->
+                            <div class="absolute bottom-full mb-2 hidden group-hover:block w-48 bg-gray-900 text-white text-[10px] p-2 rounded shadow-lg z-10 pointer-events-none">
+                                {{ ua.achievement.description }}
+                                <div class="mt-1 text-gray-400 text-[9px]">Earned on {{ ua.earned_at.strftime('%Y-%m-%d') }}</div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-8">
+                    <div class="text-4xl mb-3 text-gray-300">🏆</div>
+                    <p class="text-gray-500 dark:text-gray-400">No achievements unlocked yet. Keep focusing!</p>
+                </div>
+            {% endif %}
         </div>
     </div>
 

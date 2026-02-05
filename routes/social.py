@@ -221,6 +221,12 @@ def respond_friend_request(user_id, action):
             f"{get_username_html(current_user)} accepted your friend request!",
             type='success'
         )
+        # Check achievements for both users
+        from services.achievement_service import check_achievements
+        check_achievements(current_user)
+        target_user = User.query.get(user_id)
+        if target_user:
+            check_achievements(target_user)
     elif action == 'reject':
         db.session.delete(friendship)
     elif action == 'remove':

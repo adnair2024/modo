@@ -6,6 +6,73 @@
     
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-8 space-y-8" x-data="{ vimMode: {{ 'true' if current_user.enable_vim_mode else 'false' }} }">
         
+        <!-- Profile Settings -->
+        <section>
+            <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                Profile Settings
+            </h2>
+            <div class="space-y-4">
+                <div>
+                    <label for="profile-pic-url" class="block font-medium text-gray-700 dark:text-gray-300 mb-2">Profile Picture URL</label>
+                    <div class="flex gap-4 items-center">
+                        <div class="flex-shrink-0">
+                            {% if current_user.profile_pic_url %}
+                                <img src="{{ current_user.profile_pic_url }}" class="w-12 h-12 rounded-full object-cover object-{{ current_user.profile_pic_position or 'center' }} border border-gray-200" id="preview-pic">
+                            {% else %}
+                                <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold" id="preview-placeholder">
+                                    {{ current_user.username[0].upper() }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <input type="url" id="profile-pic-url" placeholder="https://example.com/photo.jpg" value="{{ current_user.profile_pic_url or '' }}" 
+                               class="w-full px-4 py-2 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <p class="mt-1 text-xs text-gray-500">Provide a link to an image (JPEG, PNG) for your profile.</p>
+                </div>
+                <div>
+                    <label class="block font-medium text-gray-700 dark:text-gray-300 mb-2">Adjust Profile Picture Position</label>
+                    <div class="flex flex-col items-center space-y-4">
+                        <div class="relative w-32 h-32 rounded-full overflow-hidden border-4 border-indigo-500 cursor-move group select-none shadow-inner" id="drag-container">
+                            {% if current_user.profile_pic_url %}
+                                <img src="{{ current_user.profile_pic_url }}" 
+                                     class="w-full h-full object-cover pointer-events-none" 
+                                     id="preview-pic"
+                                     style="object-position: {{ current_user.profile_pic_position or '50% 50%' }}">
+                            {% else %}
+                                <div class="w-full h-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-4xl font-bold" id="preview-placeholder">
+                                    {{ current_user.username[0].upper() }}
+                                </div>
+                            {% endif %}
+                            <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7l4-4m0 0l4 4m-4-4v18m0 0l-4-4m4 4l4-4m5-5l3 3m0 0l-3 3m3-3H3m0 0l3-3m-3 3l3 3"></path></svg>
+                            </div>
+                        </div>
+                        <div class="w-full grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-[10px] uppercase font-bold text-gray-400">Horizontal Focus</label>
+                                <input type="range" id="pic-x" min="0" max="100" value="50" class="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                            </div>
+                            <div>
+                                <label class="text-[10px] uppercase font-bold text-gray-400">Vertical Focus</label>
+                                <input type="range" id="pic-y" min="0" max="100" value="50" class="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                            </div>
+                        </div>
+                        <input type="hidden" id="profile-pic-position" value="{{ current_user.profile_pic_position or '50% 50%' }}">
+                        <p class="text-xs text-gray-500 italic">Click and drag the image above, or use the sliders to center your face.</p>
+                    </div>
+                </div>
+                <div>
+                    <label for="user-bio" class="block font-medium text-gray-700 dark:text-gray-300 mb-2">Bio / Quote</label>
+                    <textarea id="user-bio" maxlength="255" rows="2" placeholder="Tell us about your goals or share a favorite quote..." 
+                              class="w-full px-4 py-2 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">{{ current_user.bio or '' }}</textarea>
+                    <p class="mt-1 text-xs text-gray-500 text-right"><span id="bio-counter">0</span>/255</p>
+                </div>
+            </div>
+        </section>
+
+        <hr class="border-gray-200 dark:border-gray-700">
+
         <!-- Vim Mode -->
         <div class="flex items-center justify-between">
             <div>
@@ -197,9 +264,78 @@
 
 <script>
     const saveButton = document.getElementById('save-settings');
+    const bioTextarea = document.getElementById('user-bio');
+    const bioCounter = document.getElementById('bio-counter');
+    const picUrlInput = document.getElementById('profile-pic-url');
+    const picPosInput = document.getElementById('profile-pic-position');
+    const previewPic = document.getElementById('preview-pic');
+    const dragContainer = document.getElementById('drag-container');
+    const sliderX = document.getElementById('pic-x');
+    const sliderY = document.getElementById('pic-y');
+
+    if (picPosInput && (sliderX || sliderY)) {
+        const [initialX, initialY] = picPosInput.value.split(' ').map(v => parseInt(v) || 50);
+        sliderX.value = initialX;
+        sliderY.value = initialY;
+    }
+
+    if (dragContainer && previewPic && picPosInput) {
+        let isDragging = false;
+        
+        const updatePos = (x, y) => {
+            sliderX.value = Math.max(0, Math.min(100, x));
+            sliderY.value = Math.max(0, Math.min(100, y));
+            const posValue = `${sliderX.value}% ${sliderY.value}%`;
+            previewPic.style.objectPosition = posValue;
+            picPosInput.value = posValue;
+        };
+
+        dragContainer.addEventListener('mousedown', (e) => { isDragging = true; dragContainer.classList.add('cursor-grabbing'); });
+        window.addEventListener('mouseup', () => { isDragging = false; if(dragContainer) dragContainer.classList.remove('cursor-grabbing'); });
+        
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const rect = dragContainer.getBoundingClientRect();
+            const x = ((e.clientX - rect.left) / rect.width) * 100;
+            const y = ((e.clientY - rect.top) / rect.height) * 100;
+            updatePos(x, y);
+        });
+
+        // Touch support
+        dragContainer.addEventListener('touchstart', (e) => { isDragging = true; }, {passive: true});
+        window.addEventListener('touchend', () => { isDragging = false; });
+        window.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            const touch = e.touches[0];
+            const rect = dragContainer.getBoundingClientRect();
+            const x = ((touch.clientX - rect.left) / rect.width) * 100;
+            const y = ((touch.clientY - rect.top) / rect.height) * 100;
+            updatePos(x, y);
+            e.preventDefault();
+        }, {passive: false});
+
+        sliderX.addEventListener('input', () => updatePos(sliderX.value, sliderY.value));
+        sliderY.addEventListener('input', () => updatePos(sliderX.value, sliderY.value));
+        
+        if (picUrlInput) {
+            picUrlInput.addEventListener('input', () => {
+                if (previewPic) previewPic.src = picUrlInput.value;
+            });
+        }
+    }
+
+    if (bioTextarea && bioCounter) {
+        bioCounter.textContent = bioTextarea.value.length;
+        bioTextarea.addEventListener('input', () => {
+            bioCounter.textContent = bioTextarea.value.length;
+        });
+    }
 
     saveButton.addEventListener('click', () => {
         const settings = {
+            profile_pic_url: document.getElementById('profile-pic-url').value,
+            profile_pic_position: document.getElementById('profile-pic-position').value,
+            bio: document.getElementById('user-bio').value,
             enable_vim_mode: document.getElementById('enable-vim-mode').value === 'true',
             auto_start_break: document.getElementById('auto-break').checked,
             auto_start_focus: document.getElementById('auto-focus').checked,
