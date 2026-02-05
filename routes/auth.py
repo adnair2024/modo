@@ -12,6 +12,9 @@ def login():
         password = request.form.get('password')
         user = User.query.filter_by(username=username).first()
         if user and check_password_hash(user.password_hash, password):
+            if user.is_banned:
+                flash('Your account has been banned.', 'error')
+                return redirect(url_for('auth.login'))
             login_user(user)
             return redirect(url_for('main.index'))
         flash('Invalid username or password', 'error')

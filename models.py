@@ -42,6 +42,8 @@ class User(UserMixin, db.Model):
     profile_pic_position = db.Column(db.String(20), default='center')
     bio = db.Column(db.String(255), nullable=True)
     is_verified = db.Column(db.Boolean, default=False)
+    is_admin = db.Column(db.Boolean, default=False)
+    is_banned = db.Column(db.Boolean, default=False)
 
     notifications = db.relationship('Notification', backref='user', lazy=True, cascade="all, delete-orphan")
 

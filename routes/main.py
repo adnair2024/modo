@@ -6,6 +6,57 @@ from . import main_bp
 from models import db, Task, Tag, Event, Habit, HabitCompletion, EventCompletion, FocusSession, User, Achievement, UserAchievement
 from utils import expand_events, EventOccurrence, log_project_action, check_task_access
 
+from functools import wraps
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or not current_user.is_admin:
+            abort(403)
+        return f(*args, **kwargs)
+    return decorated_function
+
+@main_bp.route('/admin')
+@login_required
+@admin_required
+def admin_dashboard():
+    users = User.query.all()
+    return render_template('admin.html', users=users)
+
+@main_bp.route('/admin/user/<int:user_id>/ban', methods=['POST'])
+@login_required
+@admin_required
+def admin_ban_user(user_id):
+    user = User.query.get_or_404(user_id)
+    if user.username == 'lost':
+        return "Cannot ban the owner", 400
+    user.is_banned = not user.is_banned
+    db.session.commit()
+    return redirect(url_for('main.admin_dashboard'))
+
+@main_bp.route('/admin/user/<int:user_id>/rename', methods=['POST'])
+@login_required
+@admin_required
+def admin_rename_user(user_id):
+    user = User.query.get_or_404(user_id)
+    new_username = request.form.get('username')
+    if new_username:
+        user.username = new_username
+        db.session.commit()
+    return redirect(url_for('main.admin_dashboard'))
+
+@main_bp.route('/admin/user/<int:user_id>/edit_timer', methods=['POST'])
+@login_required
+@admin_required
+def admin_edit_timer(user_id):
+    user = User.query.get_or_404(user_id)
+    focus = request.form.get('focus_duration', type=int)
+    break_d = request.form.get('break_duration', type=int)
+    if focus: user.focus_duration = focus
+    if break_d: user.break_duration = break_d
+    db.session.commit()
+    return redirect(url_for('main.admin_dashboard'))
+
 @main_bp.route('/badges')
 @login_required
 def badges():

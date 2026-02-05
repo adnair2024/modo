@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto py-8">
+    <div class="flex justify-between items-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Admin Dashboard</h1>
+        <div class="bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg text-sm font-bold uppercase tracking-wider">
+            Admin Access: {{ current_user.username }}
+        </div>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 shadow-xl rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-700">
+        <table class="min-w-full leading-normal">
+            <thead>
+                <tr class="bg-gray-50 dark:bg-gray-900">
+                    <th class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">User</th>
+                    <th class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                    <th class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Timer Settings</th>
+                    <th class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 text-right text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                {% for user in users %}
+                <tr class="{{ 'bg-indigo-50/10' if user.is_admin else '' }}">
+                    <td class="px-5 py-5 text-sm">
+                        <div class="flex items-center gap-3">
+                            {% if user.profile_pic_url %}
+                                <img class="w-10 h-10 rounded-full object-cover" src="{{ user.profile_pic_url }}" style="object-position: {{ user.profile_pic_position or '50% 50%' }}">
+                            {% else %}
+                                <div class="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center font-bold text-gray-500">
+                                    {{ user.username[0].upper() }}
+                                </div>
+                            {% endif %}
+                            <div>
+                                <p class="text-gray-900 dark:text-white font-bold flex items-center gap-1">
+                                    {{ user.username }}
+                                    {% if user.is_admin %}
+                                        <span class="text-[10px] bg-indigo-600 text-white px-1.5 py-0.5 rounded uppercase">Owner</span>
+                                    {% endif %}
+                                </p>
+                                <p class="text-gray-500 dark:text-gray-400 text-xs italic">{{ user.bio or 'No bio' }}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-5 py-5 text-sm">
+                        {% if user.is_banned %}
+                            <span class="px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-bold uppercase">Banned</span>
+                        {% else %}
+                            <span class="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold uppercase">Active</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-5 py-5 text-sm">
+                        <form action="{{ url_for('main.admin_edit_timer', user_id=user.id) }}" method="POST" class="flex items-center gap-2">
+                            <input type="number" name="focus_duration" value="{{ user.focus_duration }}" class="w-16 px-2 py-1 rounded border dark:bg-gray-700 dark:border-gray-600 dark:text-white text-xs">
+                            <span class="text-gray-400">/</span>
+                            <input type="number" name="break_duration" value="{{ user.break_duration }}" class="w-16 px-2 py-1 rounded border dark:bg-gray-700 dark:border-gray-600 dark:text-white text-xs">
+                            <button class="text-indigo-600 hover:text-indigo-800">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            </button>
+                        </form>
+                    </td>
+                    <td class="px-5 py-5 text-sm text-right space-y-2">
+                        <!-- Rename -->
+                        <form action="{{ url_for('main.admin_rename_user', user_id=user.id) }}" method="POST" class="inline-flex gap-1">
+                            <input type="text" name="username" placeholder="New name" class="w-24 px-2 py-1 rounded border dark:bg-gray-700 dark:border-gray-600 dark:text-white text-xs">
+                            <button class="bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded text-xs hover:bg-gray-300">Rename</button>
+                        </form>
+                        
+                        <!-- Ban/Unban -->
+                        {% if user.username != 'lost' %}
+                        <form action="{{ url_for('main.admin_ban_user', user_id=user.id) }}" method="POST" class="inline-block ml-2">
+                            <button class="px-3 py-1 rounded text-xs font-bold uppercase transition {{ 'bg-green-600 text-white hover:bg-green-700' if user.is_banned else 'bg-red-600 text-white hover:bg-red-700' }}">
+                                {{ 'Unban' if user.is_banned else 'Ban' }}
+                            </button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
