@@ -19,15 +19,13 @@ depends_on = None
 def upgrade():
     # Direct check for columns to avoid DuplicateColumn errors in production
     conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    columns = [c['name'] for c in inspector.get_columns('user')]
     
-    # Check for profile_pic_url
-    res_url = conn.execute(sa.text("SELECT column_name FROM information_schema.columns WHERE table_name='user' AND column_name='profile_pic_url'")).fetchone()
-    if not res_url:
+    if 'profile_pic_url' not in columns:
         op.add_column('user', sa.Column('profile_pic_url', sa.String(length=500), nullable=True))
     
-    # Check for bio
-    res_bio = conn.execute(sa.text("SELECT column_name FROM information_schema.columns WHERE table_name='user' AND column_name='bio'")).fetchone()
-    if not res_bio:
+    if 'bio' not in columns:
         op.add_column('user', sa.Column('bio', sa.String(length=255), nullable=True))
 
 

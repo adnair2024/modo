@@ -18,8 +18,10 @@ depends_on = None
 
 def upgrade():
     conn = op.get_bind()
-    res_pos = conn.execute(sa.text("SELECT column_name FROM information_schema.columns WHERE table_name='user' AND column_name='profile_pic_position'")).fetchone()
-    if not res_pos:
+    inspector = sa.inspect(conn)
+    columns = [c['name'] for c in inspector.get_columns('user')]
+
+    if 'profile_pic_position' not in columns:
         op.add_column('user', sa.Column('profile_pic_position', sa.String(length=20), nullable=True))
 
 
