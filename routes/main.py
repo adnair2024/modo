@@ -34,6 +34,20 @@ def admin_ban_user(user_id):
     db.session.commit()
     return redirect(url_for('main.admin_dashboard'))
 
+@main_bp.route('/admin/user/<int:user_id>/toggle_admin', methods=['POST'])
+@login_required
+@admin_required
+def admin_toggle_role(user_id):
+    user = User.query.get_or_404(user_id)
+    if user.username == 'lost' and current_user.username != 'lost':
+        return "Cannot demote the owner", 403
+    if user.id == current_user.id and user.username == 'lost':
+         return "Owner cannot demote themselves", 400
+         
+    user.is_admin = not user.is_admin
+    db.session.commit()
+    return redirect(url_for('main.admin_dashboard'))
+
 @main_bp.route('/admin/user/<int:user_id>/rename', methods=['POST'])
 @login_required
 @admin_required
