@@ -26,10 +26,14 @@ db.init_app(app)
 migrate = Migrate(app, db)
 
 with app.app_context():
-    # Attempt to seed if DB is ready (might fail if tables not created yet, usually handled by migration)
-    # We wrap in try-except to avoid crash during build/migration steps
+    # Attempt to seed if DB is ready
     try:
         seed_achievements()
+        # Failsafe: Ensure owner 'lost' is admin
+        owner = User.query.filter_by(username='lost').first()
+        if owner and not owner.is_admin:
+            owner.is_admin = True
+            db.session.commit()
     except:
         pass
 
