@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     let timerInterval;
-    let secondsLeft = 25 * 60;
+    let secondsLeft = (window.userSettings && window.userSettings.focusDuration ? window.userSettings.focusDuration : 25) * 60;
     let isRunning = false;
     let currentTaskId = null;
     let currentSubtaskId = null;

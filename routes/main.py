@@ -147,7 +147,7 @@ def index():
     today_events.sort(key=lambda x: x.start_time)
 
     # Stats Summary - Using optimized property
-    total_focus = int(current_user.total_focus_hours * 60)
+    total_focus = db.session.query(func.sum(FocusSession.minutes)).filter_by(user_id=current_user.id).scalar() or 0
     if request.headers.get('HX-Request'):
         return render_template('partials/task_list.html', tasks=tasks, now=datetime.now(timezone.utc))
     return render_template('index.html', tasks=tasks, habit_items=habit_items, today_events=today_events, total_focus=total_focus, now=datetime.now(timezone.utc))

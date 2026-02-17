@@ -31,26 +31,33 @@ class EventOccurrence:
         self.is_completed = is_completed
 
 def expand_events(events, start_date, end_date):
+    if not events:
+        return []
+    
+    event_ids = [e.id for e in events]
+    completions = EventCompletion.query.filter(
+        EventCompletion.event_id.in_(event_ids),
+        EventCompletion.date >= start_date,
+        EventCompletion.date <= end_date
+    ).all()
+    
+    comp_set = {(c.event_id, c.date) for c in completions}
+    
     occurrences = []
     for event in events:
-        # Determine occurrence times within range
         current = event.start_time.replace(tzinfo=timezone.utc) if event.start_time.tzinfo is None else event.start_time
         
-        # This is a simplified expansion logic
-        # For 'none' recurrence, just check if it's in range
         if event.recurrence == 'none':
             if start_date <= current.date() <= end_date:
-                # Check completion
-                comp = EventCompletion.query.filter_by(event_id=event.id, date=current.date()).first()
-                occurrences.append(EventOccurrence(event, current, comp is not None or event.is_completed))
+                is_done = (event.id, current.date()) in comp_set or event.is_completed
+                occurrences.append(EventOccurrence(event, current, is_done))
         
         elif event.recurrence == 'daily':
-            # Start from the later of event start or range start
             iter_date = max(current.date(), start_date)
             while iter_date <= end_date:
                 occ_start = datetime.combine(iter_date, current.time()).replace(tzinfo=timezone.utc)
-                comp = EventCompletion.query.filter_by(event_id=event.id, date=iter_date).first()
-                occurrences.append(EventOccurrence(event, occ_start, comp is not None))
+                is_done = (event.id, iter_date) in comp_set
+                occurrences.append(EventOccurrence(event, occ_start, is_done))
                 iter_date += timedelta(days=1)
                 
     return occurrences
