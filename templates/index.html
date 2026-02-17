@@ -168,7 +168,7 @@
                     <span class="text-accent font-bold mt-0.5 opacity-50">></span>
                     <input type="text" id="genesis-input" 
                            placeholder="SYSTEM_COMMAND_" 
-                           class="w-full font-bold uppercase placeholder:opacity-20 bg-transparent outline-none border-none focus:ring-0 p-0 text-sm tracking-widest"
+                           class="w-full font-bold uppercase placeholder:opacity-50 bg-transparent outline-none border-none focus:ring-0 p-0 text-sm tracking-widest"
                            @keydown.up.prevent="
                                 if (cmdHistory.length > 0) {
                                     historyIndex = Math.min(historyIndex + 1, cmdHistory.length - 1);
@@ -242,13 +242,13 @@
                         <div>
                             <label class="block text-[10px] font-bold opacity-90 uppercase mb-1 tracking-widest text-center">Title</label>
                             <input type="text" name="title" placeholder="TASK_NAME" required
-                                class="noir-input w-full text-lg font-bold tracking-tight placeholder:opacity-20 text-center">
+                                class="noir-input w-full text-lg font-bold tracking-tight placeholder:opacity-50 text-center">
                         </div>
                         
                         <div>
                             <label class="block text-[10px] font-bold opacity-90 uppercase mb-1 tracking-widest text-center">Description</label>
                             <textarea name="description" placeholder="NOTES" rows="2"
-                                class="noir-input w-full text-sm opacity-90 resize-none placeholder:opacity-20 text-center"></textarea>
+                                class="noir-input w-full text-sm opacity-90 resize-none placeholder:opacity-50 text-center"></textarea>
                         </div>
 
                         <div class="grid grid-cols-3 gap-4">
@@ -263,12 +263,12 @@
                             <div>
                                 <label class="block text-[10px] font-bold opacity-90 uppercase mb-1 tracking-widest text-center">Poms</label>
                                 <input type="number" name="estimated_pomodoros" value="1" min="1" max="10"
-                                    class="noir-input w-full text-sm placeholder:opacity-20 text-center">
+                                    class="noir-input w-full text-sm placeholder:opacity-50 text-center">
                             </div>
                             <div>
                                 <label class="block text-[10px] font-bold opacity-90 uppercase mb-1 tracking-widest text-center">Tags</label>
                                 <input type="text" name="tags" placeholder="WORK..."
-                                    class="noir-input w-full text-sm placeholder:opacity-20 text-center">
+                                    class="noir-input w-full text-sm placeholder:opacity-50 text-center">
                             </div>
                         </div>
                     </div>
