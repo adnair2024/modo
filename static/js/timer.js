@@ -163,7 +163,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 seconds_left: secondsLeft,
                 task_id: currentTaskId
             })
-        }).then(() => {
+        }).then(res => {
+            if (res.status === 401) {
+                // User logged out elsewhere
+                localStorage.removeItem('timerStatus');
+                localStorage.removeItem('timerEnd');
+                document.title = 'Modo - Productivity Manager';
+                return;
+            }
             lastSync = Date.now();
         }).catch(() => {});
     }

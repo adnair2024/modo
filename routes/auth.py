@@ -39,5 +39,11 @@ def signup():
 @auth.route('/logout')
 @login_required
 def logout():
+    # Clear live focus state on logout
+    current_user.current_focus_mode = 'none'
+    current_user.current_focus_start = None
+    current_user.current_focus_end = None
+    db.session.commit()
+    
     logout_user()
     return redirect(url_for('auth.login'))

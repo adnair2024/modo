@@ -439,7 +439,9 @@
     {% if current_user.is_authenticated and current_user.enable_vim_mode %}
     <script src="{{ url_for('static', filename='js/vim.js') }}"></script>
     {% endif %}
+    {% if current_user.is_authenticated %}
     <script src="{{ url_for('static', filename='js/timer.js') }}"></script>
+    {% endif %}
     <script>
         function formatLocalTimes() {
             document.querySelectorAll('.utc-time').forEach(el => {
