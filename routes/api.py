@@ -418,7 +418,7 @@ def genesis_command():
     if api_key:
         try:
             genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-pro')
+            model = genai.GenerativeModel('gemini-1.5-flash')
             persona_prefix = """You are Genesis, the core of the Modo ecosystem. 
             Your tone is cold and technical. Keep responses extremely concise. 
             If asked for status, reply ONLY with 'I am operational.'
