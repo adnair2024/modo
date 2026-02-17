@@ -200,7 +200,7 @@
                          x-init="fetch('/api/notifications').then(r => r.json()).then(data => unreadCount = data.length)"
                          @unread-count-update.window="unreadCount = $event.detail">
                         <button @click="notifOpen = !notifOpen" 
-                                hx-get="/notifications" 
+                                hx-get="/api/notifications" 
                                 hx-target="#notif-content"
                                 class="relative hover:text-accent transition-colors flex items-center gap-2">
                             <span class="text-xs font-bold tracking-widest uppercase">ALERTS</span>
