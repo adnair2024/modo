@@ -96,6 +96,14 @@
                 --accent-rgb: 79, 70, 229;
             {% endif %}
         }
+    
+        @keyframes pulse-accent {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.05); color: var(--accent-color); }
+        }
+        .animate-pulse-accent {
+            animation: pulse-accent 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
     </style>
 </head>
 <body class="transition-colors duration-0" x-data="{ mobileSidebarOpen: false, desktopSidebarOpen: true, endSessionModal: { open: false, mins: 0, taskId: null }, systemModal: { open: false, title: '', msg: '', isConfirm: false, resolve: null } }">
@@ -225,7 +233,7 @@
                         <button @click="notifOpen = !notifOpen" 
                                 hx-get="/api/notifications" 
                                 hx-target="#notif-content"
-                                class="relative hover:text-accent transition-colors flex items-center gap-2">
+                                :class="unreadCount > 0 ? 'animate-pulse-accent' : ''" class="relative hover:text-accent transition-colors flex items-center gap-2">
                             <span class="text-xs font-bold tracking-widest uppercase">ALERTS</span>
                             <span class="text-[10px] font-bold px-1.5 py-0.5 border border-accent bg-accent/10 text-accent" x-text="unreadCount">0</span>
                         </button>
