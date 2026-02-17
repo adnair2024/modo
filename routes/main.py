@@ -328,26 +328,73 @@ def leaderboard():
 @main_bp.route('/stats')
 @login_required
 def personal_stats():
-    sessions = FocusSession.query.filter_by(user_id=current_user.id).order_by(FocusSession.date.desc()).all()
     now = datetime.now(timezone.utc)
-    daily_stats = []
-    for i in range(7):
-        date = (now - timedelta(days=i)).date()
-        mins = db.session.query(func.sum(FocusSession.minutes)).filter(FocusSession.user_id == current_user.id, func.date(FocusSession.date) == date).scalar() or 0
-        daily_stats.append({'date': date, 'minutes': mins})
-    daily_stats.reverse()
+    
+    # Core Metrics
+    total_minutes = db.session.query(func.sum(FocusSession.minutes)).filter_by(user_id=current_user.id).scalar() or 0
+    total_sessions = FocusSession.query.filter_by(user_id=current_user.id).count()
+    
+    # Weekly Logic
+    start_of_week = now - timedelta(days=now.weekday())
+    start_of_week = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
+    weekly_minutes = db.session.query(func.sum(FocusSession.minutes)).filter(
+        FocusSession.user_id == current_user.id,
+        FocusSession.date >= start_of_week
+    ).scalar() or 0
+    
+    # Sync Logic
+    sync_sessions = FocusSession.query.filter(
+        FocusSession.user_id == current_user.id,
+        FocusSession.partner_id.isnot(None)
+    ).all()
+    sync_minutes = sum(s.minutes for s in sync_sessions)
+    sync_sessions_count = len(sync_sessions)
+    
+    # Top Partner
+    top_partner_data = db.session.query(
+        FocusSession.partner_id, 
+        func.count(FocusSession.id)
+    ).filter(
+        FocusSession.user_id == current_user.id,
+        FocusSession.partner_id.isnot(None)
+    ).group_by(FocusSession.partner_id).order_by(func.count(FocusSession.id).desc()).first()
+    
+    top_partner = None
+    if top_partner_data:
+        top_partner = db.session.get(User, top_partner_data[0])
+
+    # Heatmap Data (Current Year)
     year_start = datetime(now.year, 1, 1, tzinfo=timezone.utc)
-    sessions_year = FocusSession.query.filter(FocusSession.user_id == current_user.id, FocusSession.date >= year_start).all()
+    sessions_year = FocusSession.query.filter(
+        FocusSession.user_id == current_user.id, 
+        FocusSession.date >= year_start
+    ).all()
+    
     heatmap_data = {}
     for s in sessions_year:
         d_str = s.date.strftime('%Y-%m-%d')
         heatmap_data[d_str] = heatmap_data.get(d_str, 0) + s.minutes
-    habit_completions = HabitCompletion.query.join(Habit).filter(Habit.user_id == current_user.id, HabitCompletion.date >= year_start.date()).all()
+        
+    habit_completions = HabitCompletion.query.join(Habit).filter(
+        Habit.user_id == current_user.id, 
+        HabitCompletion.date >= year_start.date()
+    ).all()
+    
     habit_heatmap_data = {}
     for c in habit_completions:
         d_str = c.date.strftime('%Y-%m-%d')
         habit_heatmap_data[d_str] = habit_heatmap_data.get(d_str, 0) + 1
-    return render_template('stats.html', sessions=sessions, daily_stats=daily_stats, heatmap_data=heatmap_data, habit_heatmap_data=habit_heatmap_data)
+        
+    return render_template('stats.html', 
+                           total_minutes=total_minutes,
+                           total_sessions=total_sessions,
+                           weekly_minutes=weekly_minutes,
+                           sync_minutes=sync_minutes,
+                           sync_sessions_count=sync_sessions_count,
+                           top_partner=top_partner,
+                           heatmap_data=heatmap_data, 
+                           habit_heatmap_data=habit_heatmap_data,
+                           current_year=now.year)
 
 @main_bp.route('/habits')
 @login_required
