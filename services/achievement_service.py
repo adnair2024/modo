@@ -2,46 +2,48 @@ from models import db, Achievement, UserAchievement
 from utils import create_notification
 
 def check_achievements(user):
-    # Total Focus Time
-    total_hours = user.total_focus_hours
-    
-    # Total Pomodoros
-    total_pomos = sum(session.minutes // 25 for session in user.focus_sessions)
-    
-    # Friend Count
-    from models import Friendship, FocusSession
-    friend_count = Friendship.query.filter(
-        ((Friendship.user_id == user.id) | (Friendship.friend_id == user.id)),
-        Friendship.status == 'accepted'
-    ).count()
-
-    # Partner Sessions
-    partner_sessions = FocusSession.query.filter(
-        FocusSession.user_id == user.id,
-        FocusSession.partner_id.isnot(None)
-    ).count()
-
     # Get user's earned ids
     earned_ids = {ua.achievement_id for ua in user.achievements}
-    
-    new_unlocks = []
     
     # Check all achievements
     achievements = Achievement.query.all()
     
-    for ach in achievements:
-        if ach.id in earned_ids:
-            continue
-            
+    unearned = [ach for ach in achievements if ach.id not in earned_ids]
+    if not unearned:
+        return
+
+    # Only calculate stats if we have unearned achievements of that type
+    total_hours = None
+    total_pomos = None
+    friend_count = None
+    partner_sessions = None
+    
+    new_unlocks = []
+    
+    for ach in unearned:
         unlocked = False
-        if ach.criteria_type == 'focus_hours' and total_hours >= ach.criteria_value:
-            unlocked = True
-        elif ach.criteria_type == 'pomodoro_count' and total_pomos >= ach.criteria_value:
-            unlocked = True
-        elif ach.criteria_type == 'friend_count' and friend_count >= ach.criteria_value:
-            unlocked = True
-        elif ach.criteria_type == 'partner_session_count' and partner_sessions >= ach.criteria_value:
-            unlocked = True
+        if ach.criteria_type == 'focus_hours':
+            if total_hours is None: total_hours = user.total_focus_hours
+            if total_hours >= ach.criteria_value: unlocked = True
+        elif ach.criteria_type == 'pomodoro_count':
+            if total_pomos is None: total_pomos = sum(session.minutes // 25 for session in user.focus_sessions)
+            if total_pomos >= ach.criteria_value: unlocked = True
+        elif ach.criteria_type == 'friend_count':
+            if friend_count is None:
+                from models import Friendship
+                friend_count = Friendship.query.filter(
+                    ((Friendship.user_id == user.id) | (Friendship.friend_id == user.id)),
+                    Friendship.status == 'accepted'
+                ).count()
+            if friend_count >= ach.criteria_value: unlocked = True
+        elif ach.criteria_type == 'partner_session_count':
+            if partner_sessions is None:
+                from models import FocusSession
+                partner_sessions = FocusSession.query.filter(
+                    FocusSession.user_id == user.id,
+                    FocusSession.partner_id.isnot(None)
+                ).count()
+            if partner_sessions >= ach.criteria_value: unlocked = True
             
         if unlocked:
             ua = UserAchievement(user_id=user.id, achievement_id=ach.id)

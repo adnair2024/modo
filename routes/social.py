@@ -89,7 +89,12 @@ def friends_list():
     now = datetime.now(timezone.utc)
     
     for friend in friends:
-        is_online = (now - friend.last_seen.replace(tzinfo=timezone.utc) if friend.last_seen.tzinfo is None else now - friend.last_seen).total_seconds() < 300 
+        if not friend.last_seen:
+            is_online = False
+        else:
+            friend_last_seen = friend.last_seen.replace(tzinfo=timezone.utc) if friend.last_seen.tzinfo is None else friend.last_seen
+            is_online = (now - friend_last_seen).total_seconds() < 300 
+            
         is_syncing = sync_map.get(friend.id, False)
         
         status_msg = "Offline"
@@ -97,8 +102,13 @@ def friends_list():
             status_msg = "Online"
             
         timer_info = None
-        if friend.current_focus_end and friend.current_focus_end > now:
-            remaining = (friend.current_focus_end - now).total_seconds()
+        # Handle current_focus_end (might be naive from DB)
+        focus_end = friend.current_focus_end
+        if focus_end and focus_end.tzinfo is None:
+            focus_end = focus_end.replace(tzinfo=timezone.utc)
+
+        if focus_end and focus_end > now:
+            remaining = (focus_end - now).total_seconds()
             minutes = int(remaining // 60)
             seconds = int(remaining % 60)
             timer_info = {
@@ -114,17 +124,17 @@ def friends_list():
         elif is_online:
             # Idling logic
             # Idle since last_focus_end or last_seen (whichever is more relevant)
-            # last_focus_end is the start of 'true' idle time
             idle_start = friend.last_focus_end or friend.last_seen
-            if idle_start.tzinfo is None:
-                idle_start = idle_start.replace(tzinfo=timezone.utc)
-            idle_seconds = (now - idle_start).total_seconds()
-            idle_mins = int(idle_seconds // 60)
-            timer_info = {
-                'mode': 'idle',
-                'minutes': idle_mins,
-                'task': None
-            }
+            if idle_start:
+                if idle_start.tzinfo is None:
+                    idle_start = idle_start.replace(tzinfo=timezone.utc)
+                idle_seconds = (now - idle_start).total_seconds()
+                idle_mins = int(idle_seconds // 60)
+                timer_info = {
+                    'mode': 'idle',
+                    'minutes': idle_mins,
+                    'task': None
+                }
         
         friends_data.append({
             'user': friend,

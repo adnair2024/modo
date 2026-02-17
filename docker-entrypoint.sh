@@ -17,4 +17,4 @@ echo "Starting background tasks (repair & sync)..."
 
 # Start the application with verbose logging and bind to $PORT
 echo "Starting Gunicorn on port $PORT..."
-exec gunicorn --bind 0.0.0.0:$PORT --access-logfile - --error-logfile - --log-level debug --workers 2 --timeout 120 app:app
+exec gunicorn --bind 0.0.0.0:$PORT --access-logfile - --error-logfile - --log-level info --workers 2 --timeout 120 app:app
