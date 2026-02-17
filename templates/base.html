@@ -26,6 +26,29 @@
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', resolveTheme);
     </script>
     <script>
+        
+        window.modoAlert = (msg, title = 'SYSTEM_ALERT') => {
+            return new Promise(resolve => {
+                const bodyData = document.body.__x.;
+                bodyData.systemModal.title = title;
+                bodyData.systemModal.msg = msg;
+                bodyData.systemModal.isConfirm = false;
+                bodyData.systemModal.resolve = resolve;
+                bodyData.systemModal.open = true;
+            });
+        };
+
+        window.modoConfirm = (msg, title = 'SYSTEM_CONFIRM') => {
+            return new Promise(resolve => {
+                const bodyData = document.body.__x.;
+                bodyData.systemModal.title = title;
+                bodyData.systemModal.msg = msg;
+                bodyData.systemModal.isConfirm = true;
+                bodyData.systemModal.resolve = resolve;
+                bodyData.systemModal.open = true;
+            });
+        };
+
         window.modoNotify = (msg, type = 'info') => {
             window.dispatchEvent(new CustomEvent('modo-notify', { detail: { msg, type } }));
         };
@@ -75,7 +98,7 @@
         }
     </style>
 </head>
-<body class="transition-colors duration-0" x-data="{ mobileSidebarOpen: false, desktopSidebarOpen: true, endSessionModal: { open: false, mins: 0, taskId: null } }">
+<body class="transition-colors duration-0" x-data="{ mobileSidebarOpen: false, desktopSidebarOpen: true, endSessionModal: { open: false, mins: 0, taskId: null }, systemModal: { open: false, title: '', msg: '', isConfirm: false, resolve: null } }">
     <div class="flex h-screen overflow-hidden" x-data="{ 
         toasts: [],
         addToast(msg, type = 'info') {
@@ -452,6 +475,28 @@
                 <button @click="window.finalizeEndSession(true)" 
                         class="noir-button py-3 text-[10px] tracking-widest">EXECUTE_LOG</button>
                 <button @click="window.finalizeEndSession(false)" 
+                        class="noir-button-outline py-3 text-[10px] tracking-widest">ABORT</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Generic System Modal -->
+    <div x-show="systemModal.open" 
+         class="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/90 animate-in fade-in duration-200"
+         x-cloak>
+        <div class="max-w-md w-full noir-border bg-[var(--bg-alt)] p-8 space-y-6 shadow-2xl"
+             @click.away="if(!systemModal.isConfirm) { systemModal.open = false; if(systemModal.resolve) systemModal.resolve(true); }">
+            <div class="space-y-2 text-center">
+                <span class="text-[10px] font-bold opacity-40 uppercase tracking-widest" x-text="systemModal.title"></span>
+                <p class="text-sm font-bold uppercase tracking-wide" x-text="systemModal.msg"></p>
+            </div>
+
+            <div class="flex flex-col gap-3 pt-4">
+                <button @click="systemModal.open = false; if(systemModal.resolve) systemModal.resolve(true)" 
+                        class="noir-button py-3 text-[10px] tracking-widest">PROCEED</button>
+                <button x-show="systemModal.isConfirm" 
+                        @click="systemModal.open = false; if(systemModal.resolve) systemModal.resolve(false)" 
                         class="noir-button-outline py-3 text-[10px] tracking-widest">ABORT</button>
             </div>
         </div>

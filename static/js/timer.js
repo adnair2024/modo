@@ -368,7 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (!currentTaskId) {
-                alert('Please select a task first!');
+                window.modoAlert('Please select a task first!', 'VALIDATION_ERROR');
                 return;
             }
             updateTaskSelects(currentTaskId);
