@@ -452,17 +452,35 @@ document.addEventListener('DOMContentLoaded', () => {
         const elapsedSeconds = totalSeconds - secondsLeft;
         
         if (elapsedSeconds < 60) {
-             if (confirm('Less than 1 minute elapsed. End without logging?')) {
-                resetTimer();
-             }
+             // We can still use alert for very minor errors or just ignore
+             window.modoNotify('Insufficient elapsed time (< 1m)', 'warning');
+             resetTimer();
              return;
         }
 
         const minutesLogged = Math.floor(elapsedSeconds / 60);
+        
+        // Open the custom Alpine modal instead of confirm()
+        const bodyData = document.body.__x.$data;
+        if (bodyData) {
+            bodyData.endSessionModal.mins = minutesLogged;
+            bodyData.endSessionModal.taskId = currentTaskId;
+            bodyData.endSessionModal.open = true;
+        }
+    }
 
-        if (confirm(`End session and log ${minutesLogged} minutes?`)) {
+    window.finalizeEndSession = function(confirm) {
+        const bodyData = document.body.__x.$data;
+        if (!bodyData) return;
+        
+        const minutesLogged = bodyData.endSessionModal.mins;
+        const taskId = bodyData.endSessionModal.taskId;
+        bodyData.endSessionModal.open = false;
+
+        if (confirm) {
              pauseTimer(); 
-             const payload = { minutes: minutesLogged, task_id: currentTaskId };
+             const settings = window.userSettings || {};
+             const payload = { minutes: minutesLogged, task_id: taskId };
              if (settings.syncMode && settings.activeRoomId) payload.room_id = settings.activeRoomId;
 
              fetch('/api/log_session', {

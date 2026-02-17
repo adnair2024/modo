@@ -75,7 +75,7 @@
         }
     </style>
 </head>
-<body class="transition-colors duration-0" x-data="{ mobileSidebarOpen: false, desktopSidebarOpen: true }">
+<body class="transition-colors duration-0" x-data="{ mobileSidebarOpen: false, desktopSidebarOpen: true, endSessionModal: { open: false, mins: 0, taskId: null } }">
     <div class="flex h-screen overflow-hidden" x-data="{ 
         toasts: [],
         addToast(msg, type = 'info') {
@@ -433,5 +433,29 @@
         document.addEventListener('DOMContentLoaded', formatLocalTimes);
         document.addEventListener('htmx:afterSwap', formatLocalTimes);
     </script>
+
+    <!-- Custom End Session Modal -->
+    <div x-show="endSessionModal.open" 
+         class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 animate-in fade-in duration-200"
+         x-cloak>
+        <div class="max-w-sm w-full noir-border bg-[var(--bg-alt)] p-8 space-y-6 shadow-2xl"
+             @click.away="endSessionModal.open = false">
+            <div class="space-y-2 text-center">
+                <span class="text-[10px] font-bold opacity-40 uppercase tracking-widest">System_Termination_Protocol</span>
+                <h3 class="text-2xl font-bold mono-display uppercase tracking-tight text-accent">Log Focus Session?</h3>
+                <p class="text-xs font-bold opacity-70 uppercase tracking-wide">
+                    Total_Elapsed: <span class="text-accent" x-text="endSessionModal.mins + ' MINS'"></span>
+                </p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 pt-4">
+                <button @click="window.finalizeEndSession(true)" 
+                        class="noir-button py-3 text-[10px] tracking-widest">EXECUTE_LOG</button>
+                <button @click="window.finalizeEndSession(false)" 
+                        class="noir-button-outline py-3 text-[10px] tracking-widest">ABORT</button>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
