@@ -68,7 +68,10 @@ class User(UserMixin, db.Model):
     @property
     def total_focus_hours(self):
         from sqlalchemy import func
-        total_mins = db.session.query(func.sum(FocusSession.minutes)).filter_by(user_id=self.id).scalar() or 0
+        # Use object_session(self) to ensure we're using the session this object belongs to
+        from sqlalchemy.orm import object_session
+        session = object_session(self) or db.session
+        total_mins = session.query(func.sum(FocusSession.minutes)).filter_by(user_id=self.id).scalar() or 0
         return total_mins / 60
 
 class Friendship(db.Model):

@@ -7,7 +7,6 @@ from utils import create_notification, check_event_notifications, check_task_acc
 from services.achievement_service import check_achievements
 from extensions import csrf
 import os
-import google.generativeai as genai
 
 @api_bp.route('/log_session', methods=['POST'])
 @login_required
@@ -150,6 +149,7 @@ def update_settings():
 @api_bp.route('/genesis', methods=['POST'])
 @login_required
 def genesis_command():
+    import google.generativeai as genai
     if not current_user.is_admin:
         abort(403)
         
