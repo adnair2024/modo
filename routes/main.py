@@ -125,10 +125,27 @@ def index():
             query = query.filter(Task.due_date <= date_end)
         except ValueError: pass
     sort_by = request.args.get('sort', 'created_at')
-    if sort_by == 'priority': query = query.order_by(Task.priority.desc(), Task.created_at.desc())
-    elif sort_by == 'due_date': query = query.order_by(Task.due_date.asc(), Task.created_at.desc())
-    else: query = query.order_by(Task.created_at.desc())
-    tasks = query.all()
+    show_all_done = request.args.get('show_all_done') == 'true'
+    
+    # 1. Fetch Active Tasks (not done)
+    active_query = query.filter(Task.status != 'done')
+    if sort_by == 'priority': active_query = active_query.order_by(Task.priority.desc(), Task.created_at.desc())
+    elif sort_by == 'due_date': active_query = active_query.order_by(Task.due_date.asc(), Task.created_at.desc())
+    else: active_query = active_query.order_by(Task.created_at.desc())
+    active_tasks = active_query.all()
+    
+    # 2. Fetch Completed Tasks (limited to 10 unless show_all_done is true)
+    done_query = query.filter_by(status='done').order_by(Task.created_at.desc())
+    
+    total_done_count = done_query.count()
+    if not show_all_done:
+        done_tasks = done_query.limit(10).all()
+    else:
+        done_tasks = done_query.all()
+        
+    tasks = active_tasks + done_tasks
+    has_more_completed = total_done_count > 10 and not show_all_done
+    
     today = datetime.now(timezone.utc).date()
     
     # Optimized Habits Query
@@ -149,8 +166,8 @@ def index():
     # Stats Summary - Using optimized property
     total_focus = db.session.query(func.sum(FocusSession.minutes)).filter_by(user_id=current_user.id).scalar() or 0
     if request.headers.get('HX-Request'):
-        return render_template('partials/task_list.html', tasks=tasks, now=datetime.now(timezone.utc))
-    return render_template('index.html', tasks=tasks, habit_items=habit_items, today_events=today_events, total_focus=total_focus, now=datetime.now(timezone.utc))
+        return render_template('partials/task_list.html', tasks=tasks, now=datetime.now(timezone.utc), has_more_completed=has_more_completed)
+    return render_template('index.html', tasks=tasks, habit_items=habit_items, today_events=today_events, total_focus=total_focus, now=datetime.now(timezone.utc), has_more_completed=has_more_completed)
 
 @main_bp.route('/timer')
 @login_required
