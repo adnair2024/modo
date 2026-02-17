@@ -169,9 +169,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }).catch(() => {});
     }
 
-    function updateTaskSelects(value) {
+    function updateTaskSelects(value, triggerSubtaskFetch = false) {
         if (elements.global.task) elements.global.task.value = value;
         if (elements.page.task) elements.page.task.value = value;
+        if (triggerSubtaskFetch) {
+            fetchSubtasks(value, currentSubtaskId);
+        }
     }
 
     function fetchSubtasks(taskId, selectedSubtaskId = null) {
@@ -640,15 +643,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (elements.global.reset) elements.global.reset.addEventListener('click', resetTimer);
         if (elements.global.skip) elements.global.skip.addEventListener('click', skipBreak);
         if (elements.global.end) elements.global.end.addEventListener('click', endSession);
-        if (elements.global.task) elements.global.task.addEventListener('change', (e) => {
-            currentTaskId = e.target.value;
-            currentSubtaskId = null;
-            localStorage.setItem('timerSubtask', '');
-            updateTaskSelects(currentTaskId);
-            localStorage.setItem('timerTask', currentTaskId);
-            fetchSubtasks(currentTaskId);
-            updateUI();
-        });
+        if (elements.global.task) elements.global.task.addEventListener('change', (e) => { currentTaskId = e.target.value; currentSubtaskId = null; localStorage.setItem('timerSubtask', ''); updateTaskSelects(currentTaskId, true); localStorage.setItem('timerTask', currentTaskId); updateUI(); });
 
         const globalSubtask = document.getElementById('global-timer-subtask');
         if (globalSubtask) {
@@ -667,15 +662,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (elements.page.reset) elements.page.reset.addEventListener('click', resetTimer);
         if (elements.page.skip) elements.page.skip.addEventListener('click', skipBreak);
         if (elements.page.end) elements.page.end.addEventListener('click', endSession);
-        if (elements.page.task) elements.page.task.addEventListener('change', (e) => {
-            currentTaskId = e.target.value;
-            currentSubtaskId = null;
-            localStorage.setItem('timerSubtask', '');
-            updateTaskSelects(currentTaskId);
-            localStorage.setItem('timerTask', currentTaskId);
-            fetchSubtasks(currentTaskId);
-            updateUI();
-        });
+        if (elements.page.task) elements.page.task.addEventListener('change', (e) => { currentTaskId = e.target.value; currentSubtaskId = null; localStorage.setItem('timerSubtask', ''); updateTaskSelects(currentTaskId, true); localStorage.setItem('timerTask', currentTaskId); updateUI(); });
 
         const pageSubtask = document.getElementById('page-timer-subtask');
         if (pageSubtask) {
