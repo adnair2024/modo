@@ -2,7 +2,7 @@ import os
 import sys
 import logging
 from datetime import datetime, timezone
-from flask import Flask, render_template, redirect, url_for, flash
+from flask import Flask, render_template, redirect, url_for, flash, jsonify
 from flask_login import LoginManager, current_user, logout_user
 from flask_migrate import Migrate
 from flask_caching import Cache
@@ -81,26 +81,6 @@ migrate = Migrate(app, db)
 cache.init_app(app)
 csrf.init_app(app)
 
-with app.app_context():
-    # Attempt to seed if DB is ready
-    if not os.environ.get('MODO_TESTING'):
-        try:
-            seed_achievements()
-            # Failsafe: Ensure owner 'lost' is admin and verified
-            owner = User.query.filter_by(username='lost').first()
-            if owner:
-                changed = False
-                if not owner.is_admin:
-                    owner.is_admin = True
-                    changed = True
-                if not owner.is_verified:
-                    owner.is_verified = True
-                    changed = True
-                if changed:
-                    db.session.commit()
-        except:
-            pass
-
 login_manager = LoginManager()
 login_manager.login_view = 'auth.login'
 login_manager.init_app(app)
@@ -167,6 +147,12 @@ def inject_active_sync():
         'active_sync_room': active_room,
         'amoled_unlocked': current_user.total_focus_hours >= 10
     }
+
+@app.route('/health')
+def health_check():
+    return jsonify({"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}), 200
+
+print("--- Flask Application Initialized Successfully ---")
 
 if __name__ == '__main__':
     app.run(debug=True)
