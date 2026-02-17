@@ -76,8 +76,8 @@ class User(UserMixin, db.Model):
 
 class Friendship(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    friend_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    friend_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     status = db.Column(db.String(20), default='pending') # pending, accepted
     created_at = db.Column(db.DateTime, default=utc_now)
 
@@ -85,7 +85,7 @@ class Friendship(db.Model):
 
 class StudyRoom(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    host_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    host_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     guest_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     status = db.Column(db.String(20), default='waiting') # waiting, active, finished
     created_at = db.Column(db.DateTime, default=utc_now)
@@ -123,7 +123,7 @@ class Task(db.Model):
     due_date = db.Column(db.DateTime, nullable=True)
     estimated_pomodoros = db.Column(db.Integer, default=1)
     completed_pomodoros = db.Column(db.Integer, default=0)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     section_id = db.Column(db.Integer, db.ForeignKey('project_section.id'), nullable=True)
     subtasks = db.relationship('Subtask', backref='parent', lazy=True, cascade="all, delete-orphan")
     tags = db.relationship('Tag', secondary=task_tags, backref=db.backref('tasks', lazy='dynamic'))
@@ -132,7 +132,7 @@ class Subtask(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     is_completed = db.Column(db.Boolean, default=False)
-    task_id = db.Column(db.Integer, db.ForeignKey('task.id'), nullable=False)
+    task_id = db.Column(db.Integer, db.ForeignKey('task.id'), nullable=False, index=True)
 
 class Project(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -146,8 +146,8 @@ class Project(db.Model):
 
 class ProjectMember(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     role = db.Column(db.String(20), default='member') # owner, member
     joined_at = db.Column(db.DateTime, default=utc_now)
     
@@ -155,14 +155,14 @@ class ProjectMember(db.Model):
 
 class ProjectSection(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
+    project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False, index=True)
     name = db.Column(db.String(100), nullable=False)
     order = db.Column(db.Integer, default=0)
     tasks = db.relationship('Task', backref='section', lazy=True)
 
 class ProjectInvite(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
+    project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False, index=True)
     sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     recipient_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     status = db.Column(db.String(20), default='pending') # pending, accepted, declined
@@ -174,8 +174,8 @@ class ProjectInvite(db.Model):
 
 class ProjectActivity(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     action = db.Column(db.String(500), nullable=False)
     timestamp = db.Column(db.DateTime, default=utc_now)
     
@@ -186,7 +186,7 @@ class FocusSession(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     minutes = db.Column(db.Integer, nullable=False)
     date = db.Column(db.DateTime, default=utc_now, index=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     task_id = db.Column(db.Integer, db.ForeignKey('task.id'), nullable=True)
     partner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
 
@@ -201,13 +201,13 @@ class Event(db.Model):
     recurrence = db.Column(db.String(20), default='none')
     # Stores comma-separated days for custom recurrence (0=Mon, 6=Sun) e.g., "0,2,4"
     recurrence_days = db.Column(db.String(50), nullable=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     completions = db.relationship('EventCompletion', backref='event', lazy=True, cascade="all, delete-orphan")
 
 class EventCompletion(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     date = db.Column(db.Date, nullable=False, index=True) # Stores the specific date of the occurrence
     completed_at = db.Column(db.DateTime, default=utc_now)
 
@@ -219,7 +219,7 @@ class Notification(db.Model):
     created_at = db.Column(db.DateTime, default=utc_now)
     is_read = db.Column(db.Boolean, default=False)
     type = db.Column(db.String(20), default='info')
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=True)
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=True)
 
@@ -227,12 +227,12 @@ class Habit(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     created_at = db.Column(db.DateTime, default=utc_now)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     completions = db.relationship('HabitCompletion', backref='habit', lazy=True, cascade="all, delete-orphan")
 
 class HabitCompletion(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    habit_id = db.Column(db.Integer, db.ForeignKey('habit.id'), nullable=False)
+    habit_id = db.Column(db.Integer, db.ForeignKey('habit.id'), nullable=False, index=True)
     date = db.Column(db.Date, nullable=False, index=True) # The date for which it counts
     completed_at = db.Column(db.DateTime, default=utc_now)
 
@@ -250,7 +250,7 @@ class Achievement(db.Model):
 
 class UserAchievement(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     achievement_id = db.Column(db.Integer, db.ForeignKey('achievement.id'), nullable=False)
     earned_at = db.Column(db.DateTime, default=utc_now)
     
@@ -259,7 +259,7 @@ class UserAchievement(db.Model):
 class ChatMessage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     room_id = db.Column(db.Integer, db.ForeignKey('study_room.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     message = db.Column(db.Text, nullable=False)
     timestamp = db.Column(db.DateTime, default=utc_now)
     

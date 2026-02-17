@@ -130,19 +130,24 @@ def index():
     else: query = query.order_by(Task.created_at.desc())
     tasks = query.all()
     today = datetime.now(timezone.utc).date()
+    
+    # Optimized Habits Query
     habits_list = Habit.query.filter_by(user_id=current_user.id).all()
+    habit_ids = [h.id for h in habits_list]
+    completions = HabitCompletion.query.filter(HabitCompletion.habit_id.in_(habit_ids), HabitCompletion.date == today).all() if habit_ids else []
+    comp_set = {c.habit_id for c in completions}
+    
     habit_items = []
     for h in habits_list:
-        comp = HabitCompletion.query.filter_by(habit_id=h.id, date=today).first()
-        habit_items.append({'habit': h, 'completed': comp is not None})
+        habit_items.append({'habit': h, 'completed': h.id in comp_set})
+
     # Today's Events
-    today = datetime.now(timezone.utc).date()
     user_events = Event.query.filter_by(user_id=current_user.id).all()
     today_events = expand_events(user_events, today, today)
     today_events.sort(key=lambda x: x.start_time)
 
-    # Stats Summary
-    total_focus = sum(s.minutes for s in current_user.focus_sessions)
+    # Stats Summary - Using optimized property
+    total_focus = int(current_user.total_focus_hours * 60)
     if request.headers.get('HX-Request'):
         return render_template('partials/task_list.html', tasks=tasks, now=datetime.now(timezone.utc))
     return render_template('index.html', tasks=tasks, habit_items=habit_items, today_events=today_events, total_focus=total_focus, now=datetime.now(timezone.utc))
