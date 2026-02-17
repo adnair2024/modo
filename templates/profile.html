@@ -23,9 +23,9 @@
                     {% endif %}
                 </h1>
                 <div class="text-[10px] font-bold opacity-50 uppercase tracking-widest flex items-center justify-center md:justify-start gap-2">
-                    <span>ENROLLED: {{ user.date_joined.strftime('%Y.%m.%d') }}</span>
-                    {% if user.show_last_seen %}
-                        {% set is_online = (now - user.last_seen.replace(tzinfo=now.tzinfo)).total_seconds() < 300 if now and user.last_seen else false %}
+                    <span>ENROLLED: {{ user.date_joined.strftime('%Y.%m.%d') if user.date_joined else 'UNKNOWN' }}</span>
+                    {% if user.show_last_seen and user.last_seen %}
+                        {% set is_online = (now - user.last_seen.replace(tzinfo=now.tzinfo)).total_seconds() < 300 if now else false %}
                         <span>//</span>
                         <span class="{{ 'text-accent' if is_online else '' }}">STATUS: {{ 'ONLINE' if is_online else 'OFFLINE' }}</span>
                     {% endif %}
@@ -87,12 +87,14 @@
             {% if user.achievements %}
                 <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-6">
                     {% for ua in user.achievements %}
+                        {% if ua.achievement %}
                         <div class="flex flex-col items-center space-y-2 group relative" title="{{ ua.achievement.description }}">
                             <div class="text-4xl noir-border w-16 h-16 flex items-center justify-center bg-[var(--bg-alt)] grayscale group-hover:grayscale-0 transition-all border-dashed">
                                 {{ ua.achievement.icon }}
                             </div>
                             <span class="text-[8px] font-bold text-center uppercase tracking-tighter leading-none">{{ ua.achievement.name }}</span>
                         </div>
+                        {% endif %}
                     {% endfor %}
                 </div>
             {% else %}

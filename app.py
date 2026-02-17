@@ -104,11 +104,11 @@ def update_last_seen():
         # Throttle update to once every 5 minutes
         if not current_user.last_seen or (now - current_user.last_seen.replace(tzinfo=timezone.utc)).total_seconds() > 300:
             current_user.last_seen = now
-            db.session.commit()
             try:
+                db.session.commit()
                 db.session.refresh(current_user)
             except:
-                pass
+                db.session.rollback()
 
 # Register Blueprints
 app.register_blueprint(auth_bp)

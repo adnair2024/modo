@@ -9,31 +9,41 @@ from utils import get_username_html, create_notification
 @social_bp.route('/u/<username>')
 @login_required
 def profile(username):
-    user = User.query.filter_by(username=username).first_or_404()
-    
-    friendship = Friendship.query.filter(
-        or_(
-            (Friendship.user_id == current_user.id) & (Friendship.friend_id == user.id),
-            (Friendship.user_id == user.id) & (Friendship.friend_id == current_user.id)
-        )
-    ).first()
-    
-    status = 'none'
-    if friendship:
-        status = friendship.status
-        if status == 'pending':
-            if friendship.user_id == current_user.id:
-                status = 'sent'
-            else:
-                status = 'received'
+    try:
+        user = User.query.filter_by(username=username).first_or_404()
+        
+        friendship = Friendship.query.filter(
+            or_(
+                (Friendship.user_id == current_user.id) & (Friendship.friend_id == user.id),
+                (Friendship.user_id == user.id) & (Friendship.friend_id == current_user.id)
+            )
+        ).first()
+        
+        status = 'none'
+        if friendship:
+            status = friendship.status
+            if status == 'pending':
+                if friendship.user_id == current_user.id:
+                    status = 'sent'
+                else:
+                    status = 'received'
 
-    total_minutes = db.session.query(func.sum(FocusSession.minutes)).filter_by(user_id=user.id).scalar() or 0
-    total_sessions = FocusSession.query.filter_by(user_id=user.id).count()
+        # Use efficient summing
+        total_minutes = db.session.query(func.sum(FocusSession.minutes)).filter_by(user_id=user.id).scalar() or 0
+        total_sessions = FocusSession.query.filter_by(user_id=user.id).count()
 
-    recent_sessions = FocusSession.query.filter_by(user_id=user.id).order_by(FocusSession.date.desc()).limit(5).all()
-    
-    return render_template('profile.html', user=user, status=status, total_minutes=total_minutes, 
-                           total_sessions=total_sessions, recent_sessions=recent_sessions, now=datetime.now(timezone.utc))
+        recent_sessions = FocusSession.query.filter_by(user_id=user.id).order_by(FocusSession.date.desc()).limit(5).all()
+        
+        # Ensure now is aware
+        now = datetime.now(timezone.utc)
+        
+        return render_template('profile.html', user=user, status=status, total_minutes=total_minutes, 
+                               total_sessions=total_sessions, recent_sessions=recent_sessions, now=now)
+    except Exception as e:
+        import traceback
+        print(f"ERROR in profile route for {username}: {str(e)}")
+        print(traceback.format_exc())
+        return f"Internal Server Error: {str(e)}", 500
 
 @social_bp.route('/friends')
 @login_required
