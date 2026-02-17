@@ -25,7 +25,7 @@
                 <div class="text-[10px] font-bold opacity-50 uppercase tracking-widest flex items-center justify-center md:justify-start gap-2">
                     <span>ENROLLED: {{ user.date_joined.strftime('%Y.%m.%d') }}</span>
                     {% if user.show_last_seen %}
-                        {% set is_online = (now - user.last_seen).total_seconds() < 300 if now else false %}
+                        {% set is_online = (now - user.last_seen.replace(tzinfo=now.tzinfo)).total_seconds() < 300 if now and user.last_seen else false %}
                         <span>//</span>
                         <span class="{{ 'text-accent' if is_online else '' }}">STATUS: {{ 'ONLINE' if is_online else 'OFFLINE' }}</span>
                     {% endif %}

@@ -1,7 +1,7 @@
 from flask import render_template, request, jsonify, abort, redirect, url_for
 from flask_login import login_required, current_user
 from sqlalchemy import or_, func
-from datetime import datetime
+from datetime import datetime, timezone
 from . import social_bp
 from models import db, User, Friendship, FocusSession, StudyRoom, Task
 from utils import get_username_html, create_notification
@@ -33,7 +33,7 @@ def profile(username):
     recent_sessions = FocusSession.query.filter_by(user_id=user.id).order_by(FocusSession.date.desc()).limit(5).all()
     
     return render_template('profile.html', user=user, status=status, total_minutes=total_minutes, 
-                           total_sessions=total_sessions, recent_sessions=recent_sessions, now=datetime.utcnow())
+                           total_sessions=total_sessions, recent_sessions=recent_sessions, now=datetime.now(timezone.utc))
 
 @social_bp.route('/friends')
 @login_required
@@ -86,10 +86,10 @@ def friends_list():
             .limit(3).all())
     
     friends_data = []
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     
     for friend in friends:
-        is_online = (now - friend.last_seen).total_seconds() < 300 
+        is_online = (now - friend.last_seen.replace(tzinfo=timezone.utc) if friend.last_seen.tzinfo is None else now - friend.last_seen).total_seconds() < 300 
         is_syncing = sync_map.get(friend.id, False)
         
         status_msg = "Offline"
@@ -116,6 +116,8 @@ def friends_list():
             # Idle since last_focus_end or last_seen (whichever is more relevant)
             # last_focus_end is the start of 'true' idle time
             idle_start = friend.last_focus_end or friend.last_seen
+            if idle_start.tzinfo is None:
+                idle_start = idle_start.replace(tzinfo=timezone.utc)
             idle_seconds = (now - idle_start).total_seconds()
             idle_mins = int(idle_seconds // 60)
             timer_info = {
