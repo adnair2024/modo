@@ -9,6 +9,7 @@
         </div>
 
         <form method="POST" class="space-y-8">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="space-y-6">
                 <div class="space-y-2">
                     <label class="block text-[10px] font-bold opacity-50 uppercase tracking-widest" for="username">User_ID</label>
