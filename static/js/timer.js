@@ -332,7 +332,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Show/Hide End Session (Only in Focus mode and if started)
         if (els.end) {
             const settings = window.userSettings || { focusDuration: 25 };
-            const fullDuration = settings.focusDuration * 60;
+            const fullDuration = (window.userSettings && window.userSettings.focusDuration ? window.userSettings.focusDuration : 25) * 60;
             // Show if in focus mode AND (running OR (paused AND some time elapsed))
             if (currentMode === 'focus' && (isRunning || secondsLeft < fullDuration)) {
                 els.end.classList.remove('hidden');
@@ -446,20 +446,22 @@ document.addEventListener('DOMContentLoaded', () => {
         syncPresence();
     }
 
-    function endSession() {
-        pauseTimer(); // Local pause
+        function endSession() {
         const settings = window.userSettings || { focusDuration: 25, breakDuration: 5 };
         const totalSeconds = settings.focusDuration * 60;
         const elapsedSeconds = totalSeconds - secondsLeft;
         
-        if (elapsedSeconds <= 0) {
-             resetTimer(); 
+        if (elapsedSeconds < 60) {
+             if (confirm('Less than 1 minute elapsed. End without logging?')) {
+                resetTimer();
+             }
              return;
         }
 
-        const minutesLogged = Math.max(1, Math.round(elapsedSeconds / 60));
+        const minutesLogged = Math.floor(elapsedSeconds / 60);
 
         if (confirm(`End session and log ${minutesLogged} minutes?`)) {
+             pauseTimer(); 
              const payload = { minutes: minutesLogged, task_id: currentTaskId };
              if (settings.syncMode && settings.activeRoomId) payload.room_id = settings.activeRoomId;
 
@@ -675,6 +677,13 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     }
+
+
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'timerStatus' || e.key === 'timerEnd' || e.key === 'timerSecondsLeft' || e.key === 'timerMode') {
+            loadState();
+        }
+    });
 
     init();
 
