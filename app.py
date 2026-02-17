@@ -1,4 +1,5 @@
 import os
+import sys
 import logging
 from datetime import datetime, timezone
 from flask import Flask, render_template, redirect, url_for, flash
@@ -21,14 +22,26 @@ app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/', prefix='static/')
 
 # Configure logging
 if not app.debug:
-    file_handler = logging.FileHandler('app.log')
-    file_handler.setFormatter(logging.Formatter(
-        '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+    # Use StreamHandler for Docker/Northflank logs to stdout
+    stream_handler = logging.StreamHandler(sys.stdout)
+    stream_handler.setFormatter(logging.Formatter(
+        '%(asctime)s %(levelname)s: %(message)s'
     ))
-    file_handler.setLevel(logging.INFO)
-    app.logger.addHandler(file_handler)
-    logging.basicConfig(level=logging.INFO,
-                        format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
+    stream_handler.setLevel(logging.INFO)
+    app.logger.addHandler(stream_handler)
+    
+    # Also keep file handler for legacy reasons if needed
+    try:
+        file_handler = logging.FileHandler('app.log')
+        file_handler.setFormatter(logging.Formatter(
+            '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+        ))
+        file_handler.setLevel(logging.INFO)
+        app.logger.addHandler(file_handler)
+    except:
+        pass # Ignore if file system is read-only
+    
+    logging.basicConfig(level=logging.INFO, handlers=[stream_handler])
 else:
     logging.basicConfig(level=logging.DEBUG,
                         format='%(asctime)s %(levelname)s: %(message)s')
@@ -44,6 +57,7 @@ if os.environ.get('MODO_TESTING'):
     from sqlalchemy import StaticPool
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'poolclass': StaticPool}
 else:
+    # Handle 'postgres://' for both SQLALCHEMY_DATABASE_URI and DATABASE_URL
     db_uri = os.environ.get('SQLALCHEMY_DATABASE_URI') or os.environ.get('DATABASE_URL')
     if db_uri and db_uri.startswith("postgres://"):
         db_uri = db_uri.replace("postgres://", "postgresql://", 1)
