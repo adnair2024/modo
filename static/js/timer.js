@@ -157,7 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         fetch('/api/sync_presence', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content},
             body: JSON.stringify({
                 status: status,
                 mode: currentMode,
@@ -354,7 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (settings.syncMode && settings.activeRoomId) {
             fetch('/api/study/control', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content},
                 body: JSON.stringify({ room_id: settings.activeRoomId, action: 'start' })
             });
             // Don't start locally; wait for poll
@@ -433,7 +433,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (notifyServer && settings.syncMode && settings.activeRoomId) {
              fetch('/api/study/control', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content},
                 body: JSON.stringify({ room_id: settings.activeRoomId, action: 'pause' })
             });
         }
@@ -467,7 +467,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
              fetch('/api/log_session', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content},
                 body: JSON.stringify(payload)
             }).then(() => {
                 window.modoNotify('Session logged!', 'success');
@@ -482,7 +482,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (settings.syncMode && settings.activeRoomId) {
              fetch('/api/study/control', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content},
                 body: JSON.stringify({ room_id: settings.activeRoomId, action: 'reset' })
             });
             return;
@@ -501,7 +501,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (settings.syncMode && settings.activeRoomId) {
              fetch('/api/study/control', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content},
                 body: JSON.stringify({ room_id: settings.activeRoomId, action: 'skip' })
             });
             return;
@@ -526,7 +526,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             fetch('/api/log_session', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content},
                 body: JSON.stringify(payload)
             }).then(() => {
                 // Refresh task lists in case task was completed
@@ -536,7 +536,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (settings.syncMode && settings.activeRoomId) {
                      fetch('/api/study/control', {
                         method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
+                        headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content},
                         body: JSON.stringify({ room_id: settings.activeRoomId, action: 'skip' })
                     });
                 }
@@ -583,7 +583,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (settings.syncMode && settings.activeRoomId) {
                      fetch('/api/study/control', {
                         method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
+                        headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content},
                         body: JSON.stringify({ room_id: settings.activeRoomId, action: 'skip' })
                     });
             }
