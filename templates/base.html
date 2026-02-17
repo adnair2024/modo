@@ -335,10 +335,11 @@
                  :class="minimized ? 'w-12 h-12 rounded-full cursor-grab' : 'p-4 flex flex-col gap-4 min-w-[300px]'">
                 
                 <!-- Minimized View -->
-                <div x-show="minimized" class="w-full h-full flex items-center justify-center bg-accent text-[var(--bg-alt)] hover:scale-110 transition-transform select-none"
+                <div x-show="minimized" 
+                     class="w-full h-full flex items-center justify-center border-2 border-accent bg-[var(--bg-main)] text-accent hover:scale-110 transition-transform select-none cursor-pointer"
                      @mousedown="startDrag($event)"
                      @dblclick="minimized = false">
-                    <span id="min-timer-display" class="text-[10px] font-bold">{{ (active_sync_room.focus_duration if active_sync_room else (current_user.focus_duration or 25)) }}m</span>
+                    <span id="min-timer-display" class="text-[9px] font-bold tracking-tighter">--:--</span>
                 </div>
 
                 <!-- Full View -->
@@ -360,8 +361,9 @@
                     </div>
                     
                     <div class="flex items-center justify-between gap-8">
-                        <div class="flex flex-col">
+                        <div class="flex flex-col gap-2">
                             <span id="global-timer-display" class="text-3xl font-bold mono-display text-accent tracking-widest">{{ (active_sync_room.focus_duration if active_sync_room else (current_user.focus_duration or 25)) }}:00</span>
+                            <div id="global-pom-progress" class="flex gap-1"></div>
                         </div>
                         
                         <div class="flex-1 flex flex-col text-right">
@@ -370,7 +372,7 @@
                                 <option value="">[IDLE_STATE]</option>
                                 {% for task in current_user.all_accessible_tasks %}
                                     {% if task.status != 'done' %}
-                                    <option value="{{ task.id }}">{{ task.title }}</option>
+                                    <option value="{{ task.id }}" data-est="{{ task.estimated_pomodoros }}" data-done="{{ task.completed_pomodoros }}">{{ task.title }}</option>
                                     {% endif %}
                                 {% endfor %}
                             </select>

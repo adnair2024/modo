@@ -246,7 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (elements.page.display) elements.page.display.textContent = text.padStart(5, '0');
 
         const minDisplay = document.getElementById('min-timer-display');
-        if (minDisplay) minDisplay.textContent = minutes + 'm';
+        if (minDisplay) minDisplay.textContent = text;
 
         // Update Global Status Label
         const statusDisplay = document.getElementById('global-timer-status');
@@ -265,6 +265,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (currentSubtaskId && elements.global.subtask && elements.global.subtask.selectedIndex > 0) {
                 subtaskDisplayContainer.classList.remove('hidden');
                 subtaskDisplayText.textContent = elements.global.subtask.options[elements.global.subtask.selectedIndex].text.replace('- ', '');
+        
+
             } else {
                 subtaskDisplayContainer.classList.add('hidden');
             }
@@ -294,6 +296,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     const selectedSub = elements.global.subtask.options[elements.global.subtask.selectedIndex];
                     taskTitle += ` (${selectedSub.text.replace('- ', '')})`;
                 }
+            }
+        }
+                // Update Pomodoro Progress Blocks in Bubble
+        const pomProgressContainer = document.getElementById('global-pom-progress');
+        if (pomProgressContainer && elements.global.task) {
+            const selectedOption = elements.global.task.options[elements.global.task.selectedIndex];
+            if (selectedOption && selectedOption.value) {
+                const est = parseInt(selectedOption.dataset.est || 1);
+                const done = parseInt(selectedOption.dataset.done || 0);
+                const count = Math.max(est, done);
+                
+                let html = '';
+                for (let i = 0; i < count; i++) {
+                    const isActive = i < done;
+                    html += `<div class="w-2 h-2 border ${isActive ? 'bg-accent border-accent' : 'opacity-20 border-accent'}"></div>`;
+                }
+                pomProgressContainer.innerHTML = html;
+            } else {
+                pomProgressContainer.innerHTML = '';
             }
         }
         document.body.dataset.modoTask = taskTitle;
