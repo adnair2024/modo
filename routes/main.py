@@ -1,10 +1,11 @@
-from flask import render_template, request, jsonify, abort, redirect, url_for
+from flask import render_template, request, jsonify, abort, redirect, url_for, make_response
 from flask_login import login_required, current_user
 from sqlalchemy import func
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from . import main_bp
-from models import db, Task, Tag, Event, Habit, HabitCompletion, EventCompletion, FocusSession, User, Achievement, UserAchievement
+from models import db, Task, Subtask, Tag, Event, Habit, HabitCompletion, EventCompletion, FocusSession, User, Achievement, UserAchievement
 from utils import expand_events, EventOccurrence, log_project_action, check_task_access
+from extensions import cache
 
 from functools import wraps
 
@@ -19,215 +20,137 @@ def admin_required(f):
 @main_bp.route('/admin')
 @login_required
 @admin_required
-def admin_dashboard():
+def admin():
     users = User.query.all()
-    return render_template('admin.html', users=users)
+    now = datetime.now(timezone.utc)
+    online_count = User.query.filter(User.last_seen >= now - timedelta(minutes=5)).count()
+    total_users = len(users)
+    total_focus_minutes = db.session.query(func.sum(FocusSession.minutes)).scalar() or 0
+    total_tasks_completed = Task.query.filter_by(status='done').count()
+    new_users_7d = User.query.filter(User.date_joined >= now - timedelta(days=7)).count()
+    
+    return render_template('admin.html', 
+                           users=users, 
+                           online_count=online_count, 
+                           total_users=total_users,
+                           total_focus_hours=round(total_focus_minutes / 60, 1),
+                           total_tasks_completed=total_tasks_completed,
+                           new_users_7d=new_users_7d,
+                           now=now)
 
 @main_bp.route('/admin/user/<int:user_id>/ban', methods=['POST'])
 @login_required
 @admin_required
 def admin_ban_user(user_id):
-    user = User.query.get_or_404(user_id)
+    user = db.session.get(User, user_id)
+    if not user: abort(404)
     if user.username == 'lost':
         return "Cannot ban the owner", 400
     user.is_banned = not user.is_banned
     db.session.commit()
-    return redirect(url_for('main.admin_dashboard'))
+    return redirect(url_for('main.admin'))
+
+@main_bp.route('/admin/user/<int:user_id>/logout', methods=['POST'])
+@login_required
+@admin_required
+def admin_logout_user(user_id):
+    user = db.session.get(User, user_id)
+    if not user: abort(404)
+    user.must_logout = True
+    db.session.commit()
+    return redirect(url_for('main.admin'))
 
 @main_bp.route('/admin/user/<int:user_id>/toggle_admin', methods=['POST'])
 @login_required
 @admin_required
 def admin_toggle_role(user_id):
-    user = User.query.get_or_404(user_id)
+    user = db.session.get(User, user_id)
+    if not user: abort(404)
     if user.username == 'lost' and current_user.username != 'lost':
         return "Cannot demote the owner", 403
     if user.id == current_user.id and user.username == 'lost':
          return "Owner cannot demote themselves", 400
-         
     user.is_admin = not user.is_admin
     db.session.commit()
-    return redirect(url_for('main.admin_dashboard'))
+    return redirect(url_for('main.admin'))
 
 @main_bp.route('/admin/user/<int:user_id>/rename', methods=['POST'])
 @login_required
 @admin_required
 def admin_rename_user(user_id):
-    user = User.query.get_or_404(user_id)
+    user = db.session.get(User, user_id)
+    if not user: abort(404)
     new_username = request.form.get('username')
     if new_username:
         user.username = new_username
         db.session.commit()
-    return redirect(url_for('main.admin_dashboard'))
+    return redirect(url_for('main.admin'))
 
 @main_bp.route('/admin/user/<int:user_id>/edit_timer', methods=['POST'])
 @login_required
 @admin_required
 def admin_edit_timer(user_id):
-    user = User.query.get_or_404(user_id)
+    user = db.session.get(User, user_id)
+    if not user: abort(404)
     focus = request.form.get('focus_duration', type=int)
     break_d = request.form.get('break_duration', type=int)
     if focus: user.focus_duration = focus
     if break_d: user.break_duration = break_d
     db.session.commit()
-    return redirect(url_for('main.admin_dashboard'))
+    return redirect(url_for('main.admin'))
 
 @main_bp.route('/badges')
 @login_required
 def badges():
     all_achievements = Achievement.query.order_by(Achievement.criteria_value.asc()).all()
     earned_map = {ua.achievement_id: ua.earned_at for ua in current_user.achievements}
-    
     return render_template('badges.html', achievements=all_achievements, earned_map=earned_map)
 
 @main_bp.route('/')
 @login_required
 def index():
     query = Task.query.filter_by(user_id=current_user.id)
-
-    # Search
     q = request.args.get('q')
-    if q:
-        query = query.filter(Task.title.ilike(f'%{q}%'))
-
-    # Date Range
+    if q: query = query.filter(Task.title.ilike(f'%{q}%'))
     date_start_str = request.args.get('date_start')
     date_end_str = request.args.get('date_end')
-    
     if date_start_str:
         try:
-            date_start = datetime.strptime(date_start_str, '%Y-%m-%d')
+            date_start = datetime.strptime(date_start_str, '%Y-%m-%d').replace(tzinfo=timezone.utc)
             query = query.filter(Task.due_date >= date_start)
-        except ValueError:
-            pass
-            
+        except ValueError: pass
     if date_end_str:
         try:
-            date_end = datetime.strptime(date_end_str, '%Y-%m-%d')
-            date_end = date_end.replace(hour=23, minute=59, second=59)
+            date_end = datetime.strptime(date_end_str, '%Y-%m-%d').replace(tzinfo=timezone.utc)
             query = query.filter(Task.due_date <= date_end)
-        except ValueError:
-            pass
+        except ValueError: pass
+    sort_by = request.args.get('sort', 'created_at')
+    if sort_by == 'priority': query = query.order_by(Task.priority.desc(), Task.created_at.desc())
+    elif sort_by == 'due_date': query = query.order_by(Task.due_date.asc(), Task.created_at.desc())
+    else: query = query.order_by(Task.created_at.desc())
+    tasks = query.all()
+    today = datetime.now(timezone.utc).date()
+    habits_list = Habit.query.filter_by(user_id=current_user.id).all()
+    habit_items = []
+    for h in habits_list:
+        comp = HabitCompletion.query.filter_by(habit_id=h.id, date=today).first()
+        habit_items.append({'habit': h, 'completed': comp is not None})
+    # Today's Events
+    today = datetime.now(timezone.utc).date()
+    user_events = Event.query.filter_by(user_id=current_user.id).all()
+    today_events = expand_events(user_events, today, today)
+    today_events.sort(key=lambda x: x.start_time)
 
-    # Tags
-    tags = request.args.getlist('tags')
-    if tags:
-        query = query.join(Task.tags).filter(Tag.name.in_(tags)).distinct() 
-    
-    # Sorting
-    sort_by = request.args.get('sort_by', 'created_at')
-
-    if q or date_start_str or date_end_str or tags:
-        all_tasks = query.all()
-        now = datetime.now()
-        
-        def get_sort_key(t):
-            is_overdue = t.due_date and t.due_date < now and t.status != 'done'
-            status_rank = 1 if t.status == 'done' else 0
-            overdue_rank = 0 if is_overdue else 1 
-            
-            if sort_by == 'priority':
-                 sort_val = -t.priority
-            elif sort_by == 'due_date':
-                 sort_val = t.due_date.timestamp() if t.due_date else 9999999999
-            else: 
-                 sort_val = -t.created_at.timestamp()
-            
-            return (status_rank, overdue_rank, sort_val)
-
-        all_tasks.sort(key=get_sort_key)
-        tasks = all_tasks
-        has_more_completed = False
-    else:
-        todo_tasks = query.filter(Task.status != 'done').all()
-        now = datetime.now()
-        overdue = [t for t in todo_tasks if t.due_date and t.due_date < now]
-        regular = [t for t in todo_tasks if t not in overdue]
-        
-        overdue.sort(key=lambda t: (-t.priority, t.due_date if t.due_date else datetime.max))
-        
-        if sort_by == 'priority':
-            regular.sort(key=lambda t: (-t.priority, t.created_at))
-        elif sort_by == 'due_date':
-            regular.sort(key=lambda t: (t.due_date if t.due_date else datetime.max))
-        else:
-            regular.sort(key=lambda t: t.created_at, reverse=True)
-            
-        todo_sorted = overdue + regular
-        
-        show_all_done = request.args.get('show_all_done') == 'true'
-        
-        done_query = query.filter(Task.status == 'done').order_by(Task.created_at.desc())
-        total_done = done_query.count()
-        
-        if show_all_done:
-            done_tasks = done_query.all()
-            has_more_completed = False
-        else:
-            done_tasks = done_query.limit(10).all()
-            has_more_completed = total_done > 10
-            
-        tasks = todo_sorted + done_tasks
-
-    all_tags = Tag.query.all()
-
+    # Stats Summary
+    total_focus = sum(s.minutes for s in current_user.focus_sessions)
     if request.headers.get('HX-Request'):
-        return render_template('partials/task_list.html', tasks=tasks, has_more_completed=has_more_completed, now=datetime.now())
-
-    now = datetime.now()
-    today_start = now.date()
-    week_end = today_start + timedelta(days=7)
-    
-    all_events = Event.query.filter_by(user_id=current_user.id).all()
-    
-    occurrences = expand_events(all_events, today_start, week_end)
-    occurrences.sort(key=lambda x: x.start_time)
-
-    grouped_events = {
-        'Today': [],
-        'Tomorrow': [],
-        'This Week': []
-    }
-    
-    tomorrow_start = datetime.combine(today_start + timedelta(days=1), datetime.min.time())
-    week_end_dt = datetime.combine(today_start + timedelta(days=7), datetime.min.time())
-    
-    for occ in occurrences:
-        if occ.start_time < tomorrow_start:
-            grouped_events['Today'].append(occ)
-        elif occ.start_time < tomorrow_start + timedelta(days=1):
-            grouped_events['Tomorrow'].append(occ)
-        elif occ.start_time < week_end_dt:
-            grouped_events['This Week'].append(occ)
-            
-    today = datetime.now().date()
-    all_user_habits = Habit.query.filter_by(user_id=current_user.id).all()
-    today_completions = HabitCompletion.query.filter(
-        HabitCompletion.habit_id.in_([h.id for h in all_user_habits]),
-        HabitCompletion.date == today
-    ).all()
-    today_comp_ids = {c.habit_id for c in today_completions}
-    
-    daily_habits = []
-    for h in all_user_habits:
-        daily_habits.append({
-            'id': h.id,
-            'title': h.title,
-            'is_done': h.id in today_comp_ids
-        })
-
-    return render_template('index.html', 
-                           tasks=tasks, 
-                           all_tags=all_tags, 
-                           has_more_completed=has_more_completed, 
-                           now=datetime.now(), 
-                           grouped_events=grouped_events,
-                           daily_habits=daily_habits,
-                           today_str=today.strftime('%Y-%m-%d'))
+        return render_template('partials/task_list.html', tasks=tasks, now=datetime.now(timezone.utc))
+    return render_template('index.html', tasks=tasks, habit_items=habit_items, today_events=today_events, total_focus=total_focus, now=datetime.now(timezone.utc))
 
 @main_bp.route('/timer')
 @login_required
 def timer():
-    tasks = Task.query.filter_by(user_id=current_user.id).filter(Task.status != 'done').order_by(Task.created_at.desc()).all()
+    tasks = [t for t in current_user.all_accessible_tasks if t.status != 'done']
     return render_template('timer.html', tasks=tasks)
 
 @main_bp.route('/add_task', methods=['POST'])
@@ -239,420 +162,283 @@ def add_task():
     est_pomodoros = request.form.get('estimated_pomodoros', type=int, default=1)
     priority = request.form.get('priority', type=int, default=1)
     tags_str = request.form.get('tags')
-
     if title:
+        title = title[:200]
+        if description: description = description[:2000]
         due_date = None
         if due_date_str:
-            try:
-                due_date = datetime.strptime(due_date_str, '%Y-%m-%dT%H:%M')
-            except ValueError:
-                pass
-
-        new_task = Task(
-            title=title, 
-            description=description,
-            due_date=due_date,
-            estimated_pomodoros=est_pomodoros,
-            priority=priority,
-            user_id=current_user.id
-        )
-
+            try: due_date = datetime.strptime(due_date_str, '%Y-%m-%dT%H:%M').replace(tzinfo=timezone.utc)
+            except ValueError: pass
+        new_task = Task(title=title, description=description, due_date=due_date, estimated_pomodoros=est_pomodoros, priority=priority, user_id=current_user.id)
         if tags_str:
             tag_names = [t.strip() for t in tags_str.split(',') if t.strip()]
             for name in tag_names:
                 tag = Tag.query.filter_by(name=name).first()
                 if not tag:
-                    tag = Tag(name=name)
-                    db.session.add(tag)
+                    tag = Tag(name=name); db.session.add(tag)
                 new_task.tags.append(tag)
-
-        db.session.add(new_task)
-        db.session.commit()
-        return render_template('partials/task_item.html', task=new_task, now=datetime.now())
+        db.session.add(new_task); db.session.commit()
+        response = make_response(render_template('partials/task_item.html', task=new_task, now=datetime.now(timezone.utc)))
+        response.headers['HX-Trigger'] = 'tasksChanged'
+        return response
     return '', 400
 
 @main_bp.route('/delete_task/<int:task_id>', methods=['DELETE'])
 @login_required
 def delete_task(task_id):
-    task = Task.query.get_or_404(task_id)
-    if not check_task_access(task):
-        abort(403)
-    
-    if task.section_id:
-        log_project_action(task.section.project_id, f"Deleted task: {task.title}")
-
-    User.query.filter_by(current_task_id=task.id).update({'current_task_id': None})
-    FocusSession.query.filter_by(task_id=task.id).update({'task_id': None})
-
-    db.session.delete(task)
-    db.session.commit()
-    return ''
+    task = db.session.get(Task, task_id)
+    if not task: abort(404)
+    if not check_task_access(task): abort(403)
+    db.session.delete(task); db.session.commit()
+    response = make_response(''); response.headers['HX-Trigger'] = 'tasksChanged'
+    return response
 
 @main_bp.route('/toggle_task/<int:task_id>', methods=['POST'])
 @login_required
 def toggle_task(task_id):
-    task = Task.query.get_or_404(task_id)
-    if not check_task_access(task):
-        abort(403)
-    
-    if task.status == 'done':
-        task.status = 'todo'
-        if task.section_id:
-            log_project_action(task.section.project_id, f"Reopened task: {task.title}")
-    else:
-        task.status = 'done'
-        if task.section_id:
-            log_project_action(task.section.project_id, f"Completed task: {task.title}")
-    
+    task = db.session.get(Task, task_id)
+    if not task: abort(404)
+    if not check_task_access(task): abort(403)
+    task.status = 'todo' if task.status == 'done' else 'done'
     db.session.commit()
-    
-    if request.headers.get('HX-Target') != 'task-list':
-        return render_template('partials/task_item.html', task=task, now=datetime.now())
-
-    # Re-fetch for task list update (simplified for brevity, should match index logic)
-    # Ideally reuse index logic but due to complexity, just redirect or simple fetch
-    # Since HTMX handles swap, we need to return the whole list if target is task-list
-    # For now, let's copy the index logic briefly or refactor.
-    # Refactoring `index` logic into a helper function `get_tasks_for_user` would be best.
-    # But for now I'll just return the updated item if that's what was requested, or the list.
-    # The original app.py duplicated logic. I'll duplicate for safety now.
-    
-    query = Task.query.filter_by(user_id=current_user.id)
-    # ... (skipping full filter replication for this turn, assuming minimal needs or user reloads if filters active)
-    # Actually, the user expects filters to persist.
-    # I'll just return the task item because usually toggle is done on the item itself.
-    # If the user is in "todo" view, the item should disappear.
-    # If I return just the item with new status, it updates in place.
-    return render_template('partials/task_item.html', task=task, now=datetime.now())
+    response = make_response(render_template('partials/task_item.html', task=task, now=datetime.now(timezone.utc)))
+    response.headers['HX-Trigger'] = 'tasksChanged'
+    return response
 
 @main_bp.route('/task/<int:task_id>/edit', methods=['GET'])
 @login_required
 def get_edit_task(task_id):
-    task = Task.query.get_or_404(task_id)
-    if not check_task_access(task):
-        abort(403)
+    task = db.session.get(Task, task_id)
+    if not task: abort(404)
+    if not check_task_access(task): abort(403)
     return render_template('partials/task_edit.html', task=task)
 
 @main_bp.route('/task/<int:task_id>', methods=['PUT', 'POST'])
 @login_required
 def update_task(task_id):
-    task = Task.query.get_or_404(task_id)
-    if not check_task_access(task):
-        abort(403)
-
+    task = db.session.get(Task, task_id)
+    if not task: abort(404)
+    if not check_task_access(task): abort(403)
     title = request.form.get('title')
     description = request.form.get('description')
     due_date_str = request.form.get('due_date')
     est_pomodoros = request.form.get('estimated_pomodoros', type=int)
     priority = request.form.get('priority', type=int)
     tags_str = request.form.get('tags')
-
     if title:
-        task.title = title
-        task.description = description
-        if est_pomodoros:
-            task.estimated_pomodoros = est_pomodoros
-        if priority:
-            task.priority = priority
-
+        task.title = title[:200]
+        task.description = description[:2000] if description else None
+        if est_pomodoros: task.estimated_pomodoros = est_pomodoros
+        if priority: task.priority = priority
         if due_date_str:
-            try:
-                task.due_date = datetime.strptime(due_date_str, '%Y-%m-%dT%H:%M')
-            except ValueError:
-                pass
-        else:
-            task.due_date = None
-
+            try: task.due_date = datetime.strptime(due_date_str, '%Y-%m-%dT%H:%M').replace(tzinfo=timezone.utc)
+            except ValueError: pass
+        else: task.due_date = None
         if tags_str is not None:
             task.tags = []
             tag_names = [t.strip() for t in tags_str.split(',') if t.strip()]
             for name in tag_names:
                 tag = Tag.query.filter_by(name=name).first()
                 if not tag:
-                    tag = Tag(name=name)
-                    db.session.add(tag)
+                    tag = Tag(name=name); db.session.add(tag)
                 task.tags.append(tag)
-
     db.session.commit()
-    return render_template('partials/task_item.html', task=task, now=datetime.now())
+    return render_template('partials/task_item.html', task=task, now=datetime.now(timezone.utc))
+
+@main_bp.route('/task/<int:task_id>/subtask', methods=['POST'])
+@login_required
+def add_subtask(task_id):
+    task = db.session.get(Task, task_id)
+    if not task: abort(404)
+    if not check_task_access(task): abort(403)
+    title = request.form.get('title')
+    if title:
+        new_subtask = Subtask(title=title[:200], task_id=task.id)
+        db.session.add(new_subtask); db.session.commit()
+    return render_template('partials/task_item.html', task=task, now=datetime.now(timezone.utc))
+
+@main_bp.route('/subtask/<int:subtask_id>/toggle', methods=['POST'])
+@login_required
+def toggle_subtask(subtask_id):
+    subtask = db.session.get(Subtask, subtask_id)
+    if not subtask: abort(404)
+    if not check_task_access(subtask.parent): abort(403)
+    subtask.is_completed = not subtask.is_completed
+    db.session.commit()
+    return render_template('partials/task_item.html', task=subtask.parent, now=datetime.now(timezone.utc))
+
+@main_bp.route('/subtask/<int:subtask_id>', methods=['DELETE'])
+@login_required
+def delete_subtask(subtask_id):
+    subtask = db.session.get(Subtask, subtask_id)
+    if not subtask: abort(404)
+    task = subtask.parent
+    if not check_task_access(task): abort(403)
+    db.session.delete(subtask); db.session.commit()
+    return render_template('partials/task_item.html', task=task, now=datetime.now(timezone.utc))
+
+@main_bp.route('/subtask/<int:subtask_id>/edit', methods=['GET'])
+@login_required
+def get_edit_subtask(subtask_id):
+    subtask = db.session.get(Subtask, subtask_id)
+    if not subtask: abort(404)
+    if not check_task_access(subtask.parent): abort(403)
+    return render_template('partials/subtask_edit.html', subtask=subtask)
+
+@main_bp.route('/subtask/<int:subtask_id>', methods=['PUT', 'POST'])
+@login_required
+def update_subtask(subtask_id):
+    subtask = db.session.get(Subtask, subtask_id)
+    if not subtask: abort(404)
+    if not check_task_access(subtask.parent): abort(403)
+    title = request.form.get('title')
+    if title: subtask.title = title[:200]
+    db.session.commit()
+    return render_template('partials/task_item.html', task=subtask.parent, now=datetime.now(timezone.utc))
 
 @main_bp.route('/task/<int:task_id>/item', methods=['GET'])
 @login_required
 def get_task_item(task_id):
-    task = Task.query.get_or_404(task_id)
-    if not check_task_access(task):
-        abort(403)
-    return render_template('partials/task_item.html', task=task, now=datetime.now())
+    task = db.session.get(Task, task_id)
+    if not task: abort(404)
+    if not check_task_access(task): abort(403)
+    return render_template('partials/task_item.html', task=task, now=datetime.now(timezone.utc))
 
 @main_bp.route('/leaderboard')
 @login_required
+@cache.cached(timeout=60, query_string=True)
 def leaderboard():
-    filter_type = request.args.get('filter', 'all')
-    category = request.args.get('category', 'focus')
-    
-    now = datetime.now()
+    filter_type = request.args.get('filter', 'all'); category = request.args.get('category', 'focus')
+    now = datetime.now(timezone.utc)
     start_of_week = now - timedelta(days=now.weekday())
     start_of_week = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
     end_of_week = start_of_week + timedelta(days=6, hours=23, minutes=59, seconds=59)
-
     if category == 'habits':
-        query = (db.session.query(
-            User,
-            func.count(HabitCompletion.id).label('score')
-        ).join(Habit, User.id == Habit.user_id)
-         .join(HabitCompletion, Habit.id == HabitCompletion.habit_id)
-         .group_by(User.id)
-         .order_by(func.count(HabitCompletion.id).desc()))
-        
-        if filter_type == 'weekly':
-            query = query.filter(HabitCompletion.date >= start_of_week.date(), HabitCompletion.date <= end_of_week.date())
-            
+        query = db.session.query(User, func.count(HabitCompletion.id).label('score')).select_from(User).join(Habit, User.id == Habit.user_id).join(HabitCompletion, Habit.id == HabitCompletion.habit_id).group_by(User.id).order_by(func.count(HabitCompletion.id).desc())
+        if filter_type == 'weekly': query = query.filter(HabitCompletion.date >= start_of_week.date(), HabitCompletion.date <= end_of_week.date())
     elif category == 'sync':
-        query = (db.session.query(
-            User,
-            func.sum(FocusSession.minutes).label('score')
-        ).join(FocusSession, User.id == FocusSession.user_id)
-         .filter(FocusSession.partner_id.isnot(None))
-         .group_by(User.id)
-         .order_by(func.sum(FocusSession.minutes).desc()))
-        
-        if filter_type == 'weekly':
-            query = query.filter(FocusSession.date >= start_of_week, FocusSession.date <= end_of_week)
-            
+        query = db.session.query(User, func.sum(FocusSession.minutes).label('score')).join(FocusSession, User.id == FocusSession.user_id).filter(FocusSession.partner_id.isnot(None)).group_by(User.id).order_by(func.sum(FocusSession.minutes).desc())
+        if filter_type == 'weekly': query = query.filter(FocusSession.date >= start_of_week, FocusSession.date <= end_of_week)
     else:
-        query = (db.session.query(
-            User,
-            func.sum(FocusSession.minutes).label('score')
-        ).join(FocusSession, User.id == FocusSession.user_id)
-         .group_by(User.id)
-         .order_by(func.sum(FocusSession.minutes).desc()))
-
-
-        if filter_type == 'weekly':
-            query = query.filter(FocusSession.date >= start_of_week, FocusSession.date <= end_of_week)
-
+        query = db.session.query(User, func.sum(FocusSession.minutes).label('score')).join(FocusSession, User.id == FocusSession.user_id).group_by(User.id).order_by(func.sum(FocusSession.minutes).desc())
+        if filter_type == 'weekly': query = query.filter(FocusSession.date >= start_of_week, FocusSession.date <= end_of_week)
     results = query.limit(10).all()
-    
     return render_template('leaderboard.html', leaders=results, filter_type=filter_type, category=category)
 
 @main_bp.route('/stats')
 @login_required
 def personal_stats():
-    total_minutes = db.session.query(func.sum(FocusSession.minutes)).filter_by(user_id=current_user.id).scalar() or 0
-    total_sessions = FocusSession.query.filter_by(user_id=current_user.id).count()
-    
-    sync_sessions_query = FocusSession.query.filter_by(user_id=current_user.id).filter(FocusSession.partner_id.isnot(None))
-    sync_sessions_count = sync_sessions_query.count()
-    sync_minutes = (db.session.query(func.sum(FocusSession.minutes))
-        .filter_by(user_id=current_user.id)
-        .filter(FocusSession.partner_id.isnot(None)).scalar()) or 0
-        
-    top_partner = None
-    if sync_sessions_count > 0:
-        top_partner_id = (db.session.query(FocusSession.partner_id, func.count(FocusSession.partner_id))
-            .filter_by(user_id=current_user.id)
-            .filter(FocusSession.partner_id.isnot(None))
-            .group_by(FocusSession.partner_id)
-            .order_by(func.count(FocusSession.partner_id).desc())
-            .first())
-            
-        if top_partner_id:
-            top_partner = User.query.get(top_partner_id[0])
-
-    now = datetime.now()
-    start_of_week = now - timedelta(days=now.weekday())
-    start_of_week = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
-    
-    weekly_minutes = (db.session.query(func.sum(FocusSession.minutes))
-        .filter_by(user_id=current_user.id)
-        .filter(FocusSession.date >= start_of_week).scalar()) or 0
-
-    current_year = now.year
-    year_start = datetime(current_year, 1, 1).date()
-    year_end = datetime(current_year, 12, 31).date()
-
-    sessions = (db.session.query(FocusSession.date, FocusSession.minutes)
-        .filter_by(user_id=current_user.id)
-        .filter(FocusSession.date >= year_start, FocusSession.date <= year_end).all())
-    
+    sessions = FocusSession.query.filter_by(user_id=current_user.id).order_by(FocusSession.date.desc()).all()
+    now = datetime.now(timezone.utc)
+    daily_stats = []
+    for i in range(7):
+        date = (now - timedelta(days=i)).date()
+        mins = db.session.query(func.sum(FocusSession.minutes)).filter(FocusSession.user_id == current_user.id, func.date(FocusSession.date) == date).scalar() or 0
+        daily_stats.append({'date': date, 'minutes': mins})
+    daily_stats.reverse()
+    year_start = datetime(now.year, 1, 1, tzinfo=timezone.utc)
+    sessions_year = FocusSession.query.filter(FocusSession.user_id == current_user.id, FocusSession.date >= year_start).all()
     heatmap_data = {}
-    for s in sessions:
-        date_str = s.date.strftime('%Y-%m-%d')
-        heatmap_data[date_str] = heatmap_data.get(date_str, 0) + s.minutes
-
-    habit_completions = HabitCompletion.query.join(Habit).filter(
-        Habit.user_id == current_user.id,
-        HabitCompletion.date >= year_start,
-        HabitCompletion.date <= year_end
-    ).all()
-    
+    for s in sessions_year:
+        d_str = s.date.strftime('%Y-%m-%d')
+        heatmap_data[d_str] = heatmap_data.get(d_str, 0) + s.minutes
+    habit_completions = HabitCompletion.query.join(Habit).filter(Habit.user_id == current_user.id, HabitCompletion.date >= year_start.date()).all()
     habit_heatmap_data = {}
     for c in habit_completions:
         d_str = c.date.strftime('%Y-%m-%d')
         habit_heatmap_data[d_str] = habit_heatmap_data.get(d_str, 0) + 1
-
-    return render_template('stats.html', 
-                           total_minutes=total_minutes, 
-                           total_sessions=total_sessions,
-                           weekly_minutes=weekly_minutes,
-                           sync_sessions_count=sync_sessions_count,
-                           sync_minutes=sync_minutes,
-                           top_partner=top_partner,
-                           heatmap_data=heatmap_data,
-                           habit_heatmap_data=habit_heatmap_data,
-                           current_year=current_year)
+    return render_template('stats.html', sessions=sessions, daily_stats=daily_stats, heatmap_data=heatmap_data, habit_heatmap_data=habit_heatmap_data)
 
 @main_bp.route('/habits')
 @login_required
 def habits():
     user_habits = Habit.query.filter_by(user_id=current_user.id).order_by(Habit.created_at.desc()).all()
-    
-    today = datetime.now().date()
-    dates = []
-    for i in range(6, -1, -1):
-        d = today - timedelta(days=i)
-        dates.append(d)
-        
-    start_date = dates[0]
-    end_date = dates[-1]
-    
+    today = datetime.now(timezone.utc).date(); dates = []
+    for i in range(6, -1, -1): dates.append(today - timedelta(days=i))
+    start_date = dates[0]; end_date = dates[-1]
     habit_ids = [h.id for h in user_habits]
-    completions = HabitCompletion.query.filter(
-        HabitCompletion.habit_id.in_(habit_ids),
-        HabitCompletion.date >= start_date,
-        HabitCompletion.date <= end_date
-    ).all()
-    
+    completions = HabitCompletion.query.filter(HabitCompletion.habit_id.in_(habit_ids), HabitCompletion.date >= start_date, HabitCompletion.date <= end_date).all()
     comp_map = {(c.habit_id, c.date): True for c in completions}
-    
     habits_data = []
     for h in user_habits:
         status_list = []
         for d in dates:
-            is_done = (h.id, d) in comp_map
-            status_list.append({
-                'date': d.strftime('%Y-%m-%d'),
-                'is_done': is_done,
-                'is_today': (d == today),
-                'day_name': d.strftime('%a')
-            })
-            
-        habits_data.append({
-            'habit': h,
-            'days': status_list
-        })
-
-    current_year = today.year
-    year_start = datetime(current_year, 1, 1).date()
-    year_end = datetime(current_year, 12, 31).date()
-    
-    year_completions = HabitCompletion.query.filter(
-        HabitCompletion.habit_id.in_(habit_ids),
-        HabitCompletion.date >= year_start,
-        HabitCompletion.date <= year_end
-    ).all()
-    
-    heatmap_data = {}
+            status_list.append({'date': d.strftime('%Y-%m-%d'), 'is_done': (h.id, d) in comp_map, 'is_today': (d == today), 'day_name': d.strftime('%a')})
+        habits_data.append({'habit': h, 'days': status_list})
+    year_start = today.replace(month=1, day=1)
+    year_completions = HabitCompletion.query.join(Habit).filter(Habit.user_id == current_user.id, HabitCompletion.date >= year_start).all()
+    heatmap_data = {}; 
     for c in year_completions:
         d_str = c.date.strftime('%Y-%m-%d')
         heatmap_data[d_str] = heatmap_data.get(d_str, 0) + 1
-        
-    return render_template('habits.html', habits=habits_data, dates=dates, heatmap_data=heatmap_data, current_year=current_year)
+    if request.headers.get('HX-Request') and request.headers.get('HX-Target') == 'habit-list-container':
+        return render_template('partials/habit_list.html', habits=habits_data, dates=dates)
+    return render_template('habits.html', habits=habits_data, dates=dates, heatmap_data=heatmap_data, current_year=today.year)
 
 @main_bp.route('/habits/add', methods=['POST'])
 @login_required
 def add_habit():
     title = request.form.get('title')
     if title:
-        habit = Habit(title=title, user_id=current_user.id)
-        db.session.add(habit)
-        db.session.commit()
-    return redirect(url_for('main.habits'))
+        h = Habit(title=title[:200], user_id=current_user.id)
+        db.session.add(h); db.session.commit()
+    return habits() if request.headers.get('HX-Request') else redirect(url_for('main.habits'))
 
-@main_bp.route('/habits/toggle/<int:habit_id>', methods=['POST'])
-@login_required
-def toggle_habit(habit_id):
-    habit = Habit.query.get_or_404(habit_id)
-    if habit.user_id != current_user.id:
-        abort(403)
-        
-    date_str = request.args.get('date')
-    if not date_str:
-        target_date = datetime.now().date()
-    else:
-        try:
-            target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-        except ValueError:
-            return '', 400
-            
-    completion = HabitCompletion.query.filter_by(habit_id=habit.id, date=target_date).first()
-    
-    is_done = False
-    if completion:
-        db.session.delete(completion)
-        is_done = False
-    else:
-        new_comp = HabitCompletion(habit_id=habit.id, date=target_date)
-        db.session.add(new_comp)
-        is_done = True
-        
-    db.session.commit()
-    
-    if request.headers.get('HX-Request'):
-        is_today = (target_date == datetime.now().date())
-        day_data = {'date': target_date.strftime('%Y-%m-%d'), 'is_done': is_done, 'is_today': is_today}
-        
-        target = request.headers.get('HX-Target', '')
-        if target.startswith('habit-home-'):
-            return render_template('partials/habit_item_home.html', habit=habit, day=day_data)
-            
-        return render_template('partials/habit_cell.html', habit=habit, day=day_data)
-
-    return redirect(url_for('main.habits'))
-
-@main_bp.route('/habits/delete/<int:habit_id>', methods=['POST'])
+@main_bp.route('/habits/<int:habit_id>/delete', methods=['POST'])
 @login_required
 def delete_habit(habit_id):
-    habit = Habit.query.get_or_404(habit_id)
-    if habit.user_id != current_user.id:
-        abort(403)
-    db.session.delete(habit)
+    habit = db.session.get(Habit, habit_id)
+    if habit and habit.user_id == current_user.id:
+        db.session.delete(habit); db.session.commit()
+    return habits() if request.headers.get('HX-Request') else redirect(url_for('main.habits'))
+
+@main_bp.route('/habits/<int:habit_id>/toggle', methods=['POST'])
+@login_required
+def toggle_habit(habit_id):
+    habit = db.session.get(Habit, habit_id)
+    if not habit or habit.user_id != current_user.id: abort(403)
+    date_str = request.args.get('date')
+    try: target_date = datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else datetime.now(timezone.utc).date()
+    except ValueError: target_date = datetime.now(timezone.utc).date()
+    comp = HabitCompletion.query.filter_by(habit_id=habit_id, date=target_date).first()
+    if comp: db.session.delete(comp)
+    else: db.session.add(HabitCompletion(habit_id=habit_id, date=target_date))
     db.session.commit()
-    return redirect(url_for('main.habits'))
+    if request.headers.get('HX-Request'):
+        target = request.headers.get('HX-Target', '')
+        # Handle index.html toggle
+        if target.startswith('habit-home-'):
+             return render_template('partials/habit_item_home.html', habit=habit, completed=comp is None)
+        
+        # Handle habits.html cell toggle
+        # target might be the ID we just added
+        if 'habit-cell-' in target:
+             return render_template('partials/habit_cell.html', habit=habit, day={'date': target_date.strftime('%Y-%m-%d'), 'is_done': comp is None})
+        
+        # Fallback for habits page if triggered from within the list container
+        if target == 'habit-list-container':
+            return habits()
+            
+        # Default to cell if we're not sure, to avoid full page swap
+        return render_template('partials/habit_cell.html', habit=habit, day={'date': target_date.strftime('%Y-%m-%d'), 'is_done': comp is None})
+    return redirect(url_for('main.index'))
 
 @main_bp.route('/toggle_event/<int:event_id>', methods=['POST'])
 @login_required
 def toggle_event(event_id):
-    event = Event.query.get_or_404(event_id)
-    if event.user_id != current_user.id:
-        abort(403)
-        
+    event = db.session.get(Event, event_id)
+    if not event or event.user_id != current_user.id: abort(403)
     date_str = request.args.get('date')
     if not date_str:
-        event.is_completed = not event.is_completed
-        db.session.commit()
-        occ = EventOccurrence(event, event.start_time, event.is_completed)
-        return render_template('partials/event_item_small.html', event=occ)
-
-    try:
-        target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-    except ValueError:
-        return '', 400
-
-    completion = EventCompletion.query.filter_by(event_id=event.id, date=target_date).first()
-    
+        event.is_completed = not event.is_completed; db.session.commit()
+        return render_template('partials/event_item_small.html', event=EventOccurrence(event, event.start_time, event.is_completed))
+    try: target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError: return '', 400
+    comp = EventCompletion.query.filter_by(event_id=event.id, date=target_date).first()
     is_done = False
-    if completion:
-        db.session.delete(completion)
-        is_done = False
+    if comp: db.session.delete(comp)
     else:
-        new_comp = EventCompletion(event_id=event.id, user_id=current_user.id, date=target_date)
-        db.session.add(new_comp)
+        db.session.add(EventCompletion(event_id=event.id, user_id=current_user.id, date=target_date))
         is_done = True
-        
     db.session.commit()
-    
-    occ_start = datetime.combine(target_date, event.start_time.time())
-    occ = EventOccurrence(event, occ_start, is_done)
-    
-    return render_template('partials/event_item_small.html', event=occ)
+    return render_template('partials/event_item_small.html', event=EventOccurrence(event, datetime.combine(target_date, event.start_time.time()).replace(tzinfo=timezone.utc), is_done))

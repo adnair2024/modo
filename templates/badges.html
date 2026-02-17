@@ -1,61 +1,43 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto">
-    <div class="mb-8 text-center">
-        <h1 class="text-4xl font-bold text-gray-800 dark:text-white mb-2">Your Achievements</h1>
-        <p class="text-gray-600 dark:text-gray-400">Unlock badges by staying focused and consistent.</p>
+<div class="max-w-6xl mx-auto space-y-12">
+    <!-- Header Section -->
+    <div class="flex flex-col items-center justify-center border-b noir-border pt-6 pb-6 space-y-4 text-center">
+        <div class="space-y-1">
+            <h1 class="text-4xl font-bold tracking-tighter mono-display uppercase">Achievement_Log</h1>
+            <p class="text-[10px] font-bold opacity-50 uppercase tracking-widest">Protocol: Performance_Merit_Evaluation</p>
+        </div>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+    <!-- Badges Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
         {% for ach in achievements %}
         {% set earned_at = earned_map.get(ach.id) %}
-        <div class="relative group bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border {{ 'border-indigo-500 ring-2 ring-indigo-500 ring-opacity-50' if earned_at else 'border-gray-200 dark:border-gray-700' }} transition-all hover:-translate-y-1">
-            <div class="flex flex-col items-center text-center">
-                <div class="text-6xl mb-4 {{ '' if earned_at else 'filter grayscale opacity-30' }} transition duration-500">
-                    {{ ach.icon }}
-                </div>
-                <h3 class="text-xl font-bold mb-1 {{ 'text-gray-900 dark:text-white' if earned_at else 'text-gray-400 dark:text-gray-500' }}">
-                    {{ ach.name }}
-                </h3>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                    {{ ach.description }}
-                </p>
-                
-                {% if earned_at %}
-                <div class="mt-auto">
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                        Earned {{ earned_at.strftime('%Y-%m-%d') }}
-                    </span>
-                </div>
-                {% else %}
-                <div class="mt-auto">
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-                        Locked
-                    </span>
-                </div>
-                {% endif %}
+        <div class="noir-border flex flex-col items-center text-center space-y-6 transition-all pt-10 pb-8 px-6 {{ 'bg-accent/5 border-accent' if earned_at else 'bg-[var(--bg-alt)] opacity-40 grayscale' }}">
+            <div class="text-7xl">
+                {{ ach.icon }}
             </div>
             
-            <!-- Shine effect if earned -->
-            {% if earned_at %}
-            <div class="absolute inset-0 rounded-xl overflow-hidden pointer-events-none">
-                <div class="absolute top-0 left-0 w-full h-full bg-gradient-to-tr from-transparent via-white to-transparent opacity-10 transform -translate-x-full animate-shine"></div>
+            <div class="space-y-2">
+                <h3 class="text-lg font-bold uppercase tracking-tight">{{ ach.name }}</h3>
+                <p class="text-[10px] font-bold opacity-60 uppercase leading-relaxed h-12 line-clamp-3">
+                    {{ ach.description }}
+                </p>
             </div>
-            {% endif %}
+            
+            <div class="pt-6 border-t noir-border border-opacity-10 w-full flex flex-col items-center">
+                {% if earned_at %}
+                <div class="space-y-1 text-center">
+                    <span class="text-[10px] font-bold text-accent uppercase tracking-[0.2em]">STATUS: UNLOCKED</span>
+                    <p class="text-[8px] font-bold opacity-40 uppercase">TIMESTAMP: {{ earned_at.strftime('%Y.%m.%d') }}</p>
+                </div>
+                {% else %}
+                <span class="text-[10px] font-bold opacity-30 uppercase tracking-[0.2em] text-center">STATUS: LOCKED</span>
+                {% endif %}
+            </div>
         </div>
         {% endfor %}
     </div>
 </div>
-
-<style>
-    @keyframes shine {
-        100% {
-            transform: translateX(100%);
-        }
-    }
-    .animate-shine {
-        animation: shine 2s infinite;
-    }
-</style>
 {% endblock %}

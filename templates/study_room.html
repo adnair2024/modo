@@ -1,22 +1,26 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="w-full mx-auto text-center space-y-8 mt-10" id="study-container">
+<div class="max-w-6xl mx-auto space-y-12" id="study-container">
     {% if room.status == 'waiting' %}
-        <div class="bg-white dark:bg-gray-800 p-10 rounded-xl shadow-lg" 
+        <div class="noir-border bg-[var(--bg-alt)] p-20 text-center space-y-8" 
              hx-get="{{ url_for('study.study_room_poll', room_id=room.id) }}" 
              hx-trigger="every 2s"
              hx-swap="outerHTML">
-            <div class="animate-pulse">
-                <div class="h-20 w-20 bg-indigo-100 rounded-full mx-auto mb-6 flex items-center justify-center">
-                    <svg class="w-10 h-10 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+            <div class="relative inline-block">
+                <div class="w-24 h-24 noir-border bg-accent/10 flex items-center justify-center">
+                    <svg class="w-12 h-12 text-accent animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
                 </div>
-                <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">Waiting for Friend...</h2>
-                <p class="text-gray-500 dark:text-gray-400">Invite sent. Waiting for them to join.</p>
             </div>
-            <div class="mt-8">
+            
+            <div class="space-y-2">
+                <h2 class="text-3xl font-bold mono-display tracking-tighter uppercase">Signal_Waiting</h2>
+                <p class="text-[10px] font-bold opacity-50 uppercase tracking-[0.3em]">Awaiting_Peer_Connection_Handshake</p>
+            </div>
+
+            <div class="max-w-xs mx-auto pt-8">
                 <form action="{{ url_for('study.leave_study_room', room_id=room.id) }}" method="POST">
-                    <button class="text-red-500 hover:text-red-700 font-medium">Cancel & Leave</button>
+                    <button class="noir-button-outline w-full text-[10px] py-2">ABORT_PROTOCOL</button>
                 </form>
             </div>
         </div>

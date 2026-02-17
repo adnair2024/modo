@@ -1,46 +1,88 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto text-center mt-10">
-    <h2 class="text-3xl font-bold mb-8 text-gray-800 dark:text-gray-100">Focus Timer</h2>
+<div class="max-w-4xl mx-auto flex flex-col items-center justify-center space-y-16 py-12">
     
-    <!-- Task Selector for Page -->
-    <div class="mb-8 max-w-md mx-auto">
-        <label for="page-timer-task" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Task to Focus On</label>
-        <select id="page-timer-task" class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:border-indigo-500 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-            <option value="">-- Select a Task --</option>
-            {% for task in tasks %}
-                <option value="{{ task.id }}">{{ task.title }}</option>
-            {% endfor %}
-        </select>
+    <!-- System Status Header -->
+    <div class="w-full noir-border p-4 flex justify-between items-center opacity-60">
+        <span class="text-[10px] font-bold uppercase tracking-widest">Sys_Process: Focus_Execution</span>
+        <span class="text-[10px] font-bold uppercase tracking-widest">Module: Timer_V.1.0</span>
     </div>
 
-    <!-- Timer Display -->
-    <div class="relative bg-white dark:bg-gray-800 rounded-full w-72 h-72 flex items-center justify-center mx-auto mb-10 shadow-xl border-8 border-indigo-100 dark:border-gray-700 transition-all">
-        <span id="page-timer-display" class="text-7xl font-mono text-indigo-600 dark:text-indigo-400 font-bold tracking-wider">25:00</span>
+    <!-- The CRT Halftone Aura & Clock -->
+    <div class="relative group">
+        <!-- CRT Halftone Aura Mask (CSS handled) -->
+        <div class="absolute inset-[-100px] crt-aura transition-opacity duration-1000 group-hover:opacity-30"></div>
+        
+        <div class="relative flex flex-col items-center">
+            <span id="page-timer-display" class="text-[12rem] leading-none font-bold mono-display text-accent tracking-tighter select-none">25:00</span>
+            <div id="timer-mode-label" class="text-sm font-bold uppercase tracking-[1em] text-accent opacity-50 ml-[1em]">IDLE_READY</div>
+        </div>
     </div>
 
-    <!-- Controls -->
-    <div class="flex justify-center gap-6">
-        <button id="page-timer-start" class="bg-indigo-600 hover:bg-indigo-700 text-white px-10 py-4 rounded-xl text-xl font-semibold shadow-lg transition transform hover:scale-105">
-            Start Focus
-        </button>
-        <button id="page-timer-pause" class="hidden bg-yellow-500 hover:bg-yellow-600 text-white px-10 py-4 rounded-xl text-xl font-semibold shadow-lg transition transform hover:scale-105">
-            Pause
-        </button>
-        <button id="page-timer-end" class="hidden bg-purple-500 hover:bg-purple-600 text-white px-10 py-4 rounded-xl text-xl font-semibold shadow-lg transition transform hover:scale-105">
-            End Session
-        </button>
-        <button id="page-timer-skip" class="hidden bg-blue-500 hover:bg-blue-600 text-white px-10 py-4 rounded-xl text-xl font-semibold shadow-lg transition transform hover:scale-105">
-            Skip Break
-        </button>
-        <button id="page-timer-reset" class="bg-gray-500 hover:bg-gray-600 text-white px-10 py-4 rounded-xl text-xl font-semibold shadow-lg transition transform hover:scale-105">
-            Reset
-        </button>
+    <!-- Progress Array: 1x20 Dot Matrix -->
+    <div class="dot-matrix-row justify-center py-8">
+        {% for i in range(20) %}
+            <div class="dot-matrix-dot inactive" data-dot="{{ i }}"></div>
+        {% endfor %}
     </div>
-    
-    <p class="mt-8 text-gray-500 dark:text-gray-400">
-        Tip: Work for 25 minutes, then take a 5-minute break.
-    </p>
+
+    <!-- Hardware Controls -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-12 w-full">
+        <!-- Task Selection -->
+        <div class="noir-border bg-[var(--bg-alt)] p-6 space-y-4">
+            <div>
+                <label class="block text-[10px] font-bold opacity-50 uppercase mb-4 tracking-widest">Target_Execution_Task</label>
+                <select id="page-timer-task" class="noir-input w-full font-bold uppercase bg-transparent">
+                    <option value="">[NO_SELECTION]</option>
+                    {% for task in tasks %}
+                        <option value="{{ task.id }}">{{ task.title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div id="page-timer-subtask-container">
+                <label class="block text-[10px] font-bold opacity-50 uppercase mb-4 tracking-widest">Active_Subtask</label>
+                <select id="page-timer-subtask" class="noir-input w-full font-bold uppercase bg-transparent hidden">
+                    <option value="">[NO_SUBTASK_SELECTED]</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- System Controls -->
+        <div class="flex items-center justify-center gap-4">
+            <button id="page-timer-start" class="noir-button flex-1 py-4 text-sm tracking-widest">EXE_START</button>
+            <button id="page-timer-pause" class="noir-button flex-1 py-4 text-sm tracking-widest hidden" style="filter: hue-rotate(45deg);">INT_PAUSE</button>
+            <button id="page-timer-reset" class="noir-button-outline flex-1 py-4 text-sm tracking-widest">SYS_RESET</button>
+        </div>
+    </div>
+
+    <!-- Secondary Controls -->
+    <div class="flex gap-4 opacity-50">
+        <button id="page-timer-skip" class="text-[10px] font-bold uppercase border-b noir-border hover:text-accent hover:border-accent hidden">Skip_Break_Sequence</button>
+        <button id="page-timer-end" class="text-[10px] font-bold uppercase border-b noir-border hover:text-accent hover:border-accent hidden">Terminate_Early</button>
+    </div>
 </div>
+
+<script>
+    // Update Dot Matrix Progress
+    document.body.addEventListener('timerTick', (e) => {
+        const percent = e.detail.percent; // 0 to 100
+        const activeDots = Math.floor(percent / 5); // 20 dots total
+        document.querySelectorAll('.dot-matrix-dot').forEach((dot, i) => {
+            if (i < activeDots) {
+                dot.classList.remove('inactive');
+                dot.classList.add('active');
+            } else {
+                dot.classList.add('inactive');
+                dot.classList.remove('active');
+            }
+        });
+        
+        // Update mode label
+        const modeLabel = document.getElementById('timer-mode-label');
+        if (modeLabel) {
+            modeLabel.textContent = document.body.dataset.modoMode === 'break' ? 'BREAK_SEQUENCE' : 'FOCUS_EXECUTION';
+        }
+    });
+</script>
 {% endblock %}

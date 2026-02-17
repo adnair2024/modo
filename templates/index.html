@@ -1,161 +1,453 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="w-full mx-auto">
-    <!-- Active Sync Session -->
-    {% if active_sync_room %}
-        <div class="mb-8">
-            {% with room=active_sync_room, other_user=(active_sync_room.guest if active_sync_room.host_id == current_user.id else active_sync_room.host) %}
-                {% include 'partials/study_active.html' %}
-            {% endwith %}
-        </div>
-    {% endif %}
+<div class="max-w-7xl mx-auto space-y-8 pb-24" 
+     x-data="{ 
+        userModalOpen: false, 
+        vitalsModalOpen: false,
+        genesisFloating: localStorage.getItem('genesisFloating') === 'true',
+        isDraggingGenesis: false,
+        gx: parseInt(localStorage.getItem('genesisX')) || 100,
+        gy: parseInt(localStorage.getItem('genesisY')) || 100,
+        gOffsetX: 0,
+        gOffsetY: 0,
+        users: [], 
+        vitals: { cpu: 0, memory: 0, db_latency: 0, timestamp: '' },
+        response: '',
+        history: JSON.parse(localStorage.getItem('genesisHistory') || '[]'),
+        cmdHistory: JSON.parse(localStorage.getItem('genesisCmdHistory') || '[]'),
+        historyIndex: -1,
+        startDragGenesis(e) {
+            if (e.target.closest('input')) return;
+            this.isDraggingGenesis = true;
+            this.gOffsetX = e.clientX - this.gx;
+            this.gOffsetY = e.clientY - this.gy;
+            document.body.style.userSelect = 'none';
+        },
+        doDragGenesis(e) {
+            if (this.isDraggingGenesis && this.genesisFloating) {
+                requestAnimationFrame(() => {
+                    this.gx = e.clientX - this.gOffsetX;
+                    this.gy = e.clientY - this.gOffsetY;
+                    localStorage.setItem('genesisX', this.gx);
+                    localStorage.setItem('genesisY', this.gy);
+                });
+            }
+        },
+        stopDragGenesis() {
+            this.isDraggingGenesis = false;
+            document.body.style.userSelect = '';
+        },
+        fetchVitals() {
+            fetch('/api/genesis', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name=csrf-token]').content
+                },
+                body: JSON.stringify({ command: 'SYSTEM VITALS' })
+            }).then(r => r.json()).then(data => {
+                if (data.vitals_data) {
+                    this.vitals = data.vitals_data;
+                }
+            });
+        },
+        vitalsInterval: null,
+        initDashboardSorting() {
+            const saveOrder = () => {
+                const order = {
+                    left: Array.from(document.getElementById('dash-left').children).map(el => el.id),
+                    right: Array.from(document.getElementById('dash-right').children).map(el => el.id)
+                };
+                localStorage.setItem('dashOrder', JSON.stringify(order));
+            };
 
-    <!-- Upcoming Events -->
-    {% if grouped_events['Today'] or grouped_events['Tomorrow'] or grouped_events['This Week'] %}
-    <div class="mb-8 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
-        <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-            Upcoming Events
-        </h2>
-        
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {% for group, events in grouped_events.items() %}
-                {% if events %}
-                <div class="bg-white bg-opacity-10 backdrop-filter backdrop-blur-sm rounded-lg p-4">
-                    <h3 class="font-bold text-lg mb-3 border-b border-white border-opacity-20 pb-2">{{ group }}</h3>
-                    <div class="space-y-3">
-                        {% for event in events %}
-                            {% include "partials/event_item_small.html" %}
-                        {% endfor %}
-                    </div>
-                </div>
-                {% endif %}
-            {% endfor %}
-        </div>
-    </div>
-    {% endif %}
+            const options = {
+                group: 'dashboard',
+                animation: 150,
+                handle: '.panel-handle',
+                ghostClass: 'opacity-20',
+                onEnd: saveOrder
+            };
 
-    <!-- Daily Habits -->
-    {% if daily_habits %}
-    <div class="mb-8 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-        <div class="flex items-center justify-between mb-4">
-            <h2 class="text-xl font-bold flex items-center gap-2 text-gray-800 dark:text-white">
-                <svg class="w-6 h-6 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                Daily Habits
-            </h2>
-            <a href="{{ url_for('main.habits') }}" class="text-xs text-indigo-600 hover:underline">View All</a>
-        </div>
-        <div class="flex flex-wrap gap-4">
-            {% for habit in daily_habits %}
-                {% with day={'date': today_str, 'is_done': habit.is_done} %}
-                    {% include "partials/habit_item_home.html" %}
-                {% endwith %}
-            {% endfor %}
-        </div>
-    </div>
-    {% endif %}
+            new Sortable(document.getElementById('dash-left'), options);
+            new Sortable(document.getElementById('dash-right'), options);
 
-    <h2 class="text-3xl font-bold mb-6">My Tasks</h2>
+            // Restore Order
+            const saved = JSON.parse(localStorage.getItem('dashOrder'));
+            if (saved) {
+                saved.left.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) document.getElementById('dash-left').appendChild(el);
+                });
+                saved.right.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) document.getElementById('dash-right').appendChild(el);
+                });
+            }
+        }
+     }"
+     x-init="
+        initDashboardSorting();
+        $watch('history', value => localStorage.setItem('genesisHistory', JSON.stringify(value)));
+        $watch('cmdHistory', value => localStorage.setItem('genesisCmdHistory', JSON.stringify(value)));
+        $watch('genesisFloating', value => localStorage.setItem('genesisFloating', value));
+        $watch('vitalsModalOpen', value => {
+            if (value) {
+                fetchVitals();
+                vitalsInterval = setInterval(() => fetchVitals(), 5000);
+            } else {
+                clearInterval(vitalsInterval);
+            }
+        })
+     "
+     @keydown.window.prevent.cmd.f="genesisFloating = !genesisFloating"
+     @keydown.window.prevent.ctrl.f="genesisFloating = !genesisFloating"
+     @mousemove.window="doDragGenesis($event)"
+     @mouseup.window="stopDragGenesis()">
     
-    <!-- Add Task Form -->
-    <form hx-post="{{ url_for('main.add_task') }}" hx-target="#task-list" hx-swap="afterbegin" hx-on::after-request="this.reset()" class="mb-8 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-        <div class="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4">
-            <div class="md:col-span-8">
-                <input type="text" name="title" placeholder="What needs to be done?" required
-                    class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-indigo-500 dark:bg-gray-700 dark:text-white">
-            </div>
-            <div class="md:col-span-4">
-                <input type="text" name="tags" placeholder="Tags (e.g., work, urgent)"
-                    class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-indigo-500 dark:bg-gray-700 dark:text-white">
+    <!-- Header Section -->
+    <div class="flex flex-col items-center justify-center border-b noir-border pt-6 pb-6 space-y-4 text-center">
+        <div class="space-y-1">
+            <h1 class="text-5xl font-bold tracking-tighter mono-display uppercase">Command_Center</h1>
+            <p class="text-[12px] font-bold opacity-80 uppercase tracking-[0.2em]">Runtime: {{ total_focus | format_minutes }} // Status: Optimal</p>
+        </div>
+        <div class="flex flex-col items-center">
+            <span class="text-xs font-bold opacity-70 tracking-widest uppercase mb-2">ROOT_DASHBOARD</span>
+            <div class="flex items-center gap-2 px-3 py-1 border noir-border border-opacity-20 bg-black bg-opacity-5">
+                <span class="w-2 h-2 bg-green-500 animate-pulse"></span>
+                <span class="text-[10px] font-bold text-accent uppercase tracking-widest">Link_Active</span>
             </div>
         </div>
-        
-        <div class="mb-4">
-            <textarea name="description" placeholder="Add details..." rows="2"
-                class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-indigo-500 dark:bg-gray-700 dark:text-white"></textarea>
-        </div>
+    </div>
 
-        <div class="flex flex-wrap gap-4 items-end">
-            <div class="flex-1 min-w-[200px]">
-                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">Due Date & Time</label>
-                <input type="datetime-local" name="due_date"
-                    class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:border-indigo-500 text-sm dark:bg-gray-700 dark:text-white">
-            </div>
-            <div class="w-32">
-                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">Est. Poms 🍅</label>
-                <input type="number" name="estimated_pomodoros" value="1" min="1"
-                    class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:border-indigo-500 text-sm dark:bg-gray-700 dark:text-white">
-            </div>
-            <div class="w-32">
-                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">Priority</label>
-                <select name="priority" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:border-indigo-500 text-sm dark:bg-gray-700 dark:text-white">
-                    <option value="1">Level 1 (Low)</option>
-                    <option value="2">Level 2 (Med)</option>
-                    <option value="3">Level 3 (High)</option>
-                </select>
-            </div>
-            <button type="submit" class="bg-indigo-600 text-white px-8 py-2.5 rounded-lg hover:bg-indigo-700 transition font-medium shadow-sm">
-                Add Task
-            </button>
-        </div>
-    </form>
-
-    <!-- Search & Filters -->
-    <div class="mb-6" x-data="{ showFilters: false }">
-        <form id="filter-form" hx-get="/" hx-target="#task-list" hx-trigger="input delay:500ms, change, submit">
-            <div class="flex gap-4 mb-4">
-                <div class="relative flex-1">
-                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                    </span>
-                    <input type="text" name="q" placeholder="Search tasks..." 
-                        class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-400">
-                </div>
-                <button type="button" @click="showFilters = !showFilters" 
-                    class="px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 flex items-center gap-2 text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
-                    Filters
-                </button>
-            </div>
-
-            <div x-show="showFilters" style="display: none;" class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6 space-y-4 dark:bg-gray-800 dark:border-gray-700">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Sort By</label>
-                        <select name="sort_by" class="w-full p-2 border border-gray-300 rounded focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                            <option value="created_at">Newest First</option>
-                            <option value="priority">Priority</option>
-                            <option value="due_date">Due Date</option>
-                        </select>
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-12">
+        <!-- Left Column: Operations -->
+        <div class="lg:col-span-5 space-y-8 min-h-[200px]" id="dash-left">
+            {% if current_user.is_admin %}
+            <!-- Genesis Sentient Terminal -->
+            <div id="panel-genesis" 
+                 :class="genesisFloating ? 'fixed z-[60] w-[450px] shadow-2xl' : 'relative'"
+                 :style="genesisFloating ? `left: ${gx}px; top: ${gy}px;` : ''"
+                 class="noir-border bg-[var(--bg-alt)] p-6 space-y-4 transition-all duration-500 focus-within:border-accent h-96 flex flex-col">
+                
+                <div class="flex items-center justify-between border-b noir-border border-opacity-20 pb-2 flex-shrink-0 cursor-grab panel-handle"
+                     @mousedown="startDragGenesis($event)">
+                    <div class="flex-1">
+                        <button @click="genesisFloating = !genesisFloating" 
+                                class="text-[8px] font-bold opacity-40 hover:opacity-100 hover:text-accent transition-all uppercase tracking-widest">
+                            <span x-text="genesisFloating ? '[ ATTACH ]' : '[ DETACH ]'"></span>
+                        </button>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Date Range</label>
-                        <div class="flex gap-2">
-                            <input type="date" name="date_start" class="w-full p-2 border border-gray-300 rounded focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                            <input type="date" name="date_end" class="w-full p-2 border border-gray-300 rounded focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] font-bold text-[var(--text-main)] uppercase tracking-widest">Genesis_AI</span>
+                        <div class="w-2 h-2 bg-green-500 animate-pulse"></div>
+                    </div>
+                    <div class="flex-1 text-right">
+                    </div>
+                </div>
+                
+                <!-- Scrollable History Area -->
+                <div id="genesis-scroll-area" class="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-2 font-bold py-2" 
+                     x-init="$watch('history', () => $nextTick(() => $el.scrollTop = $el.scrollHeight))">
+                    <template x-for="entry in history">
+                        <div class="space-y-1">
+                            <div class="flex gap-2 text-[11px] opacity-40">
+                                <span class="text-accent">></span>
+                                <span x-text="entry.cmd"></span>
+                            </div>
+                            <div class="text-sm mono-display leading-relaxed opacity-90 pl-4 border-l border-accent border-opacity-20" x-text="entry.res"></div>
+                        </div>
+                    </template>
+                    <div x-show="history.length === 0" class="text-center py-12 opacity-20 italic text-xs uppercase tracking-widest">
+                        Awaiting_System_Instructions...
+                    </div>
+                </div>
+                
+                <div class="flex items-start gap-3 py-2 border-t noir-border border-opacity-10 flex-shrink-0">
+                    <span class="text-accent font-bold mt-0.5 opacity-50">></span>
+                    <input type="text" id="genesis-input" 
+                           placeholder="SYSTEM_COMMAND_" 
+                           class="w-full font-bold uppercase placeholder:opacity-20 bg-transparent outline-none border-none focus:ring-0 p-0 text-sm tracking-widest"
+                           @keydown.up.prevent="
+                                if (cmdHistory.length > 0) {
+                                    historyIndex = Math.min(historyIndex + 1, cmdHistory.length - 1);
+                                    $el.value = cmdHistory[cmdHistory.length - 1 - historyIndex];
+                                }
+                           "
+                           @keydown.down.prevent="
+                                if (historyIndex > 0) {
+                                    historyIndex--;
+                                    $el.value = cmdHistory[cmdHistory.length - 1 - historyIndex];
+                                } else if (historyIndex === 0) {
+                                    historyIndex = -1;
+                                    $el.value = '';
+                                }
+                           "
+                           @keydown.enter="
+                                const cmd = $el.value;
+                                if (!cmd) return;
+                                $el.value = '';
+                                
+                                if (cmd.toUpperCase() === 'CLEAR') {
+                                    history = [];
+                                    localStorage.removeItem('genesisHistory');
+                                    return;
+                                }
+
+                                cmdHistory.push(cmd);
+                                historyIndex = -1;
+                                
+                                fetch('/api/genesis', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRFToken': document.querySelector('meta[name=csrf-token]').content
+                                    },
+                                    body: JSON.stringify({ command: cmd })
+                                }).then(r => r.json()).then(data => {
+                                    history.push({ cmd: cmd, res: data.response });
+                                    
+                                    // Robust trigger detection
+                                    const text = data.response.toUpperCase();
+                                    if (data.user_data || text.includes('USER_METRICS_FETCHED')) {
+                                        if (data.user_data) users = data.user_data;
+                                        userModalOpen = true;
+                                    }
+                                    if (data.vitals_data || text.includes('VITALS_STREAM_READY')) {
+                                        if (data.vitals_data) vitals = data.vitals_data;
+                                        vitalsModalOpen = true;
+                                    }
+                                    if (data.refresh_tasks) {
+                                        htmx.trigger('#task-list', 'tasksChanged');
+                                        document.body.dispatchEvent(new CustomEvent('tasksChanged'));
+                                    }
+                                }).catch(err => {
+                                    console.error('Genesis Error:', err);
+                                    history.push({ cmd: cmd, res: '[CRITICAL_FAILURE] CONNECTION_LOST' });
+                                });
+                           ">
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Add Task -->
+            <div id="panel-add-task" class="noir-border bg-[var(--bg-alt)] p-6">
+                <div class="flex flex-col items-center justify-center gap-2 mb-6 border-b noir-border border-opacity-20 pb-4 text-center cursor-grab panel-handle">
+                    <span class="text-xs font-bold uppercase tracking-widest text-[var(--text-main)]">Create_Task</span>
+                </div>
+                
+                <form hx-post="{{ url_for('main.add_task') }}" hx-target="#task-list" hx-swap="afterbegin" hx-on::after-request="this.reset()" class="space-y-6">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-[10px] font-bold opacity-90 uppercase mb-1 tracking-widest text-center">Title</label>
+                            <input type="text" name="title" placeholder="TASK_NAME" required
+                                class="noir-input w-full text-lg font-bold tracking-tight placeholder:opacity-20 text-center">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-[10px] font-bold opacity-90 uppercase mb-1 tracking-widest text-center">Description</label>
+                            <textarea name="description" placeholder="NOTES" rows="2"
+                                class="noir-input w-full text-sm opacity-90 resize-none placeholder:opacity-20 text-center"></textarea>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-[10px] font-bold opacity-90 uppercase mb-1 tracking-widest text-center">Priority</label>
+                                <select name="priority" class="noir-input w-full text-sm bg-transparent font-bold">
+                                    <option value="1">LOW</option>
+                                    <option value="2">MEDIUM</option>
+                                    <option value="3">HIGH</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold opacity-90 uppercase mb-1 tracking-widest text-center">Poms</label>
+                                <input type="number" name="estimated_pomodoros" value="1" min="1" max="10"
+                                    class="noir-input w-full text-sm placeholder:opacity-20 text-center">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold opacity-90 uppercase mb-1 tracking-widest text-center">Tags</label>
+                                <input type="text" name="tags" placeholder="WORK..."
+                                    class="noir-input w-full text-sm placeholder:opacity-20 text-center">
+                            </div>
                         </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Tags</label>
-                        <div class="flex flex-wrap gap-2 max-h-24 overflow-y-auto p-2 border border-gray-300 rounded bg-gray-50 dark:bg-gray-700 dark:border-gray-600">
-                            {% for tag in all_tags %}
-                            <label class="inline-flex items-center bg-white px-2 py-1 rounded border border-gray-200 cursor-pointer hover:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:hover:border-indigo-500">
-                                <input type="checkbox" name="tags" value="{{ tag.name }}" class="rounded text-indigo-600 focus:ring-indigo-500 mr-2 dark:bg-gray-700 dark:border-gray-500">
-                                <span class="text-sm text-gray-700 dark:text-gray-300">{{ tag.name }}</span>
-                            </label>
-                            {% endfor %}
-                            {% if not all_tags %}
-                                <span class="text-sm text-gray-500 italic dark:text-gray-400">No tags available. Add tags to tasks first.</span>
+
+                    <div class="pt-4">
+                        <button type="submit" class="noir-button w-full text-sm py-3">ADD_TASK</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Habits (Mini View) -->
+            <div id="panel-habits" class="noir-border bg-[var(--bg-alt)] p-6">
+                <div class="flex flex-col items-center relative mb-6 border-b noir-border border-opacity-20 pb-4 text-center cursor-grab panel-handle">
+                    <span class="text-xs font-bold uppercase tracking-widest text-[var(--text-main)]">Daily_Habits</span>
+                    <a href="{{ url_for('main.habits') }}" class="absolute right-0 top-0 text-[10px] font-bold opacity-70 hover:text-accent hover:underline uppercase tracking-widest transition-colors">Manage</a>
+                </div>
+                <div class="grid grid-cols-1 gap-3">
+                    {% for item in habit_items %}
+                        {% with habit=item.habit, completed=item.completed %}
+                            {% include 'partials/habit_item_home.html' %}
+                        {% endwith %}
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Events (Mini View) -->
+            <div id="panel-events" class="noir-border bg-[var(--bg-alt)] p-6">
+                <div class="flex flex-col items-center relative mb-6 border-b noir-border border-opacity-20 pb-4 text-center cursor-grab panel-handle">
+                    <span class="text-xs font-bold uppercase tracking-widest text-[var(--text-main)]">Scheduled_Events</span>
+                    <a href="{{ url_for('schedule.schedule') }}" class="absolute right-0 top-0 text-[10px] font-bold opacity-70 hover:text-accent hover:underline uppercase tracking-widest transition-colors">Full_Grid</a>
+                </div>
+                <div class="space-y-4">
+                    {% for event in today_events %}
+                        <div class="flex items-center justify-between p-3 border-l-2 border-accent bg-black bg-opacity-5">
+                            <div class="space-y-1">
+                                <p class="text-sm font-bold uppercase tracking-wide">{{ event.title }}</p>
+                                <p class="text-[10px] font-bold opacity-40 uppercase">{{ event.start_time.strftime('%H:%M') }} - {{ event.end_time.strftime('%H:%M') }}</p>
+                            </div>
+                            {% if event.is_completed %}
+                                <span class="text-[9px] font-bold text-accent px-2 py-1 border border-accent uppercase">COMPLETED</span>
                             {% endif %}
                         </div>
+                    {% else %}
+                        <div class="py-8 text-center opacity-30 italic">
+                            <p class="text-[10px] font-bold uppercase tracking-widest">No_Events_Logged_Today</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Queue -->
+        <div class="lg:col-span-7 space-y-6 min-h-[200px]" id="dash-right">
+            <div id="panel-queue" class="space-y-6">
+                <div class="flex items-center gap-4 cursor-grab panel-handle">
+                    <h2 class="text-2xl font-bold mono-display uppercase tracking-[0.2em]">Active_Queue</h2>
+                    <div class="flex-1 h-[1px] bg-black dark:bg-white opacity-20"></div>
+                    <div class="flex gap-2">
+                        <a href="/?sort=priority" class="text-[10px] font-bold px-2 py-1 border noir-border hover:bg-accent hover:text-[var(--bg-alt)] transition-colors uppercase tracking-widest">Priority</a>
+                        <a href="/?sort=created_at" class="text-[10px] font-bold px-2 py-1 border noir-border hover:bg-accent hover:text-[var(--bg-alt)] transition-colors uppercase tracking-widest">Newest</a>
+                    </div>
+                </div>
+                
+                <div id="task-list" class="space-y-3">
+                    {% include "partials/task_list.html" %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Info Modal Overlay -->
+    <div x-show="userModalOpen" 
+         class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-90 animate-in fade-in duration-300"
+         x-cloak>
+        <div class="max-w-5xl w-full noir-border bg-[var(--bg-main)] p-10 space-y-8 relative shadow-[0_0_50px_rgba(var(--accent-rgb),0.1)]"
+             @click.away="userModalOpen = false">
+            
+            <div class="flex items-center justify-between border-b noir-border pb-6">
+                <div class="flex items-center gap-6">
+                    <h3 class="text-3xl font-bold mono-display tracking-tight text-accent">USER_METRICS_DUMP</h3>
+                    <div class="w-3 h-3 bg-accent animate-pulse"></div>
+                </div>
+                <button @click="userModalOpen = false" class="text-sm font-bold hover:text-accent transition-colors">[ CLOSE_PROTOCOL ]</button>
+            </div>
+
+            <div class="overflow-x-auto custom-scrollbar max-h-[60vh]">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b noir-border border-opacity-30 bg-black bg-opacity-5">
+                            <th class="px-4 py-4 text-[11px] font-bold uppercase opacity-60 tracking-widest">UID_Hash</th>
+                            <th class="px-4 py-4 text-[11px] font-bold uppercase opacity-60 tracking-widest">Identity_Label</th>
+                            <th class="px-4 py-4 text-[11px] font-bold uppercase opacity-60 tracking-widest">Sync_Date</th>
+                            <th class="px-4 py-4 text-[11px] font-bold uppercase opacity-60 tracking-widest">Last_Active</th>
+                            <th class="px-4 py-4 text-[11px] font-bold uppercase opacity-60 tracking-widest">Integrity</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y noir-border divide-opacity-10">
+                        <template x-for="user in users" :key="user.id">
+                            <tr class="hover:bg-accent hover:bg-opacity-5 transition-colors border-b noir-border border-opacity-5">
+                                <td class="px-4 py-5 font-mono text-[11px] opacity-40" x-text="'#' + String(user.id).padStart(4, '0')"></td>
+                                <td class="px-4 py-5">
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-sm font-bold" x-text="user.username"></span>
+                                        <template x-if="user.is_admin">
+                                            <span class="text-[9px] border border-accent text-accent px-2 py-0.5 font-bold">ROOT</span>
+                                        </template>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-5 text-sm font-bold opacity-80" x-text="user.date_joined"></td>
+                                <td class="px-4 py-5 text-sm font-bold opacity-80" x-text="user.last_seen"></td>
+                                <td class="px-4 py-5">
+                                    <div class="flex items-center gap-2">
+                                        <div :class="user.is_banned ? 'bg-red-600' : 'bg-green-600'" class="w-2 h-2"></div>
+                                        <span x-text="user.is_banned ? 'VOIDED' : 'STABLE'" class="text-[9px] font-bold opacity-80"></span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Vitals Modal Overlay -->
+    <div x-show="vitalsModalOpen" 
+         class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-90 animate-in fade-in duration-300"
+         x-cloak>
+        <div class="max-w-2xl w-full noir-border bg-[var(--bg-main)] p-10 space-y-8 relative"
+             @click.away="vitalsModalOpen = false">
+            
+            <div class="flex items-center justify-between border-b noir-border pb-6">
+                <div class="flex items-center gap-6">
+                    <h3 class="text-3xl font-bold mono-display tracking-tight text-accent">SYSTEM_VITALS_STREAM</h3>
+                    <span class="text-[10px] font-bold text-accent animate-pulse px-3 py-1 border border-accent uppercase tracking-widest">Real_Time_Telemetry</span>
+                </div>
+                <button @click="vitalsModalOpen = false" class="text-sm font-bold hover:text-accent transition-colors">[ CLOSE_STREAM ]</button>
+            </div>
+
+            <div class="grid grid-cols-1 gap-8">
+                <!-- CPU -->
+                <div class="space-y-2">
+                    <div class="flex justify-between text-[10px] font-bold uppercase tracking-widest opacity-60">
+                        <span>CPU_Load</span>
+                        <span x-text="vitals.cpu + '%'"></span>
+                    </div>
+                    <div class="w-full h-4 noir-border bg-black bg-opacity-20 p-0.5">
+                        <div class="h-full bg-accent transition-all duration-500" :style="'width: ' + vitals.cpu + '%'"></div>
+                    </div>
+                </div>
+
+                <!-- Memory -->
+                <div class="space-y-2">
+                    <div class="flex justify-between text-[10px] font-bold uppercase tracking-widest opacity-60">
+                        <span>Memory_Usage</span>
+                        <span x-text="vitals.memory + '%'"></span>
+                    </div>
+                    <div class="w-full h-4 noir-border bg-black bg-opacity-20 p-0.5">
+                        <div class="h-full bg-accent transition-all duration-500" :style="'width: ' + vitals.memory + '%'"></div>
+                    </div>
+                </div>
+
+                <!-- DB Latency -->
+                <div class="noir-border p-6 flex items-center justify-between bg-black bg-opacity-5">
+                    <div class="space-y-1">
+                        <span class="text-[10px] font-bold uppercase tracking-widest opacity-60">Database_Latency</span>
+                        <p class="text-2xl font-bold mono-display" x-text="vitals.db_latency + ' MS'"></p>
+                    </div>
+                    <div class="text-right space-y-1">
+                        <span class="text-[10px] font-bold uppercase tracking-widest opacity-60">Last_Sync</span>
+                        <p class="text-sm font-bold" x-text="vitals.timestamp"></p>
                     </div>
                 </div>
             </div>
-        </form>
-    </div>
 
-    <!-- Task List -->
-    {% include "partials/task_list.html" %}
+            <div class="pt-6 border-t noir-border border-opacity-20 text-center">
+                <span class="text-[9px] font-bold opacity-40 uppercase tracking-[0.5em]">Polling_Frequency: 5000ms</span>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}

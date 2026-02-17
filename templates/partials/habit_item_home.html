@@ -1,14 +1,11 @@
-<div class="flex items-center gap-2 bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-full border border-gray-100 dark:border-gray-600 transition-all hover:shadow-sm" id="habit-home-{{ habit.id }}">
-    <button 
-        hx-post="{{ url_for('main.toggle_habit', habit_id=habit.id, date=day.date) }}" 
-        hx-target="#habit-home-{{ habit.id }}"
-        hx-swap="outerHTML"
-        class="w-6 h-6 rounded-full flex items-center justify-center border transition-all duration-200 focus:outline-none 
-               {{ 'bg-indigo-500 border-indigo-500 text-white' if day.is_done else 'bg-white border-gray-300 text-transparent hover:border-indigo-300' }}"
-    >
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+<div class="flex items-center justify-between p-2 border noir-border border-opacity-10 bg-black bg-opacity-5" id="habit-home-{{ habit.id }}">
+    <span class="text-sm font-bold uppercase tracking-wider opacity-90">{{ habit.title }}</span>
+    <button hx-post="{{ url_for('main.toggle_habit', habit_id=habit.id) }}"
+            hx-target="#habit-home-{{ habit.id }}"
+            hx-swap="outerHTML"
+            class="w-6 h-6 border noir-border flex items-center justify-center transition-colors {{ 'bg-accent border-accent' if completed else 'opacity-40 hover:opacity-100' }}">
+        {% if completed %}
+            <svg class="w-4 h-4 text-[var(--bg-alt)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+        {% endif %}
     </button>
-    <span class="text-sm font-medium {{ 'text-gray-400 line-through' if day.is_done else 'text-gray-700 dark:text-gray-200' }}">
-        {{ habit.title }}
-    </span>
 </div>

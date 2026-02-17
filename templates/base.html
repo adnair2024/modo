@@ -1,254 +1,240 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="{{ current_user.theme_preference if current_user.is_authenticated else 'light' }}">
+<html lang="en" data-theme="{{ current_user.theme_preference if (current_user.is_authenticated and current_user.theme_preference) else 'light' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modo - Productivity Manager</title>
+    <title>MODO // TERMINAL</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <script>
+        function resolveTheme() {
+            const theme = "{{ current_user.theme_preference if (current_user.is_authenticated and current_user.theme_preference) else 'light' }}";
+            const html = document.documentElement;
+            if (theme === 'system') {
+                const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                html.setAttribute('data-theme', isDark ? 'dark' : 'light');
+            } else {
+                html.setAttribute('data-theme', theme);
+            }
+        }
+        resolveTheme();
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', resolveTheme);
+    </script>
+    <script>
+        window.modoNotify = (msg, type = 'info') => {
+            window.dispatchEvent(new CustomEvent('modo-notify', { detail: { msg, type } }));
+        };
+
+        document.addEventListener('htmx:configRequest', (event) => {
+            event.detail.headers['X-CSRFToken'] = '{{ csrf_token() }}';
+        });
+
+        function injectCSRF() {
+            document.querySelectorAll('form').forEach(form => {
+                if (!form.querySelector('input[name="csrf_token"]')) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'csrf_token';
+                    input.value = '{{ csrf_token() }}';
+                    form.appendChild(input);
+                }
+            });
+        }
+        document.addEventListener('DOMContentLoaded', injectCSRF);
+        document.addEventListener('htmx:afterSwap', injectCSRF);
+        
         tailwind.config = {
             darkMode: ['class', '[data-theme="dark"], [data-theme="amoled"]'],
             theme: {
                 extend: {
                     colors: {
-                        indigo: tailwind.colors.{{ current_user.accent_color or 'indigo' }}
+                        accent: 'var(--accent-color)'
                     }
                 }
             }
         }
     </script>
     <style>
-        [data-theme="dark"] body { background-color: #1f2937; color: #f3f4f6; }
-        [data-theme="dark"] .bg-white { background-color: #374151; color: #f3f4f6; }
-        [data-theme="dark"] .text-gray-900 { color: #f3f4f6; }
-        [data-theme="dark"] .text-gray-800 { color: #e5e7eb; }
-        [data-theme="dark"] .text-gray-600 { color: #9ca3af; }
-        [data-theme="dark"] .border-gray-200 { border-color: #4b5563; }
-        [data-theme="dark"] .bg-gray-100 { background-color: #111827; }
-        [data-theme="dark"] input, [data-theme="dark"] textarea, [data-theme="dark"] select { background-color: #374151; color: white; border-color: #4b5563; }
-
-        [data-theme="amoled"] body { background-color: #000000; color: #f3f4f6; }
-        [data-theme="amoled"] .bg-white, 
-        [data-theme="amoled"] .bg-gray-50, 
-        [data-theme="amoled"] .bg-gray-100, 
-        [data-theme="amoled"] .bg-gray-200,
-        [data-theme="amoled"] .bg-indigo-50\/30 { background-color: #000000 !important; color: #f3f4f6; border-color: #262626 !important; }
-        
-        [data-theme="amoled"] .text-gray-900 { color: #f3f4f6; }
-        [data-theme="amoled"] .text-gray-800 { color: #e5e7eb; }
-        [data-theme="amoled"] .text-gray-600 { color: #a3a3a3; }
-        [data-theme="amoled"] .text-gray-500 { color: #737373; }
-        [data-theme="amoled"] .text-gray-400 { color: #525252; }
-        
-        [data-theme="amoled"] .border,
-        [data-theme="amoled"] .border-b,
-        [data-theme="amoled"] .border-t,
-        [data-theme="amoled"] .border-l,
-        [data-theme="amoled"] .border-r,
-        [data-theme="amoled"] .border-gray-100,
-        [data-theme="amoled"] .border-gray-200,
-        [data-theme="amoled"] .border-gray-300 { border-color: #262626 !important; }
-        
-        [data-theme="amoled"] .hover\:bg-gray-50:hover,
-        [data-theme="amoled"] .hover\:bg-gray-100:hover { background-color: #0a0a0a !important; }
-        
-        [data-theme="amoled"] input, [data-theme="amoled"] textarea, [data-theme="amoled"] select { background-color: #000000; color: white; border-color: #262626; }
-        [data-theme="amoled"] aside { background-color: #000000; border-color: #262626; }
-        [data-theme="amoled"] header { background-color: #000000; border-color: #262626; }
-        [data-theme="amoled"] #global-timer-container { background-color: #000000; border-top-color: #262626; }
-        [data-theme="amoled"] .shadow-sm, [data-theme="amoled"] .shadow, [data-theme="amoled"] .shadow-md, [data-theme="amoled"] .shadow-lg, [data-theme="amoled"] .shadow-xl { box-shadow: none !important; }
-        
-        /* Specific overrides for buttons and small components */
-        [data-theme="amoled"] .bg-indigo-50 { background-color: #0a0a0a !important; color: #818cf8 !important; }
-
         :root {
-            --color-indigo-600: #4f46e5;
-            --color-blue-600: #2563eb;
-            --color-green-600: #16a34a;
-            --color-red-600: #dc2626;
-            --color-purple-600: #9333ea;
-            --color-pink-600: #db2777;
-            --color-orange-600: #ea580c;
+            --accent-color: {{ current_user.accent_color if (current_user.is_authenticated and current_user.accent_color) else '#4f46e5' }};
+            {% if current_user.is_authenticated and current_user.accent_color and current_user.accent_color.startswith('#') %}
+                {% set hex = current_user.accent_color.lstrip('#') %}
+                {% if hex|length == 6 %}
+                    --accent-rgb: {{ int(hex[0:2], 16) }}, {{ int(hex[2:4], 16) }}, {{ int(hex[4:6], 16) }};
+                {% else %}
+                    --accent-rgb: 79, 70, 229;
+                {% endif %}
+            {% else %}
+                --accent-rgb: 79, 70, 229;
+            {% endif %}
         }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-900 font-sans transition-colors duration-200" x-data="{ mobileSidebarOpen: false, desktopSidebarOpen: true }">
-    <div class="flex h-screen overflow-hidden">
+<body class="transition-colors duration-0" x-data="{ mobileSidebarOpen: false, desktopSidebarOpen: true }">
+    <div class="flex h-screen overflow-hidden" x-data="{ 
+        toasts: [],
+        addToast(msg, type = 'info') {
+            const id = Date.now();
+            this.toasts.push({ id, msg, type });
+            setTimeout(() => {
+                this.toasts = this.toasts.filter(t => t.id !== id);
+            }, 5000);
+        },
+        async checkNewNotifications() {
+            try {
+                const r = await fetch('/api/notifications');
+                const data = await r.json();
+                if (Array.isArray(data)) {
+                    data.forEach(n => {
+                        // Use session storage to avoid double-toasting on this page session
+                        const seenKey = 'seen_notif_' + n.id;
+                        if (!sessionStorage.getItem(seenKey)) {
+                            this.addToast(n.message, n.type);
+                            sessionStorage.setItem(seenKey, 'true');
+                        }
+                    });
+                    // Update unread count if we're in the header's x-data context or dispatch
+                    window.dispatchEvent(new CustomEvent('unread-count-update', { detail: data.length }));
+                }
+            } catch(e) {}
+        }
+    }" 
+    x-init="setInterval(() => checkNewNotifications(), 10000); checkNewNotifications();"
+    @modo-notify.window="addToast($event.detail.msg, $event.detail.type)">
+        
+        <!-- Toast Container -->
+        <div class="fixed top-8 left-1/2 -translate-x-1/2 z-[200] flex flex-col gap-3 pointer-events-none w-full max-w-md px-4">
+            <template x-for="toast in toasts" :key="toast.id">
+                <div class="noir-border bg-[var(--bg-alt)] p-4 shadow-2xl animate-in slide-in-from-top-4 duration-300 pointer-events-auto flex items-center justify-between gap-4 border-l-4"
+                     :class="{
+                        'border-l-accent': toast.type === 'info',
+                        'border-l-green-500': toast.type === 'success',
+                        'border-l-red-600': toast.type === 'error',
+                        'border-l-orange-500': toast.type === 'warning'
+                     }">
+                    <div class="flex flex-col gap-1">
+                        <span class="text-[10px] font-bold opacity-40 uppercase tracking-widest" x-text="toast.type + '_LOG'"></span>
+                        <p class="text-xs font-bold uppercase tracking-wide" x-text="toast.msg"></p>
+                    </div>
+                    <button @click="toasts = toasts.filter(t => t.id !== toast.id)" class="text-[10px] font-bold opacity-30 hover:opacity-100 uppercase">[ X ]</button>
+                </div>
+            </template>
+        </div>
+
         {% if current_user.is_authenticated %}
-        <!-- Sidebar -->
-        <aside :class="{'translate-x-0': mobileSidebarOpen, '-translate-x-full': !mobileSidebarOpen, 'md:translate-x-0': true, 'md:w-72': desktopSidebarOpen, 'md:w-24': !desktopSidebarOpen}" 
-               class="fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-gray-200 transition-all duration-300 transform md:static md:inset-0 flex flex-col h-screen overflow-y-auto overflow-x-hidden">
-            <div class="h-16 flex items-center justify-between px-6 bg-white border-b border-gray-200">
-                <h1 class="text-3xl font-bold text-indigo-600 truncate transition-all duration-300" x-show="desktopSidebarOpen">Modo</h1>
-                <h1 class="text-2xl font-bold text-indigo-600 truncate transition-all duration-300" x-show="!desktopSidebarOpen" style="display: none;">M</h1>
-                <button @click="mobileSidebarOpen = false" class="md:hidden text-gray-500 hover:text-gray-700 focus:outline-none">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        <!-- Sidebar: Digital Noir / Terminal Style -->
+        <aside :class="desktopSidebarOpen ? 'translate-x-0 w-64 opacity-100' : '-translate-x-full w-0 opacity-0'" 
+               class="fixed inset-y-0 left-0 z-50 border-r noir-border bg-[var(--bg-main)] transition-all duration-300 flex flex-col h-screen overflow-y-auto overflow-x-hidden md:static">
+            
+            <div class="h-16 flex items-center justify-between px-6 border-b noir-border text-white dark:text-black bg-black dark:bg-white">
+                <span class="text-2xl font-bold tracking-tighter mono-display">MODO_OS</span>
+                <button @click="desktopSidebarOpen = false" class="hidden md:block hover:text-accent">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path></svg>
                 </button>
             </div>
-            <nav class="mt-6 flex-1 px-4 space-y-3">
-                <a href="{{ url_for('main.index') }}" class="flex items-center gap-4 py-3 px-4 rounded transition duration-200 hover:bg-indigo-50 hover:text-indigo-600 group text-lg" title="To-Do List">
-                    <svg class="w-7 h-7 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
-                    <span class="whitespace-nowrap transition-all duration-300 origin-left" :class="desktopSidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 hidden'">To-Do List</span>
+
+            <nav class="mt-4 flex-1 px-4 space-y-1">
+                {% set nav_items = [
+                    ('main.index', 'COMMAND_CENTER', 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4'),
+                    ('main.timer', 'FOCUS_NODE', 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'),
+                    ('schedule.schedule', 'SCHEDULE', 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'),
+                    ('main.habits', 'HABITS', 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'),
+                    ('projects.projects_list', 'PROJECTS', 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z'),
+                    ('social.friends_list', 'SOCIAL', 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z'),
+                    ('main.leaderboard', 'LEADERBOARD', 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z'),
+                    ('main.badges', 'MERIT_LOG', 'M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z'),
+                    ('main.personal_stats', 'ANALYTICS', 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z'),
+                    ('settings.settings', 'SYSTEM_CONFIG', 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z')
+                ] %}
+                {% for endpoint, label, svg in nav_items %}
+                <a href="{{ url_for(endpoint) }}" class="flex items-center gap-3 p-3 hover:bg-[var(--text-main)] hover:text-[var(--bg-main)] transition-colors group" title="{{ label }}">
+                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ svg }}"></path></svg>
+                    <span class="text-base font-bold tracking-widest">{{ label }}</span>
                 </a>
-                <a href="{{ url_for('main.timer') }}" class="flex items-center gap-4 py-3 px-4 rounded transition duration-200 hover:bg-indigo-50 hover:text-indigo-600 group text-lg" title="Timer">
-                    <svg class="w-7 h-7 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    <span class="whitespace-nowrap transition-all duration-300 origin-left" :class="desktopSidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 hidden'">Timer</span>
-                </a>
-                <a href="{{ url_for('schedule.schedule') }}" class="flex items-center gap-4 py-3 px-4 rounded transition duration-200 hover:bg-indigo-50 hover:text-indigo-600 group text-lg" title="Schedule">
-                    <svg class="w-7 h-7 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                    <span class="whitespace-nowrap transition-all duration-300 origin-left" :class="desktopSidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 hidden'">Schedule</span>
-                </a>
-                <a href="{{ url_for('main.habits') }}" class="flex items-center gap-4 py-3 px-4 rounded transition duration-200 hover:bg-indigo-50 hover:text-indigo-600 group text-lg" title="Habits">
-                    <svg class="w-7 h-7 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    <span class="whitespace-nowrap transition-all duration-300 origin-left" :class="desktopSidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 hidden'">Habits</span>
-                </a>
-                <a href="{{ url_for('projects.projects_list') }}" class="flex items-center gap-4 py-3 px-4 rounded transition duration-200 hover:bg-indigo-50 hover:text-indigo-600 group text-lg" title="Projects">
-                    <svg class="w-7 h-7 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
-                    <span class="whitespace-nowrap transition-all duration-300 origin-left" :class="desktopSidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 hidden'">Projects</span>
-                </a>
-                <a href="{{ url_for('social.friends_list') }}" class="flex items-center gap-4 py-3 px-4 rounded transition duration-200 hover:bg-indigo-50 hover:text-indigo-600 group text-lg" title="Friends">
-                    <svg class="w-7 h-7 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                    <span class="whitespace-nowrap transition-all duration-300 origin-left" :class="desktopSidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 hidden'">Friends</span>
-                </a>
-                <a href="{{ url_for('main.personal_stats') }}" class="flex items-center gap-4 py-3 px-4 rounded transition duration-200 hover:bg-indigo-50 hover:text-indigo-600 group text-lg" title="My Stats">
-                    <svg class="w-7 h-7 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                    <span class="whitespace-nowrap transition-all duration-300 origin-left" :class="desktopSidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 hidden'">My Stats</span>
-                </a>
-                <a href="{{ url_for('main.leaderboard') }}" class="flex items-center gap-4 py-3 px-4 rounded transition duration-200 hover:bg-indigo-50 hover:text-indigo-600 group text-lg" title="Leaderboard">
-                    <svg class="w-7 h-7 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-                    <span class="whitespace-nowrap transition-all duration-300 origin-left" :class="desktopSidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 hidden'">Leaderboard</span>
-                </a>
-                <a href="{{ url_for('main.badges') }}" class="flex items-center gap-4 py-3 px-4 rounded transition duration-200 hover:bg-indigo-50 hover:text-indigo-600 group text-lg" title="Achievements">
-                    <svg class="w-7 h-7 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A3.323 3.323 0 0010.605 4.5c-1.107 0-2.005.898-2.005 2.005 0 1.107.898 2.005 2.005 2.005.344 0 .667-.087.95-.239l.527.527a2.5 2.5 0 103.536 3.536l.527.527a3.323 3.323 0 00-.239.95c0 1.107.898 2.005 2.005 2.005 1.107 0 2.005-.898 2.005-2.005-2.005-.344 0-.667.087-.95.239l-.527-.527a2.5 2.5 0 10-3.536-3.536l-.527-.527z"></path></svg>
-                    <span class="whitespace-nowrap transition-all duration-300 origin-left" :class="desktopSidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 hidden'">Achievements</span>
-                </a>
-                <a href="{{ url_for('settings.settings') }}" class="flex items-center gap-4 py-3 px-4 rounded transition duration-200 hover:bg-indigo-50 hover:text-indigo-600 group text-lg" title="Settings">
-                    <svg class="w-7 h-7 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                    <span class="whitespace-nowrap transition-all duration-300 origin-left" :class="desktopSidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 hidden'">Settings</span>
-                </a>
+                {% endfor %}
                 {% if current_user.is_admin %}
-                <a href="{{ url_for('main.admin_dashboard') }}" class="flex items-center gap-4 py-3 px-4 rounded transition duration-200 hover:bg-indigo-50 hover:text-indigo-600 group text-lg" title="Admin">
-                    <svg class="w-7 h-7 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A3.323 3.323 0 0010.605 4.5c-1.107 0-2.005.898-2.005 2.005 0 1.107.898 2.005 2.005 2.005.344 0 .667-.087.95-.239l.527.527a2.5 2.5 0 103.536 3.536l.527.527a3.323 3.323 0 00-.239.95c0 1.107.898 2.005 2.005 2.005 1.107 0 2.005-.898 2.005-2.005-2.005-.344 0-.667.087-.95.239l-.527-.527a2.5 2.5 0 10-3.536-3.536l-.527-.527z"></path></svg>
-                    <span class="whitespace-nowrap transition-all duration-300 origin-left" :class="desktopSidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 hidden'">Admin</span>
+                <a href="{{ url_for('main.admin') }}" class="flex items-center gap-3 p-3 text-accent hover:bg-accent hover:text-[var(--bg-main)] transition-colors group" title="ADMIN">
+                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A3.323 3.323 0 0010.605 4.5c-1.107 0-2.005.898-2.005 2.005 0 1.107.898 2.005 2.005 2.005.344 0 .667-.087.95-.239l.527.527a2.5 2.5 0 103.536 3.536l.527.527a3.323 3.323 0 00-.239.95c0 1.107.898 2.005 2.005 2.005 1.107 0 2.005-.898 2.005-2.005-2.005-.344 0-.667.087-.95.239l-.527-.527a2.5 2.5 0 10-3.536-3.536l-.527-.527z"></path></svg>
+                    <span class="text-base font-bold tracking-widest">ADMIN</span>
                 </a>
                 {% endif %}
-                <a href="{{ url_for('auth.logout') }}" class="flex items-center gap-4 py-3 px-4 rounded transition duration-200 hover:bg-red-50 hover:text-red-600 mt-10 group text-lg" title="Logout">
-                    <svg class="w-7 h-7 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-                    <span class="whitespace-nowrap transition-all duration-300 origin-left" :class="desktopSidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 hidden'">Logout</span>
-                </a>
             </nav>
             
-            <div class="p-6 border-t border-gray-200 mb-16">
-                {% if current_user.is_authenticated %}
-                <style>
-                    /* Dynamic status colors */
-                    .status-badge.status-break { color: #EF4444; } /* Red */
-                    .status-badge.status-focus { color: #10B981; } /* Green */
-                    .status-badge.status-sync { color: #6366F1; } /* Indigo */
-                    .status-badge.status-idle { color: #FBBF24; } /* Yellow */
-                </style>
-                
-                {% set status_text = "Idling" %}
-                {% set status_class = "status-idle" %}
-                {% set target_url = url_for('main.timer') %}
-                
-                {% if active_sync_room %}
-                    {% set status_text = "Sync Active" %}
-                    {% set status_class = "status-sync" %}
-                    {% set target_url = url_for('study.study_room', room_id=active_sync_room.id) %}
-                {% elif current_user.current_focus_end and current_user.current_focus_mode == 'break' %}
-                    {% set status_text = "Taking a Break" %}
-                    {% set status_class = "status-break" %}
-                {% elif current_user.current_focus_end and current_user.current_focus_mode == 'focus' %}
-                    {% set status_text = "Working" %}
-                    {% set status_class = "status-focus" %}
-                {% endif %}
-
-                <a href="{{ target_url }}" class="flex items-center gap-2 font-bold mb-4 animate-pulse justify-center md:justify-start transition-colors status-badge {{ status_class }}">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                    <span :class="desktopSidebarOpen ? 'inline' : 'hidden md:hidden'">{{ status_text }}</span>
-                </a>
-                {% endif %}
-                <button id="theme-toggle" class="flex items-center gap-2 text-gray-600 hover:text-indigo-600 transition w-full justify-center md:justify-start">
-                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
-                    <span :class="desktopSidebarOpen ? 'inline' : 'hidden md:hidden'">Toggle Theme</span>
+            <div class="p-4 border-t noir-border space-y-4">
+                <button id="theme-toggle" class="flex items-center gap-2 text-sm font-bold uppercase hover:text-accent transition w-full">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                    <span>THEME_SWAP</span>
                 </button>
-                <div class="mt-4 flex items-center gap-2 text-gray-500 text-sm px-1">
-                    {% if current_user.profile_pic_url %}
-                        <img src="{{ current_user.profile_pic_url }}" 
-                             class="w-6 h-6 rounded-full object-cover border border-gray-200" 
-                             alt="{{ current_user.username }}"
-                             style="object-position: {{ current_user.profile_pic_position or '50% 50%' }}">
-                    {% endif %}
-                    <span :class="desktopSidebarOpen ? 'inline' : 'hidden md:hidden'">@{{ current_user.username }}</span>
-                    {% if current_user.is_verified %}
-                    <svg class="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                    </svg>
-                    {% endif %}
+                <div class="flex items-center gap-2 text-xs font-bold">
+                    <div class="w-6 h-6 border noir-border flex items-center justify-center bg-accent text-[var(--bg-main)]">
+                        {{ current_user.username[0].upper() }}
+                    </div>
+                    <span class="truncate">USER: {{ current_user.username }}</span>
                 </div>
             </div>
         </aside>
-
-        <!-- Overlay -->
-        <div x-show="mobileSidebarOpen" @click="mobileSidebarOpen = false" x-transition:enter="transition-opacity ease-linear duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition-opacity ease-linear duration-300" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-40 md:hidden"></div>
         {% endif %}
 
-        <!-- Content -->
-        <div class="flex-1 flex flex-col overflow-hidden h-screen">
+        <!-- Main Content Canvas -->
+        <div class="flex-1 flex flex-col overflow-hidden h-screen bg-[var(--bg-main)] transition-all duration-300">
             {% if current_user.is_authenticated %}
-            <header class="flex items-center justify-between p-4 bg-white border-b border-gray-200 z-20">
-                <div class="flex items-center">
-                    <button @click="window.innerWidth < 768 ? mobileSidebarOpen = true : desktopSidebarOpen = !desktopSidebarOpen" class="text-gray-500 hover:text-indigo-600 focus:outline-none mr-4">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            <header class="h-16 flex items-center justify-between px-6 border-b noir-border bg-[var(--bg-main)] z-40">
+                <div class="flex items-center gap-4">
+                    <button @click="desktopSidebarOpen = !desktopSidebarOpen" 
+                            x-show="!desktopSidebarOpen"
+                            x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 -translate-x-4"
+                            x-transition:enter-end="opacity-100 translate-x-0"
+                            class="hover:text-accent transition-transform rotate-180">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path></svg>
                     </button>
-                    <span class="font-bold text-xl text-indigo-600 md:hidden">Modo</span>
                 </div>
-                
-                <!-- Notifications -->
-                <div class="relative" x-data="{ notifOpen: false, unreadCount: 0 }" 
-                     x-init="fetch('/api/notifications').then(r => r.json()).then(data => unreadCount = data.length); setInterval(() => fetch('/api/notifications').then(r => r.json()).then(data => unreadCount = data.length), 60000)">
-                    
-                    <button @click="notifOpen = !notifOpen" class="text-gray-500 hover:text-indigo-600 focus:outline-none relative p-1 rounded-full hover:bg-gray-100 transition">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
-                        <span x-show="unreadCount > 0" x-text="unreadCount" class="absolute top-0 right-0 block h-4 w-4 transform -translate-y-1/2 translate-x-1/2 rounded-full ring-2 ring-white bg-red-500 text-white text-[10px] font-bold flex items-center justify-center"></span>
-                    </button>
-                    
-                    <div x-show="notifOpen" 
-                         @click.away="notifOpen = false" 
-                         x-transition:enter="transition ease-out duration-200"
-                         x-transition:enter-start="opacity-0 translate-y-1"
-                         x-transition:enter-end="opacity-100 translate-y-0"
-                         x-transition:leave="transition ease-in duration-150"
-                         x-transition:leave-start="opacity-100 translate-y-0"
-                         x-transition:leave-end="opacity-0 translate-y-1"
-                         class="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-xl ring-1 ring-black ring-opacity-5 z-50 overflow-hidden" 
-                         style="display: none;">
-                        
-                        <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900">
-                            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Notifications</h3>
-                            <button @click="fetch('/api/notifications/mark_all_read', {method: 'POST'}).then(() => { unreadCount = 0; })" class="text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">Mark all read</button>
-                        </div>
-                        
-                        <div class="max-h-60 overflow-y-auto" hx-get="/api/notifications" hx-trigger="intersect once">
-                            <div class="p-4 text-center text-gray-400 text-sm">Loading...</div>
+
+                <div class="flex items-center gap-6">
+                    <div class="relative" x-data="{ notifOpen: false, unreadCount: 0 }" 
+                         x-init="fetch('/api/notifications').then(r => r.json()).then(data => unreadCount = data.length)"
+                         @unread-count-update.window="unreadCount = $event.detail">
+                        <button @click="notifOpen = !notifOpen" 
+                                hx-get="/notifications" 
+                                hx-target="#notif-content"
+                                class="relative hover:text-accent transition-colors flex items-center gap-2">
+                            <span class="text-xs font-bold tracking-widest uppercase">ALERTS</span>
+                            <span class="text-[10px] font-bold px-1.5 py-0.5 border border-accent bg-accent/10 text-accent" x-text="unreadCount">0</span>
+                        </button>
+
+                        <!-- Alerts Dropdown -->
+                        <div x-show="notifOpen" 
+                             @click.away="notifOpen = false"
+                             x-transition:enter="transition ease-out duration-200"
+                             x-transition:enter-start="opacity-0 translate-y-2"
+                             x-transition:enter-end="opacity-100 translate-y-0"
+                             class="absolute right-0 mt-4 w-80 noir-border bg-[var(--bg-alt)] shadow-2xl z-[100] p-4 space-y-4"
+                             x-cloak>
+                            <div class="flex items-center justify-between border-b noir-border border-opacity-20 pb-2">
+                                <span class="text-[10px] font-bold uppercase tracking-widest opacity-60">System_Notifications</span>
+                                <button @click="notifOpen = false" class="text-[9px] font-bold hover:text-accent uppercase">[ Dismiss ]</button>
+                            </div>
+                            <div id="notif-content" class="max-h-64 overflow-y-auto custom-scrollbar">
+                                <p class="text-[10px] text-center py-8 opacity-40 uppercase tracking-widest font-bold">Scanning_For_New_Data...</p>
+                            </div>
                         </div>
                     </div>
+                    <a href="{{ url_for('auth.logout') }}" class="text-xs font-bold border noir-border px-3 py-1.5 hover:bg-red-600 hover:text-white transition uppercase tracking-widest">Shutdown</a>
                 </div>
             </header>
             {% endif %}
 
-            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6 pb-24 transition-all duration-300 w-full">
+            <main class="flex-1 overflow-y-auto p-8 custom-scrollbar">
                 {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
                         {% for category, message in messages %}
-                            <div class="bg-white border-l-4 border-{{ 'red' if category == 'error' else 'green' }}-500 text-{{ 'red' if category == 'error' else 'green' }}-700 p-4 mb-4" role="alert">
-                                <p>{{ message }}</p>
+                            <div class="border-l-4 border-accent p-4 mb-4 noir-border bg-[var(--bg-alt)]" role="alert">
+                                <p class="text-xs font-bold">{{ message }}</p>
                             </div>
                         {% endfor %}
                     {% endif %}
@@ -256,6 +242,133 @@
                 
                 {% block content %}{% endblock %}
             </main>
+
+            {% if current_user.is_authenticated %}
+            <!-- Global Timer: MOVED TO BOTTOM RIGHT -->
+            <div id="global-timer-container" 
+                 x-data="{ 
+                    open: true, 
+                    minimized: localStorage.getItem('timerMinimized') === 'true' || window.location.pathname === '/timer',
+                    isDragging: false, 
+                    x: parseInt(localStorage.getItem('timerX')) || window.innerWidth - 340, 
+                    y: parseInt(localStorage.getItem('timerY')) || window.innerHeight - 300,
+                    offsetX: 0,
+                    offsetY: 0,
+                    startDrag(e) {
+                        if (e.target.closest('button') || e.target.closest('select')) return;
+                        this.isDragging = true;
+                        this.offsetX = e.clientX - this.x;
+                        this.offsetY = e.clientY - this.y;
+                        document.body.style.userSelect = 'none';
+                    },
+                    doDrag(e) {
+                        if (this.isDragging) {
+                            requestAnimationFrame(() => {
+                                let newX = e.clientX - this.offsetX;
+                                let newY = e.clientY - this.offsetY;
+                                
+                                // Boundary Detection
+                                const width = this.minimized ? 48 : 300;
+                                const height = this.minimized ? 48 : 250;
+                                
+                                newX = Math.max(0, Math.min(newX, window.innerWidth - width));
+                                newY = Math.max(0, Math.min(newY, window.innerHeight - height));
+                                
+                                this.x = newX;
+                                this.y = newY;
+                                
+                                localStorage.setItem('timerX', this.x);
+                                localStorage.setItem('timerY', this.y);
+                            });
+                        }
+                    },
+                    stopDrag() {
+                        this.isDragging = false;
+                        document.body.style.userSelect = '';
+                    }
+                 }"
+                 x-init="
+                    const check = () => {
+                        const width = minimized ? 48 : 300;
+                        const height = minimized ? 48 : 250;
+                        x = Math.max(0, Math.min(x, window.innerWidth - width));
+                        y = Math.max(0, Math.min(y, window.innerHeight - height));
+                    };
+                    
+                    // Run on init and after a small delay to ensure layout
+                    check();
+                    setTimeout(check, 100);
+
+                    $watch('minimized', value => {
+                        localStorage.setItem('timerMinimized', value);
+                        setTimeout(check, 50);
+                    });
+                 "
+                 @resize.window="const width = minimized ? 48 : 300; const height = minimized ? 48 : 250; x = Math.max(0, Math.min(x, window.innerWidth - width)); y = Math.max(0, Math.min(y, window.innerHeight - height));"
+                 @mousemove.window="doDrag($event)"
+                 @mouseup.window="stopDrag()"
+                 :style="`left: ${x}px; top: ${y}px; cursor: ${isDragging ? 'grabbing' : 'default'}`"
+                 class="fixed noir-border bg-[var(--bg-alt)] shadow-2xl z-50"
+                 :class="minimized ? 'w-12 h-12 p-0 overflow-hidden rounded-full flex items-center justify-center cursor-grab' : 'p-4 flex flex-col gap-4 min-w-[300px]'">
+                
+                <!-- Minimized View -->
+                <template x-if="minimized">
+                    <div class="w-full h-full flex items-center justify-center bg-accent text-[var(--bg-alt)] hover:scale-110 transition-transform select-none"
+                         @mousedown="startDrag($event)"
+                         @dblclick="minimized = false">
+                        <span id="min-timer-display" class="text-[10px] font-bold">25m</span>
+                    </div>
+                </template>
+
+                <!-- Full View -->
+                <template x-if="!minimized">
+                    <div class="contents">
+                        <div class="flex justify-between items-center border-b noir-border pb-2 opacity-50 cursor-grab" @mousedown="startDrag($event)">
+                            <div class="flex items-center gap-2">
+                                <span class="text-[9px] font-bold uppercase tracking-widest">Hardware_Monitor</span>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[8px] font-bold" id="global-timer-status">IDLE</span>
+                                    <div class="w-1.5 h-1.5 bg-accent animate-pulse" id="global-timer-dot"></div>
+                                </div>
+                            </div>
+                            <button @click="minimized = true" class="text-[10px] font-bold hover:text-accent transition-colors">[ _ ]</button>
+                        </div>
+                        
+                        <div id="global-active-process" class="hidden">
+                            <p class="text-[8px] font-bold opacity-40 uppercase tracking-widest mb-1">Active_Process</p>
+                            <p class="text-[10px] font-bold text-accent truncate uppercase" id="global-active-subtask-display"></p>
+                        </div>
+                        
+                        <div class="flex items-center justify-between gap-8">
+                            <div class="flex flex-col">
+                                <span id="global-timer-display" class="text-3xl font-bold mono-display text-accent tracking-widest">25:00</span>
+                            </div>
+                            
+                            <div class="flex-1 flex flex-col text-right">
+                                <span class="text-[8px] font-bold opacity-40 uppercase mb-1">Execution_Target</span>
+                                <select id="global-timer-task" class="bg-transparent border noir-border border-opacity-20 text-[10px] font-bold focus:outline-none focus:text-accent focus:border-accent uppercase p-1 text-right mb-1">
+                                    <option value="">[IDLE_STATE]</option>
+                                    {% for task in current_user.all_accessible_tasks %}
+                                        {% if task.status != 'done' %}
+                                        <option value="{{ task.id }}">{{ task.title }}</option>
+                                        {% endif %}
+                                    {% endfor %}
+                                </select>
+                                <select id="global-timer-subtask" class="bg-transparent border noir-border border-opacity-20 text-[9px] font-bold focus:outline-none focus:text-accent focus:border-accent uppercase p-1 text-right hidden">
+                                    <option value="">[NO_SUBTASK]</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2">
+                            <button id="global-timer-start" class="noir-button text-[9px] py-2">START</button>
+                            <button id="global-timer-pause" class="noir-button text-[9px] py-2 hidden" style="filter: hue-rotate(45deg);">PAUSE</button>
+                            <button id="global-timer-reset" class="noir-button-outline text-[9px] py-2">RESET</button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+            {% endif %}
         </div>
     </div>
     
@@ -278,10 +391,12 @@
                 
                 html.setAttribute('data-theme', newTheme);
                 
-                // Persist
                 fetch('/api/update_settings', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                    },
                     body: JSON.stringify({theme: newTheme})
                 });
             });
@@ -299,58 +414,24 @@
             activeRoomId: {{ active_sync_room.id if active_sync_room else 'null' }}
         };
     </script>
-    <div id="global-timer-container" class="fixed bottom-0 left-0 right-0 bg-gray-900 text-white p-2 flex justify-between items-center shadow-lg border-t border-gray-700 z-50">
-        <div class="flex items-center space-x-4">
-            {% if active_sync_room %}
-            <span class="bg-indigo-600 text-xs font-bold px-2 py-1 rounded animate-pulse">SYNC</span>
-            {% endif %}
-            <span class="font-bold text-xl font-mono" id="global-timer-display">{{ '%02d' % (active_sync_room.focus_duration if active_sync_room else (current_user.focus_duration or 25)) }}:00</span>
-            <select id="global-timer-task" class="bg-gray-800 text-sm p-1 rounded border border-gray-600 max-w-xs">
-                <option value="">Select Task...</option>
-                    {% for task in current_user.all_accessible_tasks %}
-                        {% if task.status != 'done' %}
-                        <option value="{{ task.id }}">{{ task.title }}</option>
-                        {% endif %}
-                    {% endfor %}
-            </select>
-        </div>
-        <div class="space-x-2">
-            <button id="global-timer-start" class="bg-green-600 px-3 py-1 rounded text-sm hover:bg-green-500">Start</button>
-            <button id="global-timer-pause" class="bg-yellow-600 px-3 py-1 rounded text-sm hover:bg-yellow-500 hidden">Pause</button>
-            <button id="global-timer-end" class="bg-purple-600 px-3 py-1 rounded text-sm hover:bg-purple-500 hidden">End Session</button>
-            <button id="global-timer-skip" class="bg-blue-600 px-3 py-1 rounded text-sm hover:bg-blue-500 hidden">Skip Break</button>
-            <button id="global-timer-reset" class="bg-red-600 px-3 py-1 rounded text-sm hover:bg-red-500">Reset</button>
-        </div>
-    </div>
     {% endif %}
     {% if current_user.is_authenticated and current_user.enable_vim_mode %}
     <script src="{{ url_for('static', filename='js/vim.js') }}"></script>
     {% endif %}
     <script src="{{ url_for('static', filename='js/timer.js') }}"></script>
     <script>
-
         function formatLocalTimes() {
             document.querySelectorAll('.utc-time').forEach(el => {
                 const ts = el.getAttribute('data-ts');
                 if (ts) {
                     const date = new Date(ts);
                     el.textContent = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    el.classList.remove('utc-time'); // Prevent double format
-                }
-            });
-            document.querySelectorAll('.utc-date-time').forEach(el => {
-                const ts = el.getAttribute('data-ts');
-                if (ts) {
-                    const date = new Date(ts);
-                    el.textContent = date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) + ' ' + 
-                                     date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    el.classList.remove('utc-date-time');
+                    el.classList.remove('utc-time');
                 }
             });
         }
-        
         document.addEventListener('DOMContentLoaded', formatLocalTimes);
-        document.addEventListener('htmx:afterSwap', formatLocalTimes); // Run on HTMX updates
+        document.addEventListener('htmx:afterSwap', formatLocalTimes);
     </script>
 </body>
 </html>

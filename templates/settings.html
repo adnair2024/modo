@@ -1,275 +1,162 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto mt-10">
-    <h1 class="text-3xl font-bold mb-8 text-indigo-700 dark:text-indigo-400">Settings</h1>
-    
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-8 space-y-8" x-data="{ vimMode: {{ 'true' if current_user.enable_vim_mode else 'false' }} }">
+<div class="max-w-4xl mx-auto space-y-12">
+    <!-- Header Section -->
+    <div class="flex flex-col items-center justify-center border-b noir-border pt-6 pb-6 space-y-4 text-center">
+        <div class="space-y-1">
+            <h1 class="text-4xl font-bold tracking-tighter mono-display uppercase">System_Config</h1>
+            <p class="text-[10px] font-bold opacity-50 uppercase tracking-widest">PATH: /ROOT/SETTINGS</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-12" x-data="{ vimMode: {{ 'true' if current_user.enable_vim_mode else 'false' }} }">
         
-        <!-- Profile Settings -->
-        <section>
-            <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-                Profile Settings
-            </h2>
-            <div class="space-y-4">
-                <div>
-                    <label for="profile-pic-url" class="block font-medium text-gray-700 dark:text-gray-300 mb-2">Profile Picture URL</label>
-                    <div class="flex gap-4 items-center">
-                        <div class="flex-shrink-0">
+        <!-- Left Column: Core Identity -->
+        <div class="md:col-span-2 space-y-16">
+            <!-- Profile Hardware -->
+            <section class="space-y-8">
+                <div class="flex flex-col items-center border-b noir-border border-opacity-10 pt-6 pb-4 text-center">
+                    <h2 class="text-xs font-bold uppercase tracking-[0.2em] text-accent">Profile_Identity</h2>
+                </div>
+                
+                <div class="space-y-8 pt-4">
+                    <div class="flex items-start gap-8">
+                        <div class="relative w-32 h-32 noir-border bg-accent/10 flex items-center justify-center overflow-hidden group">
                             {% if current_user.profile_pic_url %}
-                                <img src="{{ current_user.profile_pic_url }}" class="w-12 h-12 rounded-full object-cover object-{{ current_user.profile_pic_position or 'center' }} border border-gray-200" id="preview-pic">
+                                <img src="{{ current_user.profile_pic_url }}" class="w-full h-full object-cover" id="preview-pic" style="object-position: {{ current_user.profile_pic_position or '50% 50%' }}">
                             {% else %}
-                                <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold" id="preview-placeholder">
-                                    {{ current_user.username[0].upper() }}
-                                </div>
+                                <span class="text-4xl font-bold opacity-20">{{ current_user.username[0].upper() }}</span>
                             {% endif %}
                         </div>
-                        <input type="url" id="profile-pic-url" placeholder="https://example.com/photo.jpg" value="{{ current_user.profile_pic_url or '' }}" 
-                               class="w-full px-4 py-2 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
-                    </div>
-                    <p class="mt-1 text-xs text-gray-500">Provide a link to an image (JPEG, PNG) for your profile.</p>
-                </div>
-                <div>
-                    <label class="block font-medium text-gray-700 dark:text-gray-300 mb-2">Adjust Profile Picture Position</label>
-                    <div class="flex flex-col items-center space-y-4">
-                        <div class="relative w-32 h-32 rounded-full overflow-hidden border-4 border-indigo-500 cursor-move group select-none shadow-inner" id="drag-container">
-                            {% if current_user.profile_pic_url %}
-                                <img src="{{ current_user.profile_pic_url }}" 
-                                     class="w-full h-full object-cover pointer-events-none" 
-                                     id="preview-pic"
-                                     style="object-position: {{ current_user.profile_pic_position or '50% 50%' }}">
-                            {% else %}
-                                <div class="w-full h-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-4xl font-bold" id="preview-placeholder">
-                                    {{ current_user.username[0].upper() }}
+                        
+                        <div class="flex-1 space-y-4">
+                            <div class="space-y-2">
+                                <label class="block text-[10px] font-bold opacity-50 uppercase tracking-widest">Image_Source_URL</label>
+                                <input type="url" id="profile-pic-url" value="{{ current_user.profile_pic_url or '' }}" 
+                                       class="noir-input w-full text-xs" placeholder="HTTPS://IMG_HOST/ID_01.JPG">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4 pt-2">
+                                <div>
+                                    <label class="text-[9px] uppercase font-bold opacity-40">AXIS_X</label>
+                                    <input type="range" id="pic-x" min="0" max="100" value="50" class="w-full accent-accent">
                                 </div>
+                                <div>
+                                    <label class="text-[9px] uppercase font-bold opacity-40">AXIS_Y</label>
+                                    <input type="range" id="pic-y" min="0" max="100" value="50" class="w-full accent-accent">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="block text-[10px] font-bold opacity-50 uppercase tracking-widest">Identity_Statement (BIO)</label>
+                        <textarea id="user-bio" maxlength="255" rows="3" class="noir-input w-full text-sm resize-none" placeholder="DECLARE_INTENT_">{{ current_user.bio or '' }}</textarea>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Automation Logic -->
+            <section class="space-y-8">
+                <div class="flex flex-col items-center border-b noir-border border-opacity-10 pt-6 pb-4 text-center">
+                    <h2 class="text-xs font-bold uppercase tracking-[0.2em] text-accent">Automation_Protocols</h2>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-12 pt-4">
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between group cursor-pointer" @click="$refs.autoBreak.click()">
+                            <span class="text-xs font-bold uppercase tracking-widest">Auto_Break</span>
+                            <input type="checkbox" id="auto-break" x-ref="autoBreak" class="accent-accent w-4 h-4" {{ 'checked' if current_user.auto_start_break else '' }}>
+                        </div>
+                        <div class="flex items-center justify-between group cursor-pointer" @click="$refs.autoFocus.click()">
+                            <span class="text-xs font-bold uppercase tracking-widest">Auto_Focus</span>
+                            <input type="checkbox" id="auto-focus" x-ref="autoFocus" class="accent-accent w-4 h-4" {{ 'checked' if current_user.auto_start_focus else '' }}>
+                        </div>
+                        <div class="flex items-center justify-between group cursor-pointer" @click="$refs.autoPriority.click()">
+                            <span class="text-xs font-bold uppercase tracking-widest">Auto_Task_Select</span>
+                            <input type="checkbox" id="auto-priority" x-ref="autoPriority" class="accent-accent w-4 h-4" {{ 'checked' if current_user.auto_select_priority else '' }}>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="space-y-2">
+                            <label class="block text-[9px] font-bold opacity-40 uppercase">Focus_Minutes</label>
+                            <input type="number" id="focus-duration" value="{{ current_user.focus_duration or 25 }}" class="noir-input w-full text-xs">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-[9px] font-bold opacity-40 uppercase">Break_Minutes</label>
+                            <input type="number" id="break-duration" value="{{ current_user.break_duration or 5 }}" class="noir-input w-full text-xs">
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Right Column: Visual & Controls -->
+        <div class="space-y-16">
+            <!-- Appearance / Hardware Color -->
+            <section class="space-y-8">
+                <div class="flex flex-col items-center border-b noir-border border-opacity-10 pt-6 pb-4 text-center">
+                    <h2 class="text-xs font-bold uppercase tracking-[0.2em] text-accent">Hardware_Skin</h2>
+                </div>
+                
+                <div class="space-y-8 pt-4">
+                    <div>
+                        <label class="block text-[10px] font-bold opacity-50 uppercase mb-6 tracking-widest text-center">Signal_Color (ACCENT)</label>
+                        <div class="grid grid-cols-4 gap-4">
+                            {% for color in ['indigo', 'blue', 'green', 'red', 'purple', 'pink', 'orange'] %}
+                            <label class="cursor-pointer">
+                                <input type="radio" name="accent_color" value="{{ color }}" class="sr-only peer" {{ 'checked' if (current_user.accent_color or 'indigo') == color else '' }}>
+                                <div class="w-full aspect-square bg-{{ color }}-600 peer-checked:ring-4 ring-accent/30 transition-all"></div>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="pt-4 space-y-4">
+                         <label class="block text-[10px] font-bold opacity-50 uppercase mb-2 tracking-widest text-center">System_Theme</label>
+                         <div class="flex flex-col gap-3">
+                            <button class="noir-button-outline w-full text-[10px] text-center px-4 py-3 {{ 'bg-accent/10 border-accent' if current_user.theme_preference == 'light' else '' }}" onclick="setTheme('light')">MODE_LIGHT</button>
+                            <button class="noir-button-outline w-full text-[10px] text-center px-4 py-3 {{ 'bg-accent/10 border-accent' if current_user.theme_preference == 'dark' else '' }}" onclick="setTheme('dark')">MODE_DARK</button>
+                            {% if amoled_unlocked %}
+                            <button class="noir-button-outline w-full text-[10px] text-center px-4 py-3 {{ 'bg-accent/10 border-accent' if current_user.theme_preference == 'amoled' else '' }}" onclick="setTheme('amoled')">MODE_AMOLED</button>
                             {% endif %}
-                            <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7l4-4m0 0l4 4m-4-4v18m0 0l-4-4m4 4l4-4m5-5l3 3m0 0l-3 3m3-3H3m0 0l3-3m-3 3l3 3"></path></svg>
-                            </div>
-                        </div>
-                        <div class="w-full grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="text-[10px] uppercase font-bold text-gray-400">Horizontal Focus</label>
-                                <input type="range" id="pic-x" min="0" max="100" value="50" class="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
-                            </div>
-                            <div>
-                                <label class="text-[10px] uppercase font-bold text-gray-400">Vertical Focus</label>
-                                <input type="range" id="pic-y" min="0" max="100" value="50" class="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
-                            </div>
-                        </div>
-                        <input type="hidden" id="profile-pic-position" value="{{ current_user.profile_pic_position or '50% 50%' }}">
-                        <p class="text-xs text-gray-500 italic">Click and drag the image above, or use the sliders to center your face.</p>
+                         </div>
                     </div>
                 </div>
-                <div>
-                    <label for="user-bio" class="block font-medium text-gray-700 dark:text-gray-300 mb-2">Bio / Quote</label>
-                    <textarea id="user-bio" maxlength="255" rows="2" placeholder="Tell us about your goals or share a favorite quote..." 
-                              class="w-full px-4 py-2 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">{{ current_user.bio or '' }}</textarea>
-                    <p class="mt-1 text-xs text-gray-500 text-right"><span id="bio-counter">0</span>/255</p>
+            </section>
+
+            <!-- Keyboard & System -->
+            <section class="space-y-8">
+                <div class="flex flex-col items-center border-b noir-border border-opacity-10 pt-6 pb-4 text-center">
+                    <h2 class="text-xs font-bold uppercase tracking-[0.2em] text-accent">Sys_Access</h2>
                 </div>
-            </div>
-        </section>
+                <div class="space-y-6 pt-4">
+                    <div class="flex items-center justify-between group cursor-pointer" @click="vimMode = !vimMode">
+                        <span class="text-xs font-bold uppercase tracking-widest">Enable_Vim_Mode</span>
+                        <div :class="vimMode ? 'bg-accent' : 'bg-gray-200 dark:bg-white/10'" class="w-10 h-4 transition-colors"></div>
+                        <input type="hidden" id="enable-vim-mode" :value="vimMode">
+                    </div>
+                    <div class="flex items-center justify-between group cursor-pointer" @click="$refs.showLastSeen.click()">
+                        <span class="text-xs font-bold uppercase tracking-widest">Online_Status</span>
+                        <input type="checkbox" id="show-last-seen" x-ref="showLastSeen" class="accent-accent" {{ 'checked' if current_user.show_last_seen else '' }}>
+                    </div>
+                </div>
+            </section>
 
-        <hr class="border-gray-200 dark:border-gray-700">
-
-        <!-- Vim Mode -->
-        <div class="flex items-center justify-between">
-            <div>
-                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Vim Keybinds</h3>
-                <p class="text-sm text-gray-500 dark:text-gray-400">Use j/k to scroll, c to create task, / to search.</p>
-            </div>
-            <button type="button" 
-                    @click="vimMode = !vimMode" 
-                    :class="vimMode ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-700'" 
-                    class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2">
-                <span :class="vimMode ? 'translate-x-5' : 'translate-x-0'" class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"></span>
-            </button>
-            <input type="hidden" id="enable-vim-mode" :value="vimMode">
+            <!-- Finalize -->
+            <button id="save-settings" class="noir-button w-full py-6 text-sm tracking-[0.3em]">COMMIT_CHANGES</button>
         </div>
-
-        <hr class="border-gray-200 dark:border-gray-700">
-
-        <!-- Timer Duration -->
-        <section>
-            <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                Timer Duration
-            </h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label for="focus-duration" class="block font-medium text-gray-700 dark:text-gray-300 mb-2">Focus Duration (minutes)</label>
-                    <input type="number" id="focus-duration" min="1" max="120" value="{{ current_user.focus_duration or 25 }}" class="w-full px-4 py-2 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
-                </div>
-                <div>
-                    <label for="break-duration" class="block font-medium text-gray-700 dark:text-gray-300 mb-2">Break Duration (minutes)</label>
-                    <input type="number" id="break-duration" min="1" max="60" value="{{ current_user.break_duration or 5 }}" class="w-full px-4 py-2 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
-                </div>
-            </div>
-        </section>
-
-        <hr class="border-gray-200 dark:border-gray-700">
-
-        <!-- Timer Settings -->
-        <section>
-            <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                Timer Automation
-            </h2>
-            <div class="space-y-4">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <span class="block font-medium text-gray-700 dark:text-gray-300">Auto-start Breaks</span>
-                        <span class="text-sm text-gray-500 dark:text-gray-400">Automatically start the break timer when a focus session ends.</span>
-                    </div>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="auto-break" class="sr-only peer" {{ 'checked' if current_user.auto_start_break else '' }}>
-                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
-                    </label>
-                </div>
-
-                <div class="flex items-center justify-between">
-                    <div>
-                        <span class="block font-medium text-gray-700 dark:text-gray-300">Auto-start Focus</span>
-                        <span class="text-sm text-gray-500 dark:text-gray-400">Automatically start the next focus session when a break ends.</span>
-                    </div>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="auto-focus" class="sr-only peer" {{ 'checked' if current_user.auto_start_focus else '' }}>
-                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
-                    </label>
-                </div>
-
-                <div class="flex items-center justify-between">
-                    <div>
-                        <span class="block font-medium text-gray-700 dark:text-gray-300">Auto-select Priority Task</span>
-                        <span class="text-sm text-gray-500 dark:text-gray-400">Automatically select the highest priority task after a session or break.</span>
-                    </div>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="auto-priority" class="sr-only peer" {{ 'checked' if current_user.auto_select_priority else '' }}>
-                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
-                    </label>
-                </div>
-            </div>
-        </section>
-
-        <hr class="border-gray-200 dark:border-gray-700">
-
-        <!-- Notification Settings -->
-        <section>
-            <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
-                Notifications
-            </h2>
-            <div class="space-y-4">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <span class="block font-medium text-gray-700 dark:text-gray-300">Pomodoro Completion</span>
-                        <span class="text-sm text-gray-500 dark:text-gray-400">Get notified when a timer finishes.</span>
-                    </div>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="notify-pomodoro" class="sr-only peer" {{ 'checked' if current_user.notify_pomodoro else '' }}>
-                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
-                    </label>
-                </div>
-
-                <div class="flex items-center justify-between">
-                    <div>
-                        <span class="block font-medium text-gray-700 dark:text-gray-300">Event Heads Up</span>
-                        <span class="text-sm text-gray-500 dark:text-gray-400">Get notified before an event starts.</span>
-                    </div>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="notify-event" class="sr-only peer" {{ 'checked' if current_user.notify_event_start else '' }}>
-                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
-                    </label>
-                </div>
-
-                <div class="flex items-center justify-between pl-4 border-l-2 border-gray-100 dark:border-gray-700">
-                    <span class="text-gray-600 dark:text-gray-400 text-sm">Heads Up Timing</span>
-                    <select id="event-notify-minutes" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                        <option value="30" {{ 'selected' if current_user.event_notify_minutes == 30 else '' }}>30 Minutes</option>
-                        <option value="60" {{ 'selected' if current_user.event_notify_minutes == 60 else '' }}>1 Hour</option>
-                    </select>
-                </div>
-            </div>
-        </section>
-
-        <hr class="border-gray-200 dark:border-gray-700">
-
-        <!-- Theme Settings -->
-        <section>
-             <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"></path></svg>
-                Appearance
-            </h2>
-             <div class="flex items-center justify-between mb-6">
-                <span class="block font-medium text-gray-700 dark:text-gray-300">Theme</span>
-                <div class="flex gap-2">
-                    <button class="px-4 py-2 rounded border {{ 'bg-indigo-50 border-indigo-500 text-indigo-700' if current_user.theme_preference == 'light' else 'border-gray-300 text-gray-600' }} hover:bg-indigo-50 transition" onclick="setTheme('light')">Light</button>
-                    <button class="px-4 py-2 rounded border {{ 'bg-indigo-900 border-indigo-500 text-white' if current_user.theme_preference == 'dark' else 'border-gray-300 text-gray-600' }} hover:bg-gray-700 hover:text-white transition" onclick="setTheme('dark')">Dark</button>
-                    {% if amoled_unlocked %}
-                    <button class="px-4 py-2 rounded border {{ 'bg-black border-indigo-500 text-white' if current_user.theme_preference == 'amoled' else 'border-gray-300 text-gray-600' }} hover:bg-black hover:text-white transition" onclick="setTheme('amoled')">AMOLED</button>
-                    {% else %}
-                    <button class="px-4 py-2 rounded border border-gray-200 text-gray-400 cursor-not-allowed flex items-center gap-2" title="Unlock with 10 focus hours (You have {{ "%.1f"|format(current_user.total_focus_hours) }}h)">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                        AMOLED
-                    </button>
-                    {% endif %}
-                </div>
-            </div>
-
-            <div class="flex items-center justify-between">
-                <span class="block font-medium text-gray-700 dark:text-gray-300">Accent Color</span>
-                <div class="flex gap-3 flex-wrap">
-                    {% for color in ['indigo', 'blue', 'green', 'red', 'purple', 'pink', 'orange'] %}
-                    <label class="cursor-pointer">
-                        <input type="radio" name="accent_color" value="{{ color }}" class="sr-only peer" {{ 'checked' if (current_user.accent_color or 'indigo') == color else '' }}>
-                        <div class="w-8 h-8 rounded-full bg-{{ color }}-600 border-2 border-transparent peer-checked:border-gray-900 dark:peer-checked:border-white shadow-sm ring-2 ring-transparent peer-checked:ring-offset-2 peer-checked:ring-{{ color }}-500 transition-all transform hover:scale-110"></div>
-                    </label>
-                    {% endfor %}
-                </div>
-            </div>
-        </section>
-
-        <hr class="border-gray-200 dark:border-gray-700">
-
-        <!-- Privacy Settings -->
-        <section>
-            <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                Privacy
-            </h2>
-            <div class="space-y-4">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <span class="block font-medium text-gray-700 dark:text-gray-300">Show Last Online Status</span>
-                        <span class="text-sm text-gray-500 dark:text-gray-400">Allow friends to see when you were last active.</span>
-                    </div>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="show-last-seen" class="sr-only peer" {{ 'checked' if current_user.show_last_seen else '' }}>
-                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
-                    </label>
-                </div>
-            </div>
-        </section>
-
-        <!-- Save Button -->
-        <div class="flex justify-end pt-4">
-            <button id="save-settings" class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition font-medium shadow-sm">
-                Save Changes
-            </button>
-        </div>
-
     </div>
 </div>
 
+<input type="hidden" id="profile-pic-position" value="{{ current_user.profile_pic_position or '50% 50%' }}">
+
 <script>
     const saveButton = document.getElementById('save-settings');
-    const bioTextarea = document.getElementById('user-bio');
-    const bioCounter = document.getElementById('bio-counter');
     const picUrlInput = document.getElementById('profile-pic-url');
     const picPosInput = document.getElementById('profile-pic-position');
     const previewPic = document.getElementById('preview-pic');
-    const dragContainer = document.getElementById('drag-container');
     const sliderX = document.getElementById('pic-x');
     const sliderY = document.getElementById('pic-y');
 
@@ -279,56 +166,17 @@
         sliderY.value = initialY;
     }
 
-    if (dragContainer && previewPic && picPosInput) {
-        let isDragging = false;
-        
-        const updatePos = (x, y) => {
-            sliderX.value = Math.max(0, Math.min(100, x));
-            sliderY.value = Math.max(0, Math.min(100, y));
-            const posValue = `${sliderX.value}% ${sliderY.value}%`;
-            previewPic.style.objectPosition = posValue;
-            picPosInput.value = posValue;
-        };
+    const updatePos = () => {
+        const posValue = `${sliderX.value}% ${sliderY.value}%`;
+        if(previewPic) previewPic.style.objectPosition = posValue;
+        picPosInput.value = posValue;
+    };
 
-        dragContainer.addEventListener('mousedown', (e) => { isDragging = true; dragContainer.classList.add('cursor-grabbing'); });
-        window.addEventListener('mouseup', () => { isDragging = false; if(dragContainer) dragContainer.classList.remove('cursor-grabbing'); });
-        
-        window.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
-            const rect = dragContainer.getBoundingClientRect();
-            const x = ((e.clientX - rect.left) / rect.width) * 100;
-            const y = ((e.clientY - rect.top) / rect.height) * 100;
-            updatePos(x, y);
-        });
-
-        // Touch support
-        dragContainer.addEventListener('touchstart', (e) => { isDragging = true; }, {passive: true});
-        window.addEventListener('touchend', () => { isDragging = false; });
-        window.addEventListener('touchmove', (e) => {
-            if (!isDragging) return;
-            const touch = e.touches[0];
-            const rect = dragContainer.getBoundingClientRect();
-            const x = ((touch.clientX - rect.left) / rect.width) * 100;
-            const y = ((touch.clientY - rect.top) / rect.height) * 100;
-            updatePos(x, y);
-            e.preventDefault();
-        }, {passive: false});
-
-        sliderX.addEventListener('input', () => updatePos(sliderX.value, sliderY.value));
-        sliderY.addEventListener('input', () => updatePos(sliderX.value, sliderY.value));
-        
-        if (picUrlInput) {
-            picUrlInput.addEventListener('input', () => {
-                if (previewPic) previewPic.src = picUrlInput.value;
-            });
-        }
-    }
-
-    if (bioTextarea && bioCounter) {
-        bioCounter.textContent = bioTextarea.value.length;
-        bioTextarea.addEventListener('input', () => {
-            bioCounter.textContent = bioTextarea.value.length;
-        });
+    sliderX.addEventListener('input', updatePos);
+    sliderY.addEventListener('input', updatePos);
+    
+    if (picUrlInput && previewPic) {
+        picUrlInput.addEventListener('input', () => { previewPic.src = picUrlInput.value; });
     }
 
     saveButton.addEventListener('click', () => {
@@ -342,40 +190,40 @@
             auto_select_priority: document.getElementById('auto-priority').checked,
             focus_duration: document.getElementById('focus-duration').value,
             break_duration: document.getElementById('break-duration').value,
-            notify_pomodoro: document.getElementById('notify-pomodoro').checked,
-            notify_event_start: document.getElementById('notify-event').checked,
-            event_notify_minutes: document.getElementById('event-notify-minutes').value,
             show_last_seen: document.getElementById('show-last-seen').checked,
             accent_color: document.querySelector('input[name="accent_color"]:checked').value
         };
 
         fetch('/api/update_settings', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+            },
             body: JSON.stringify(settings)
         }).then(response => {
             if (response.ok) {
-                alert('Settings saved successfully!');
-                // Update global userSettings if available
-                if (window.userSettings) {
-                    // ... (existing update logic) ...
-                }
-                location.reload(); // Reload to apply accent color
+                alert('CONFIG_COMMITTED');
+                location.reload();
             } else {
-                alert('Failed to save settings.');
+                console.error('Failed to save settings:', response.statusText);
+                alert('CONFIG_ERROR: ' + response.statusText);
             }
+        }).catch(err => {
+            console.error('Fetch error:', err);
+            alert('SYSTEM_NET_ERROR');
         });
     });
 
     function setTheme(theme) {
-        document.documentElement.setAttribute('data-theme', theme);
         fetch('/api/update_settings', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+            },
             body: JSON.stringify({theme: theme})
-        }).then(() => {
-            location.reload(); 
-        });
+        }).then(() => { location.reload(); });
     }
 </script>
 {% endblock %}

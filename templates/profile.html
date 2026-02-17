@@ -1,147 +1,104 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto space-y-6">
-    <!-- Header Card -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 flex flex-col md:flex-row items-center justify-between gap-6">
-        <div class="flex items-center gap-4">
+<div class="max-w-4xl mx-auto space-y-12">
+    <!-- Header Block -->
+    <div class="noir-border bg-[var(--bg-alt)] p-8 flex flex-col md:flex-row items-center gap-8">
+        <div class="relative w-40 h-40 noir-border bg-accent/10 flex items-center justify-center overflow-hidden">
             {% if user.profile_pic_url %}
-                <img src="{{ user.profile_pic_url }}" 
-                     class="w-20 h-20 rounded-full object-cover border-2 border-indigo-500" 
-                     alt="{{ user.username }}"
-                     style="object-position: {{ user.profile_pic_position or '50% 50%' }}">
+                <img src="{{ user.profile_pic_url }}" class="w-full h-full object-cover" alt="{{ user.username }}" style="object-position: {{ user.profile_pic_position or '50% 50%' }}">
             {% else %}
-                <div class="w-20 h-20 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-3xl font-bold">
-                    {{ user.username[0].upper() }}
-                </div>
+                <span class="text-6xl font-bold opacity-20 mono-display">{{ user.username[0].upper() }}</span>
             {% endif %}
-            <div>
-                <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+        </div>
+
+        <div class="flex-1 space-y-4 text-center md:text-left">
+            <div class="space-y-1">
+                <h1 class="text-4xl font-bold mono-display tracking-tighter uppercase flex items-center justify-center md:justify-start gap-3">
                     {{ user.username }}
                     {% if user.is_verified %}
-                    <svg class="w-6 h-6 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                    <svg class="w-6 h-6 text-accent" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
                     </svg>
                     {% endif %}
                 </h1>
-                <p class="text-gray-500 dark:text-gray-400">
-                    Joined {{ user.date_joined.strftime('%B %Y') if user.date_joined else 'recently' }}
+                <div class="text-[10px] font-bold opacity-50 uppercase tracking-widest flex items-center justify-center md:justify-start gap-2">
+                    <span>ENROLLED: {{ user.date_joined.strftime('%Y.%m.%d') }}</span>
                     {% if user.show_last_seen %}
                         {% set is_online = (now - user.last_seen).total_seconds() < 300 if now else false %}
-                        {% if not is_online %}
-                            · Last online at <span class="utc-time" data-ts="{{ user.last_seen.isoformat() }}Z">{{ user.last_seen.strftime('%H:%M') }}</span>
-                        {% else %}
-                            · <span class="text-green-500 font-medium">Online</span>
-                        {% endif %}
+                        <span>//</span>
+                        <span class="{{ 'text-accent' if is_online else '' }}">STATUS: {{ 'ONLINE' if is_online else 'OFFLINE' }}</span>
                     {% endif %}
-                </p>
-                {% if user.bio %}
-                    <p class="mt-2 text-sm italic text-gray-600 dark:text-gray-300 max-w-md">
-                        "{{ user.bio }}"
-                    </p>
+                </div>
+            </div>
+
+            {% if user.bio %}
+                <div class="noir-border border-accent/20 p-3 bg-accent/5">
+                    <p class="text-xs italic opacity-80 leading-relaxed font-bold">"{{ user.bio }}"</p>
+                </div>
+            {% endif %}
+
+            <div class="pt-2">
+                {% if user.id != current_user.id %}
+                    {% if status == 'none' %}
+                        <form action="{{ url_for('social.send_friend_request', user_id=user.id) }}" method="POST">
+                            <button type="submit" class="noir-button px-8 text-xs">SEND_FRIEND_INVITE</button>
+                        </form>
+                    {% elif status == 'sent' %}
+                        <button disabled class="noir-button-outline px-8 text-xs opacity-50">INVITE_PENDING</button>
+                    {% elif status == 'received' %}
+                        <div class="flex gap-2">
+                            <form action="{{ url_for('social.respond_friend_request', user_id=user.id, action='accept') }}" method="POST">
+                                <button class="noir-button px-6 text-xs">ACCEPT</button>
+                            </form>
+                            <form action="{{ url_for('social.respond_friend_request', user_id=user.id, action='reject') }}" method="POST">
+                                <button class="noir-button-outline px-6 text-xs">REJECT</button>
+                            </form>
+                        </div>
+                    {% elif status == 'accepted' %}
+                        <form action="{{ url_for('social.respond_friend_request', user_id=user.id, action='remove') }}" method="POST">
+                             <button class="noir-button-outline px-8 text-xs">TERMINATE_FRIENDSHIP</button>
+                        </form>
+                    {% endif %}
                 {% endif %}
             </div>
         </div>
-        
-        <!-- Actions -->
-        <div class="flex gap-3">
-            {% if user.id != current_user.id %}
-                {% if status == 'none' %}
-                    <form action="{{ url_for('social.send_friend_request', user_id=user.id) }}" method="POST">
-                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition">
-                            Add Friend
-                        </button>
-                    </form>
-                {% elif status == 'sent' %}
-                    <button disabled class="bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed px-4 py-2 rounded-lg font-medium">
-                        Request Sent
-                    </button>
-                {% elif status == 'received' %}
-                    <div class="flex gap-2">
-                        <form action="{{ url_for('social.respond_friend_request', user_id=user.id, action='accept') }}" method="POST">
-                            <button class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium">Accept</button>
-                        </form>
-                        <form action="{{ url_for('social.respond_friend_request', user_id=user.id, action='reject') }}" method="POST">
-                            <button class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium">Reject</button>
-                        </form>
-                    </div>
-                {% elif status == 'accepted' %}
-                    <form action="{{ url_for('social.respond_friend_request', user_id=user.id, action='remove') }}" method="POST">
-                         <button class="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 px-4 py-2 rounded-lg font-medium">
-                            Unfriend
-                        </button>
-                    </form>
-                {% endif %}
-            {% endif %}
+    </div>
+
+    <!-- Stats Matrix -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div class="noir-border bg-[var(--bg-alt)] flex flex-col items-center justify-center space-y-2">
+            <span class="text-[10px] font-bold opacity-50 uppercase tracking-widest">Total_Accumulated_Focus</span>
+            <span class="text-5xl font-bold mono-display text-accent tracking-tighter">{{ total_minutes | format_minutes }}</span>
+        </div>
+        <div class="noir-border bg-[var(--bg-alt)] flex flex-col items-center justify-center space-y-2">
+            <span class="text-[10px] font-bold opacity-50 uppercase tracking-widest">Successful_Cycles_Completed</span>
+            <span class="text-5xl font-bold mono-display text-accent tracking-tighter">{{ total_sessions }}</span>
         </div>
     </div>
 
-    <!-- Stats Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow text-center">
-            <h3 class="text-gray-500 dark:text-gray-400 text-sm font-uppercase tracking-wide">Total Focus Time</h3>
-            <p class="text-4xl font-bold text-indigo-600 mt-2">{{ total_minutes | format_minutes }}</p>
+    <!-- Achievements Array -->
+    <div class="noir-border bg-[var(--bg-alt)]">
+        <div class="p-4 border-b noir-border flex justify-between items-center bg-accent/5">
+            <h2 class="text-sm font-bold uppercase tracking-widest">Unlocked_Achievement_Badges</h2>
+            <span class="text-[10px] font-bold opacity-50">{{ user.achievements | length }} RECORDS</span>
         </div>
-        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow text-center">
-            <h3 class="text-gray-500 dark:text-gray-400 text-sm font-uppercase tracking-wide">Sessions Completed</h3>
-            <p class="text-4xl font-bold text-green-600 mt-2">{{ total_sessions }}</p>
-        </div>
-    </div>
-
-    <!-- Badges / Achievements -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
-        <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-            <h2 class="text-lg font-bold text-gray-800 dark:text-gray-100">Badges & Achievements</h2>
-            <span class="text-sm text-gray-500 dark:text-gray-400">{{ user.achievements | length }} Unlocked</span>
-        </div>
-        <div class="p-6">
+        <div class="p-8">
             {% if user.achievements %}
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-6">
                     {% for ua in user.achievements %}
-                        <div class="flex flex-col items-center p-3 rounded-xl bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-600 transition hover:scale-105 group relative" title="{{ ua.achievement.description }}">
-                            <div class="text-4xl mb-2">{{ ua.achievement.icon }}</div>
-                            <span class="text-xs font-bold text-gray-700 dark:text-gray-200 text-center">{{ ua.achievement.name }}</span>
-                            <!-- Tooltip/Hover info -->
-                            <div class="absolute bottom-full mb-2 hidden group-hover:block w-48 bg-gray-900 text-white text-[10px] p-2 rounded shadow-lg z-10 pointer-events-none">
-                                {{ ua.achievement.description }}
-                                <div class="mt-1 text-gray-400 text-[9px]">Earned on {{ ua.earned_at.strftime('%Y-%m-%d') }}</div>
+                        <div class="flex flex-col items-center space-y-2 group relative" title="{{ ua.achievement.description }}">
+                            <div class="text-4xl noir-border w-16 h-16 flex items-center justify-center bg-[var(--bg-alt)] grayscale group-hover:grayscale-0 transition-all border-dashed">
+                                {{ ua.achievement.icon }}
                             </div>
+                            <span class="text-[8px] font-bold text-center uppercase tracking-tighter leading-none">{{ ua.achievement.name }}</span>
                         </div>
                     {% endfor %}
                 </div>
             {% else %}
-                <div class="text-center py-8">
-                    <div class="text-4xl mb-3 text-gray-300">🏆</div>
-                    <p class="text-gray-500 dark:text-gray-400">No achievements unlocked yet. Keep focusing!</p>
+                <div class="text-center py-12 opacity-30">
+                    <span class="text-xs font-bold uppercase tracking-widest">NO_ACHIEVEMENTS_RECORDED_IN_DATABASE</span>
                 </div>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- Recent Activity Log -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
-        <div class="p-4 border-b border-gray-200 dark:border-gray-700">
-            <h2 class="text-lg font-bold text-gray-800 dark:text-gray-100">Recent Activity</h2>
-        </div>
-        <div class="p-4">
-            {% if recent_sessions %}
-                <ul class="space-y-4">
-                {% for session in recent_sessions %}
-                    <li class="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-700 last:border-0 last:pb-0">
-                        <div class="flex items-center gap-3">
-                            <div class="bg-indigo-50 dark:bg-gray-700 p-2 rounded-lg text-indigo-600 dark:text-indigo-400">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                            </div>
-                            <div>
-                                <p class="text-gray-800 dark:text-gray-200 font-medium">Focused for {{ session.minutes }} mins</p>
-                                <p class="text-xs text-gray-500 dark:text-gray-400"><span class="utc-date-time" data-ts="{{ session.date.isoformat() }}Z">{{ session.date.strftime('%b %d, %Y %I:%M %p') }}</span></p>
-                            </div>
-                        </div>
-                    </li>
-                {% endfor %}
-                </ul>
-            {% else %}
-                <p class="text-gray-500 dark:text-gray-400 text-center py-4">No recent activity.</p>
             {% endif %}
         </div>
     </div>

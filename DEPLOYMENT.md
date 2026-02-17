@@ -24,6 +24,7 @@ This guide will help you deploy **Modo** for free (using trial/free tiers) or ch
     *   Add `SECRET_KEY`: Generate a random string.
     *   Add `SQLALCHEMY_DATABASE_URI`: Paste your **Supabase Connection String**.
         *   *Important:* Ensure it starts with `postgresql://`. If Supabase gives you `postgres://`, rename it to `postgresql://` for compatibility with SQLAlchemy.
+    *   Add `GOOGLE_API_KEY`: Paste your **Google Gemini API Key** (optional, for Genesis AI features).
 4.  **Networking / Ports**:
     *   Ensure the **Port** is set to `8000` (HTTP).
     *   Northflank should detect the `EXPOSE 8000` in the Dockerfile, but verify this.

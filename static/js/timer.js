@@ -8,7 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
             reset: document.getElementById('global-timer-reset'),
             skip: document.getElementById('global-timer-skip'),
             end: document.getElementById('global-timer-end'),
-            task: document.getElementById('global-timer-task')
+            task: document.getElementById('global-timer-task'),
+            subtask: document.getElementById('global-timer-subtask')
         },
         page: {
             display: document.getElementById('page-timer-display'),
@@ -17,7 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
             reset: document.getElementById('page-timer-reset'),
             skip: document.getElementById('page-timer-skip'),
             end: document.getElementById('page-timer-end'),
-            task: document.getElementById('page-timer-task')
+            task: document.getElementById('page-timer-task'),
+            subtask: document.getElementById('page-timer-subtask')
         }
     };
 
@@ -25,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let secondsLeft = 25 * 60;
     let isRunning = false;
     let currentTaskId = null;
+    let currentSubtaskId = null;
     let currentMode = 'focus'; // 'focus' or 'break'
 
     function init() {
@@ -37,6 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const savedEnd = localStorage.getItem('timerEnd');
         const savedStatus = localStorage.getItem('timerStatus');
         const savedTask = localStorage.getItem('timerTask');
+        const savedSubtask = localStorage.getItem('timerSubtask');
         const savedSeconds = localStorage.getItem('timerSecondsLeft');
         const savedMode = localStorage.getItem('timerMode');
         const settings = window.userSettings || { focusDuration: 25, breakDuration: 5 };
@@ -44,6 +48,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (savedTask) {
             currentTaskId = savedTask;
             updateTaskSelects(currentTaskId);
+            currentSubtaskId = savedSubtask;
+            fetchSubtasks(currentTaskId, currentSubtaskId);
         }
         
         if (savedMode) {
@@ -168,6 +174,59 @@ document.addEventListener('DOMContentLoaded', () => {
         if (elements.page.task) elements.page.task.value = value;
     }
 
+    function fetchSubtasks(taskId, selectedSubtaskId = null) {
+        if (!taskId) {
+            updateSubtaskSelects([]);
+            return;
+        }
+
+        fetch(`/api/tasks/${taskId}/subtasks`)
+            .then(r => r.json())
+            .then(subtasks => {
+                updateSubtaskSelects(subtasks, selectedSubtaskId);
+            });
+    }
+
+    function updateSubtaskSelects(subtasks, selectedSubtaskId = null) {
+        const selects = [elements.global.subtask, elements.page.subtask];
+        const incompleteSubtasks = subtasks.filter(s => !s.is_completed);
+
+        // If current subtask is done or no longer in list, clear it
+        if (selectedSubtaskId) {
+            const stillActive = incompleteSubtasks.find(s => s.id == selectedSubtaskId);
+            if (!stillActive) {
+                selectedSubtaskId = null;
+                currentSubtaskId = null;
+                localStorage.setItem('timerSubtask', '');
+            }
+        }
+
+        // Auto-select first incomplete subtask if autoSelectPriority is on
+        const settings = window.userSettings || {};
+        if (!selectedSubtaskId && incompleteSubtasks.length > 0 && settings.autoSelectPriority) {
+            selectedSubtaskId = incompleteSubtasks[0].id;
+            currentSubtaskId = selectedSubtaskId;
+            localStorage.setItem('timerSubtask', currentSubtaskId);
+        }
+
+        selects.forEach(select => {
+            if (!select) return;
+            
+            if (incompleteSubtasks.length === 0) {
+                select.classList.add('hidden');
+                select.innerHTML = '<option value="">[NO_SUBTASK]</option>';
+                return;
+            }
+
+            select.classList.remove('hidden');
+            let html = '<option value="">[SELECT_SUBTASK]</option>';
+            incompleteSubtasks.forEach(s => {
+                html += `<option value="${s.id}" ${s.id == selectedSubtaskId ? 'selected' : ''}>- ${s.title}</option>`;
+            });
+            select.innerHTML = html;
+        });
+    }
+
     function updateUI() {
         // Display Time
         const minutes = Math.floor(secondsLeft / 60);
@@ -177,6 +236,40 @@ document.addEventListener('DOMContentLoaded', () => {
         if (elements.global.display) elements.global.display.textContent = text;
         if (elements.page.display) elements.page.display.textContent = text.padStart(5, '0');
 
+        const minDisplay = document.getElementById('min-timer-display');
+        if (minDisplay) minDisplay.textContent = minutes + 'm';
+
+        // Update Global Status Label
+        const statusDisplay = document.getElementById('global-timer-status');
+        const statusDot = document.getElementById('global-timer-dot');
+        if (statusDisplay) {
+            statusDisplay.textContent = isRunning ? (currentMode === 'break' ? 'BREAK' : 'FOCUS') : 'PAUSED';
+        }
+        if (statusDot) {
+            statusDot.className = isRunning ? 'w-1.5 h-1.5 bg-accent animate-pulse' : 'w-1.5 h-1.5 bg-gray-500';
+        }
+
+        // Update Subtask Display in Bubble
+        const subtaskDisplayContainer = document.getElementById('global-active-process');
+        const subtaskDisplayText = document.getElementById('global-active-subtask-display');
+        if (subtaskDisplayContainer && subtaskDisplayText) {
+            if (currentSubtaskId && elements.global.subtask && elements.global.subtask.selectedIndex > 0) {
+                subtaskDisplayContainer.classList.remove('hidden');
+                subtaskDisplayText.textContent = elements.global.subtask.options[elements.global.subtask.selectedIndex].text.replace('- ', '');
+            } else {
+                subtaskDisplayContainer.classList.add('hidden');
+            }
+        }
+
+        // Dispatch Tick Event for Dot Matrix
+        const settings = window.userSettings || { focusDuration: 25, breakDuration: 5 };
+        const total = currentMode === 'break' ? settings.breakDuration * 60 : settings.focusDuration * 60;
+        const percent = ((total - secondsLeft) / total) * 100;
+        
+        document.body.dispatchEvent(new CustomEvent('timerTick', { 
+            detail: { percent: percent, minutes, seconds } 
+        }));
+
         // External API (Data Attributes for PreMiD/Extensions)
         document.body.dataset.modoStatus = isRunning ? 'running' : 'paused';
         document.body.dataset.modoMode = currentMode;
@@ -185,7 +278,14 @@ document.addEventListener('DOMContentLoaded', () => {
         let taskTitle = "No Task Selected";
         if (elements.global.task && elements.global.task.selectedIndex >= 0) {
             const selected = elements.global.task.options[elements.global.task.selectedIndex];
-            if (selected && selected.value) taskTitle = selected.text;
+            if (selected && selected.value) {
+                taskTitle = selected.text;
+                // Add subtask if selected
+                if (elements.global.subtask && elements.global.subtask.selectedIndex > 0) {
+                    const selectedSub = elements.global.subtask.options[elements.global.subtask.selectedIndex];
+                    taskTitle += ` (${selectedSub.text.replace('- ', '')})`;
+                }
+            }
         }
         document.body.dataset.modoTask = taskTitle;
 
@@ -365,7 +465,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(payload)
             }).then(() => {
-                alert('Session logged!');
+                window.modoNotify('Session logged!', 'success');
                 resetTimer();
             });
         }
@@ -424,6 +524,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(payload)
             }).then(() => {
+                // Refresh task lists in case task was completed
+                document.body.dispatchEvent(new CustomEvent('tasksChanged'));
+                
                 // Sync: Tell server to switch to break
                 if (settings.syncMode && settings.activeRoomId) {
                      fetch('/api/study/control', {
@@ -456,9 +559,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (settings.autoStartBreak) {
                     startTimer(true);
-                    alert('Focus Complete! Starting Break...');
+                    window.modoNotify('Focus Complete! Starting Break...', 'info');
                 } else {
-                    alert('Focus Complete! Take a break?');
+                    window.modoNotify('Focus Complete! Take a break?', 'warning');
                 }
             });
         } else {
@@ -485,12 +588,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 fetch('/api/next_priority_task')
                     .then(res => res.json())
                     .then(data => {
-                        if (data.id) {
+                        if (data && data.id) {
                             currentTaskId = data.id.toString();
                             localStorage.setItem('timerTask', currentTaskId);
                             updateTaskSelects(currentTaskId);
+                            fetchSubtasks(currentTaskId, null); // This will auto-select the first subtask
                         }
-                        finishBreak(settings);
+                        // Wait a tiny bit for the subtask fetch to complete before finishing break
+                        setTimeout(() => finishBreak(settings), 200);
                     });
             } else {
                 finishBreak(settings);
@@ -500,15 +605,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function finishBreak(settings) {
         updateUI();
+        document.body.dispatchEvent(new CustomEvent('tasksChanged'));
         if (settings.autoStartFocus) {
             startTimer(true);
-             alert('Break Over! Starting Focus...');
+             window.modoNotify('Break Over! Starting Focus...', 'info');
         } else {
-             alert('Break Over! Ready to focus?');
+             window.modoNotify('Break Over! Ready to focus?', 'warning');
         }
     }
 
     function attachListeners() {
+        // HTMX task update listener
+        document.body.addEventListener('tasksChanged', () => {
+            fetch('/api/timer_tasks')
+                .then(r => r.text())
+                .then(html => {
+                    const selects = [elements.global.task, elements.page.task];
+                    selects.forEach(select => {
+                        if (select) {
+                            const currentVal = select.value;
+                            select.innerHTML = html;
+                            select.value = currentVal; // Restore selection if it still exists
+                        }
+                    });
+                    if (currentTaskId) {
+                        fetchSubtasks(currentTaskId, currentSubtaskId);
+                    }
+                });
+        });
+
         // Global
         if (elements.global.start) elements.global.start.addEventListener('click', () => startTimer(true));
         if (elements.global.pause) elements.global.pause.addEventListener('click', pauseTimer);
@@ -517,9 +642,24 @@ document.addEventListener('DOMContentLoaded', () => {
         if (elements.global.end) elements.global.end.addEventListener('click', endSession);
         if (elements.global.task) elements.global.task.addEventListener('change', (e) => {
             currentTaskId = e.target.value;
+            currentSubtaskId = null;
+            localStorage.setItem('timerSubtask', '');
             updateTaskSelects(currentTaskId);
             localStorage.setItem('timerTask', currentTaskId);
+            fetchSubtasks(currentTaskId);
+            updateUI();
         });
+
+        const globalSubtask = document.getElementById('global-timer-subtask');
+        if (globalSubtask) {
+            globalSubtask.addEventListener('change', (e) => {
+                currentSubtaskId = e.target.value;
+                localStorage.setItem('timerSubtask', currentSubtaskId);
+                const pageSubtask = document.getElementById('page-timer-subtask');
+                if (pageSubtask) pageSubtask.value = currentSubtaskId;
+                updateUI();
+            });
+        }
 
         // Page
         if (elements.page.start) elements.page.start.addEventListener('click', () => startTimer(true));
@@ -529,9 +669,24 @@ document.addEventListener('DOMContentLoaded', () => {
         if (elements.page.end) elements.page.end.addEventListener('click', endSession);
         if (elements.page.task) elements.page.task.addEventListener('change', (e) => {
             currentTaskId = e.target.value;
+            currentSubtaskId = null;
+            localStorage.setItem('timerSubtask', '');
             updateTaskSelects(currentTaskId);
             localStorage.setItem('timerTask', currentTaskId);
+            fetchSubtasks(currentTaskId);
+            updateUI();
         });
+
+        const pageSubtask = document.getElementById('page-timer-subtask');
+        if (pageSubtask) {
+            pageSubtask.addEventListener('change', (e) => {
+                currentSubtaskId = e.target.value;
+                localStorage.setItem('timerSubtask', currentSubtaskId);
+                const globalSubtask = document.getElementById('global-timer-subtask');
+                if (globalSubtask) globalSubtask.value = currentSubtaskId;
+                updateUI();
+            });
+        }
     }
 
     init();

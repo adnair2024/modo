@@ -1,140 +1,131 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto" x-data="{ sectionModalOpen: false, inviteModalOpen: false, taskModalOpen: false, activeSectionId: null }">
-    <!-- Project Header -->
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-        <div>
-            <div class="flex items-center gap-3 mb-1">
-                <a href="{{ url_for('projects.projects_list') }}" class="text-gray-500 hover:text-indigo-600 transition">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+<div class="max-w-7xl mx-auto space-y-12" x-data="{ sectionModalOpen: false, inviteModalOpen: false, taskModalOpen: false, activeSectionId: null }">
+    
+    <!-- Header: Terminal Style -->
+    <div class="flex flex-col md:flex-row justify-between items-baseline border-b noir-border pb-4 gap-4">
+        <div class="space-y-1">
+            <div class="flex items-center gap-4">
+                <a href="{{ url_for('projects.projects_list') }}" class="text-accent hover:scale-110 transition-transform">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
                 </a>
-                <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ project.name }}</h1>
+                <h1 class="text-4xl font-bold tracking-tighter mono-display uppercase">{{ project.name }}</h1>
             </div>
-            <p class="text-gray-600 dark:text-gray-400 ml-8">{{ project.description or 'Collaborative project' }}</p>
+            <p class="text-[10px] font-bold opacity-50 uppercase tracking-widest ml-10">MANIFEST: {{ project.description or 'GENERAL_COLLABORATION_PROTOCOL' }}</p>
         </div>
         
-        <div class="flex items-center gap-3 ml-8 md:ml-0">
+        <div class="flex items-center gap-4 ml-10 md:ml-0">
             {% if project.owner_id == current_user.id %}
-            <button @click="inviteModalOpen = true" class="bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 px-4 py-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition text-sm font-bold flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
-                Invite
-            </button>
+            <button @click="inviteModalOpen = true" class="noir-button-outline text-[10px] px-4 py-1.5">SIGNAL_INVITE</button>
             {% endif %}
-            <button @click="sectionModalOpen = true" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition text-sm font-bold flex items-center gap-2 shadow-sm">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                Add Section
-            </button>
+            <button @click="sectionModalOpen = true" class="noir-button text-[10px] px-4 py-1.5">NEW_SECTOR</button>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <!-- Main Board -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-12">
+        <!-- Main Board: Noir Grid -->
         <div class="lg:col-span-9" x-data="{ 
             initSortable() {
-                document.querySelectorAll('.task-list').forEach(el => {
-                    new Sortable(el, {
-                        group: 'tasks',
-                        animation: 150,
-                        ghostClass: 'opacity-50',
-                        onEnd: (evt) => {
-                            const taskId = evt.item.id.replace('task-', '');
-                            const sectionId = evt.to.getAttribute('data-section-id');
-                            const formData = new FormData();
-                            formData.append('section_id', sectionId);
-                            fetch(`/projects/tasks/${taskId}/move`, {
-                                method: 'POST',
-                                body: formData
-                            });
-                        }
+                if(typeof Sortable !== 'undefined') {
+                    document.querySelectorAll('.task-list').forEach(el => {
+                        new Sortable(el, {
+                            group: 'tasks',
+                            animation: 0,
+                            ghostClass: 'opacity-20',
+                            onEnd: (evt) => {
+                                const taskId = evt.item.id.replace('task-', '');
+                                const sectionId = evt.to.getAttribute('data-section-id');
+                                const formData = new FormData();
+                                formData.append('section_id', sectionId);
+                                fetch(`/projects/tasks/${taskId}/move`, { method: 'POST', body: formData });
+                            }
+                        });
                     });
-                });
+                }
             }
-        }" x-init="initSortable()">
-            <div class="flex gap-6 overflow-x-auto pb-8 snap-x">
+        }" x-init="setTimeout(() => initSortable(), 100)">
+            
+            <div class="flex gap-8 overflow-x-auto pb-12 snap-x custom-scrollbar">
                 {% for section in project.sections %}
-                <div class="flex-shrink-0 w-80 snap-start">
-                    <div class="flex justify-between items-center mb-4 px-1 group" x-data="{ editing: false, name: '{{ section.name }}' }">
-                        <div class="flex items-center gap-2 overflow-hidden flex-1">
+                <div class="flex-shrink-0 w-80 snap-start space-y-6">
+                    <!-- Section Header -->
+                    <div class="flex justify-between items-center group noir-border border-b-4 border-b-black dark:border-b-white p-3 bg-[var(--bg-alt)]" x-data="{ editing: false, name: '{{ section.name }}' }">
+                        <div class="flex-1 min-w-0">
                             <template x-if="!editing">
-                                <h3 @dblclick="editing = true" class="font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-sm truncate cursor-pointer hover:text-indigo-600 transition" title="Double click to edit">
+                                <h3 @dblclick="editing = true" class="text-xs font-bold uppercase tracking-widest truncate cursor-pointer hover:text-accent">
                                     <span x-text="name"></span>
-                                    <span class="ml-1 text-gray-400 font-normal">({{ section.tasks|length }})</span>
+                                    <span class="opacity-30 ml-2">[{{ section.tasks|length }}]</span>
                                 </h3>
                             </template>
                             <template x-if="editing">
                                 <form @submit.prevent="
                                     const formData = new FormData();
                                     formData.append('name', name);
-                                    fetch('{{ url_for('projects.edit_project_section', section_id=section.id) }}', {
-                                        method: 'POST',
-                                        body: formData
-                                    }).then(() => editing = false);
-                                " class="flex-1">
+                                    fetch('{{ url_for('projects.edit_project_section', section_id=section.id) }}', { method: 'POST', body: formData }).then(() => editing = false);
+                                ">
                                     <input x-model="name" @keydown.escape="editing = false" @click.away="editing = false" 
-                                           class="w-full bg-gray-100 dark:bg-gray-800 border-none rounded px-2 py-1 text-sm font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 focus:ring-1 focus:ring-indigo-500 outline-none" 
-                                           x-init="$el.focus()">
+                                           class="noir-input w-full text-[10px] font-bold uppercase py-0" x-init="$el.focus()">
                                 </form>
                             </template>
                         </div>
-                        <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                        <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button @click="activeSectionId = {{ section.id }}; taskModalOpen = true" class="text-accent hover:scale-110">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                            </button>
                             {% if project.owner_id == current_user.id %}
-                            <form action="{{ url_for('projects.delete_project_section', section_id=section.id) }}" method="POST" onsubmit="return confirm('Delete this section and all its tasks?')">
-                                <button type="submit" class="text-gray-400 hover:text-red-500 transition p-1" title="Delete Section">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            <form action="{{ url_for('projects.delete_project_section', section_id=section.id) }}" method="POST" onsubmit="return confirm('ERASE_SECTOR_DATA?')">
+                                <button type="submit" class="text-red-600 hover:scale-110">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                                 </button>
                             </form>
                             {% endif %}
-                            <button @click="activeSectionId = {{ section.id }}; taskModalOpen = true" class="text-gray-400 hover:text-indigo-600 transition p-1" title="Add Task">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                            </button>
                         </div>
                     </div>
                     
-                    <div class="space-y-4 min-h-[100px] task-list" data-section-id="{{ section.id }}">
+                    <!-- Task List Container -->
+                    <div class="space-y-4 min-h-[200px] task-list" data-section-id="{{ section.id }}">
                         {% for task in section.tasks %}
                             {% include 'partials/task_item.html' %}
                         {% endfor %}
                     </div>
                     
-                    <button @click="activeSectionId = {{ section.id }}; taskModalOpen = true" class="w-full mt-4 py-3 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg text-gray-400 hover:text-indigo-600 hover:border-indigo-300 dark:hover:border-indigo-800 transition text-sm font-medium flex items-center justify-center gap-2 group">
-                        <svg class="w-4 h-4 group-hover:scale-110 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                        Add Task
+                    <button @click="activeSectionId = {{ section.id }}; taskModalOpen = true" 
+                            class="w-full py-4 noir-border border-dashed opacity-30 hover:opacity-100 hover:border-accent hover:text-accent transition-all text-[10px] font-bold uppercase tracking-widest bg-[var(--bg-alt)]">
+                        + APPEND_RECORD
                     </button>
                 </div>
                 {% else %}
-                <div class="w-full py-20 text-center bg-white dark:bg-gray-800 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700">
-                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">No sections yet</h3>
-                    <p class="text-gray-500 dark:text-gray-400 mt-1 mb-6">Organize your project by adding sections like "To Do", "In Progress", or "Finished".</p>
-                    <button @click="sectionModalOpen = true" class="text-indigo-600 hover:text-indigo-800 font-bold">Add your first section &rarr;</button>
+                <div class="w-full py-32 text-center noir-border border-dashed opacity-30">
+                    <span class="text-xs font-bold uppercase tracking-widest">NO_SECTORS_ALLOCATED // BOARD_OFFLINE</span>
                 </div>
                 {% endfor %}
             </div>
         </div>
 
-        <!-- Sidebar -->
-        <div class="lg:col-span-3 space-y-8">
-            <!-- Members -->
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
-                <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider mb-4 flex items-center justify-between">
-                    Members
-                    <span class="text-xs font-normal text-gray-500">{{ project.members|length }}/6</span>
-                </h3>
-                <div class="space-y-4">
+        <!-- Sidebar: Hardware Info -->
+        <div class="lg:col-span-3 space-y-12">
+            <!-- Members Matrix -->
+            <section class="space-y-6">
+                <div class="flex flex-col items-center w-full border-b noir-border border-opacity-10 pt-6 pb-4">
+                    <h3 class="text-xs font-bold uppercase tracking-[0.2em] text-accent text-center">Active_Nodes</h3>
+                    <span class="text-[10px] font-bold opacity-30 tracking-widest text-center mt-1">{{ project.members|length }}/06</span>
+                </div>
+                <div class="space-y-6">
                     {% for member in project.members %}
                     <div class="flex items-center justify-between group">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-[10px] font-bold text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
-                                {{ member.user.username[:2]|upper }}
+                        <div class="flex items-center gap-4">
+                            <div class="w-8 h-8 bg-accent/10 flex items-center justify-center text-[10px] font-bold">
+                                {{ member.user.username[0]|upper }}
                             </div>
-                            <div>
-                                <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ member.user.username }}</p>
-                                <p class="text-[10px] text-gray-500 dark:text-gray-400 capitalize">{{ member.role }}</p>
+                            <div class="space-y-1">
+                                <p class="text-sm font-bold uppercase tracking-tight">{{ member.user.username }}</p>
+                                <p class="text-[10px] opacity-40 uppercase font-bold tracking-widest">{{ member.role }}</p>
                             </div>
                         </div>
                         {% if project.owner_id == current_user.id and member.user_id != current_user.id %}
-                        <form action="{{ url_for('projects.kick_project_member', project_id=project.id, user_id=member.user_id) }}" method="POST" onsubmit="return confirm('Kick {{ member.user.username }} from project?')">
-                            <button type="submit" class="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition p-1" title="Kick Member">
+                        <form action="{{ url_for('projects.kick_project_member', project_id=project.id, user_id=member.user_id) }}" method="POST" onsubmit="return confirm('EJECT_NODE?')">
+                            <button type="submit" class="text-red-600 opacity-0 group-hover:opacity-100 hover:scale-110 transition-all p-1">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                             </button>
                         </form>
@@ -142,122 +133,111 @@
                     </div>
                     {% endfor %}
                 </div>
-            </div>
+            </section>
 
-            <!-- Activity Log -->
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
-                <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider mb-4">Activity Log</h3>
-                <div class="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+            <!-- Activity Stream -->
+            <section class="space-y-6">
+                <div class="flex flex-col items-center w-full border-b noir-border border-opacity-10 pt-6 pb-4">
+                    <h3 class="text-xs font-bold uppercase tracking-[0.2em] text-accent text-center">Event_Stream</h3>
+                </div>
+                <div class="space-y-8 max-h-[600px] overflow-y-auto pr-4 custom-scrollbar">
                     {% for activity in project.activities %}
-                    <div class="relative pl-4 border-l border-gray-200 dark:border-gray-700 pb-2">
-                        <div class="absolute -left-1 top-1 w-2 h-2 rounded-full bg-indigo-500"></div>
-                        <p class="text-xs text-gray-800 dark:text-gray-200 leading-relaxed">
-                            <span class="font-bold">{{ activity.user.username }}</span> 
-                            {{ activity.action }}
+                    <div class="space-y-2 border-l-2 border-accent border-opacity-10 pl-4">
+                        <p class="text-[11px] font-bold leading-tight uppercase tracking-wide">
+                            <span class="text-accent opacity-80">@{{ activity.user.username }}</span> 
+                            <span class="opacity-80">{{ activity.action }}</span>
                         </p>
-                        <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
-                            <span class="utc-time" data-ts="{{ activity.timestamp.isoformat() }}Z">{{ activity.timestamp.strftime('%H:%M') }}</span>
-                        </p>
+                        <p class="text-[9px] opacity-30 font-bold uppercase tracking-[0.2em]">{{ activity.timestamp.strftime('%H:%M // %Y.%m.%d') }}</p>
                     </div>
                     {% else %}
-                    <p class="text-xs text-gray-500 italic text-center py-4">No activity yet</p>
+                    <p class="text-xs font-bold opacity-30 uppercase text-center py-12 italic tracking-[0.3em]">STREAM_IDLE</p>
                     {% endfor %}
                 </div>
-            </div>
+            </section>
         </div>
     </div>
 
-    <!-- Modals -->
-    
     <!-- Add Section Modal -->
-    <div x-show="sectionModalOpen" class="fixed inset-0 z-[100] overflow-y-auto" style="display: none;" @keydown.escape.window="sectionModalOpen = false">
-        <div class="flex items-center justify-center min-h-screen px-4">
-            <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" @click="sectionModalOpen = false"></div>
-            <div class="inline-block w-full max-w-md p-6 overflow-hidden text-left align-middle transition-all transform bg-white dark:bg-gray-800 rounded-xl shadow-xl z-[101]">
-                <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">New Section</h3>
-                <form action="{{ url_for('projects.add_project_section', project_id=project.id) }}" method="POST">
-                    <div class="mb-6">
-                        <label for="section_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Section Name</label>
-                        <input type="text" name="name" id="section_name" required autofocus class="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. Planning, Ready to Start...">
-                    </div>
-                    <div class="flex gap-3">
-                        <button type="button" @click="sectionModalOpen = false" class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">Cancel</button>
-                        <button type="submit" class="flex-1 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition">Add Section</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Invite Member Modal -->
-    <div x-show="inviteModalOpen" class="fixed inset-0 z-[100] overflow-y-auto" style="display: none;" @keydown.escape.window="inviteModalOpen = false">
-        <div class="flex items-center justify-center min-h-screen px-4">
-            <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" @click="inviteModalOpen = false"></div>
-            <div class="inline-block w-full max-w-md p-6 overflow-hidden text-left align-middle transition-all transform bg-white dark:bg-gray-800 rounded-xl shadow-xl z-[101]"
-                 x-data="{ inviteUsername: '', inviteMsg: '', inviteError: '' }">
-                <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">Invite Collaborator</h3>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Share this project with up to 5 other people.</p>
-                
-                <div x-show="inviteMsg" class="mb-4 p-2 bg-green-100 text-green-700 rounded text-sm" x-text="inviteMsg"></div>
-                <div x-show="inviteError" class="mb-4 p-2 bg-red-100 text-red-700 rounded text-sm" x-text="inviteError"></div>
-
-                <form @submit.prevent="
-                    const formData = new FormData();
-                    formData.append('username', inviteUsername);
-                    fetch('{{ url_for('projects.invite_to_project', project_id=project.id) }}', {
-                        method: 'POST',
-                        body: formData
-                    }).then(r => r.json()).then(data => {
-                        if (data.error) { inviteError = data.error; inviteMsg = ''; }
-                        else { inviteMsg = data.message; inviteError = ''; inviteUsername = ''; setTimeout(() => { inviteModalOpen = false; inviteMsg = ''; }, 2000); }
-                    })
-                ">
-                    <div class="mb-6">
-                        <label for="invite_username" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Username</label>
-                        <input type="text" x-model="inviteUsername" id="invite_username" required class="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Enter username...">
-                    </div>
-                    <div class="flex gap-3">
-                        <button type="button" @click="inviteModalOpen = false" class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">Cancel</button>
-                        <button type="submit" class="flex-1 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition">Send Invite</button>
-                    </div>
-                </form>
-            </div>
+    <div x-show="sectionModalOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm" style="display: none;" x-cloak>
+        <div @click.away="sectionModalOpen = false" class="max-w-md w-full noir-border bg-[var(--bg-alt)] p-10 space-y-8">
+            <h3 class="text-xl font-bold mono-display uppercase border-b noir-border pb-4">Alloc_New_Sector</h3>
+            <form action="{{ url_for('projects.add_project_section', project_id=project.id) }}" method="POST" class="space-y-8">
+                <div class="space-y-2">
+                    <label class="block text-[10px] font-bold opacity-50 uppercase tracking-widest">Sector_Identifier</label>
+                    <input type="text" name="name" required class="noir-input w-full font-bold" placeholder="NAME_INPUT_">
+                </div>
+                <div class="flex gap-4">
+                    <button type="button" @click="sectionModalOpen = false" class="noir-button-outline flex-1 py-3 text-xs">ABORT</button>
+                    <button type="submit" class="noir-button flex-1 py-3 text-xs">CONFIRM</button>
+                </div>
+            </form>
         </div>
     </div>
 
     <!-- Add Task Modal -->
-    <div x-show="taskModalOpen" class="fixed inset-0 z-[100] overflow-y-auto" style="display: none;" @keydown.escape.window="taskModalOpen = false">
-        <div class="flex items-center justify-center min-h-screen px-4">
-            <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" @click="taskModalOpen = false"></div>
-            <div class="inline-block w-full max-w-md p-6 overflow-hidden text-left align-middle transition-all transform bg-white dark:bg-gray-800 rounded-xl shadow-xl z-[101]">
-                <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">Add Task to Section</h3>
-                <form :action="'/projects/sections/' + activeSectionId + '/tasks'" method="POST">
-                    <div class="mb-4">
-                        <label for="task_title" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Title</label>
-                        <input type="text" name="title" id="task_title" required autofocus class="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="What needs to be done?">
+    <div x-show="taskModalOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm" style="display: none;" x-cloak>
+        <div @click.away="taskModalOpen = false" class="max-w-lg w-full noir-border bg-[var(--bg-alt)] p-10 space-y-8">
+            <h3 class="text-xl font-bold mono-display uppercase border-b noir-border pb-4">Append_Task_Record</h3>
+            <form :action="'/projects/sections/' + activeSectionId + '/tasks'" method="POST" class="space-y-6">
+                <div class="space-y-4">
+                    <div class="space-y-2">
+                        <label class="block text-[10px] font-bold opacity-50 uppercase">Record_Title</label>
+                        <input type="text" name="title" required class="noir-input w-full font-bold" placeholder="TITLE_INPUT_">
                     </div>
-                    <div class="mb-4">
-                        <label for="task_desc" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description (Optional)</label>
-                        <textarea name="description" id="task_desc" rows="3" class="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="More details..."></textarea>
+                    <div class="space-y-2">
+                        <label class="block text-[10px] font-bold opacity-50 uppercase">Manifest_Data</label>
+                        <textarea name="description" rows="3" class="noir-input w-full text-xs resize-none" placeholder="SUPPLEMENTAL_INFO_"></textarea>
                     </div>
-                    <div class="mb-4">
-                        <label for="task_priority" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Priority</label>
-                        <select name="priority" id="task_priority" class="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 outline-none">
-                            <option value="1">Level 1 (Low)</option>
-                            <option value="2">Level 2 (Medium)</option>
-                            <option value="3">Level 3 (High)</option>
-                        </select>
+                    <div class="grid grid-cols-2 gap-6">
+                        <div class="space-y-2">
+                            <label class="block text-[10px] font-bold opacity-50 uppercase">Priority</label>
+                            <select name="priority" class="noir-input w-full text-xs bg-transparent font-bold">
+                                <option value="1">L_01 (LOW)</option>
+                                <option value="2">L_02 (MED)</option>
+                                <option value="3">L_03 (HIGH)</option>
+                            </select>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-[10px] font-bold opacity-50 uppercase">Deadline</label>
+                            <input type="datetime-local" name="due_date" class="noir-input w-full text-[10px]">
+                        </div>
                     </div>
-                    <div class="mb-6">
-                        <label for="task_due_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Due Date (Optional)</label>
-                        <input type="datetime-local" name="due_date" id="task_due_date" class="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 outline-none">
-                    </div>
-                    <div class="flex gap-3">
-                        <button type="button" @click="taskModalOpen = false" class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">Cancel</button>
-                        <button type="submit" class="flex-1 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition">Create Task</button>
-                    </div>
-                </form>
-            </div>
+                </div>
+                <div class="flex gap-4 pt-4">
+                    <button type="button" @click="taskModalOpen = false" class="noir-button-outline flex-1 py-3 text-xs">ABORT</button>
+                    <button type="submit" class="noir-button flex-1 py-3 text-xs">COMMIT</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Invite Modal -->
+    <div x-show="inviteModalOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm" style="display: none;" x-cloak>
+        <div @click.away="inviteModalOpen = false" class="max-w-md w-full noir-border bg-[var(--bg-alt)] p-10 space-y-8"
+             x-data="{ inviteUsername: '', inviteMsg: '', inviteError: '' }">
+            <h3 class="text-xl font-bold mono-display uppercase border-b noir-border pb-4">Collaborator_Invite</h3>
+            
+            <div x-show="inviteMsg" class="p-3 noir-border border-accent text-accent text-[10px] font-bold uppercase" x-text="inviteMsg"></div>
+            <div x-show="inviteError" class="p-3 noir-border border-red-600 text-red-600 text-[10px] font-bold uppercase" x-text="inviteError"></div>
+
+            <form @submit.prevent="
+                const formData = new FormData();
+                formData.append('username', inviteUsername);
+                fetch('{{ url_for('projects.invite_to_project', project_id=project.id) }}', { method: 'POST', body: formData })
+                .then(r => r.json()).then(data => {
+                    if (data.error) { inviteError = data.error; inviteMsg = ''; }
+                    else { inviteMsg = data.message; inviteError = ''; inviteUsername = ''; setTimeout(() => { inviteModalOpen = false; inviteMsg = ''; }, 2000); }
+                })
+            " class="space-y-8">
+                <div class="space-y-2">
+                    <label class="block text-[10px] font-bold opacity-50 uppercase">Target_UID</label>
+                    <input type="text" x-model="inviteUsername" required class="noir-input w-full font-bold" placeholder="UID_SCAN_">
+                </div>
+                <div class="flex gap-4">
+                    <button type="button" @click="inviteModalOpen = false" class="noir-button-outline flex-1 py-3 text-xs">ABORT</button>
+                    <button type="submit" class="noir-button flex-1 py-3 text-xs">SEND_SIGNAL</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

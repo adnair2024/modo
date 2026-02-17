@@ -1,30 +1,29 @@
-<li id="event-{{ event.id }}" class="border-b last:border-b-0 p-4 hover:bg-gray-50 flex justify-between items-center">
-    <div class="w-full flex justify-between items-center">
-        <div>
-            <h3 class="font-bold text-lg text-gray-800">{{ event.title }}</h3>
-            <p class="text-sm text-gray-600">
-                {{ event.start_time.strftime('%b %d, %Y %I:%M %p') }} - {{ event.end_time.strftime('%I:%M %p') }}
-                {% if event.recurrence != 'none' %}
-                <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 capitalize">
-                    {{ event.recurrence }}
+<div id="event-{{ event.id }}" class="p-6 hover:bg-accent/5 transition-colors flex justify-between items-center group">
+    <div class="space-y-1">
+        <h3 class="text-lg font-bold uppercase tracking-tight">{{ event.title }}</h3>
+        <div class="flex items-center gap-4 text-[10px] font-bold opacity-50 uppercase tracking-widest">
+            <span>{{ event.start_time.strftime('%Y.%m.%d // %H:%M') }} - {{ event.end_time.strftime('%H:%M') }}</span>
+            {% if event.recurrence != 'none' %}
+                <span class="text-accent border border-accent px-1.5 py-0.5">
+                    RECUR: {{ event.recurrence }}
                     {% if event.recurrence == 'custom' and event.recurrence_days %}
-                        {% set days_map = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] %}
+                        {% set days_map = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'] %}
                         {% set day_indices = event.recurrence_days.split(',') %}
-                        ({% for d in day_indices %}{{ days_map[d|int] }}{% if not loop.last %}, {% endif %}{% endfor %})
+                        ({% for d in day_indices %}{{ days_map[d|int] }}{% if not loop.last %},{% endif %}{% endfor %})
                     {% endif %}
                 </span>
-                {% endif %}
-            </p>
-        </div>
-        <div class="flex items-center gap-2">
-            <button hx-get="{{ url_for('schedule.edit_event', event_id=event.id) }}" hx-target="closest li" hx-swap="outerHTML" class="text-indigo-600 hover:text-indigo-900">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-            </button>
-            <form action="{{ url_for('schedule.delete_event', event_id=event.id) }}" method="POST" onsubmit="return confirm('Are you sure?');" class="inline">
-                <button type="submit" class="text-red-500 hover:text-red-700">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                </button>
-            </form>
+            {% endif %}
         </div>
     </div>
-</li>
+    
+    <div class="flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button hx-get="{{ url_for('schedule.edit_event', event_id=event.id) }}" 
+                hx-target="#event-{{ event.id }}" 
+                hx-swap="outerHTML" 
+                class="text-[10px] font-bold hover:text-accent uppercase underline underline-offset-4">Modify</button>
+        
+        <form action="{{ url_for('schedule.delete_event', event_id=event.id) }}" method="POST" onsubmit="return confirm('CONFIRM_ERASURE?');">
+            <button type="submit" class="text-[10px] font-bold text-red-600 hover:text-red-500 uppercase underline underline-offset-4">Erase</button>
+        </form>
+    </div>
+</div>

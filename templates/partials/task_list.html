@@ -3,20 +3,20 @@
         {% include "partials/task_item.html" %}
     {% endfor %}
     
-    {% if has_more_completed %}
-    <div class="text-center pt-4">
-        <button hx-get="{{ url_for('main.index', show_all_done='true') }}" 
-                hx-target="#task-list" 
-                hx-swap="outerHTML"
-                class="text-sm text-indigo-600 hover:text-indigo-800 font-medium bg-indigo-50 px-4 py-2 rounded-full transition">
-            See previous completed tasks...
-        </button>
-    </div>
-    {% endif %}
-
     {% if not tasks %}
-        <div class="text-center text-gray-500 py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-            <p>No tasks found.</p>
+        <div class="noir-border bg-[var(--bg-alt)] text-center opacity-40 p-12">
+            <span class="text-sm font-bold uppercase tracking-widest">QUEUE_EMPTY // NO_TASKS_SCHEDULED</span>
+        </div>
+    {% endif %}
+    
+    {% if has_more_completed %}
+        <div class="pt-8 text-center">
+            <button hx-get="{{ url_for('main.index', show_all_done='true') }}" 
+                    hx-target="#task-list" 
+                    hx-swap="outerHTML"
+                    class="noir-button-outline px-12 py-3 text-xs font-bold uppercase hover:bg-accent hover:text-white transition">
+                DUMP_ALL_COMPLETED_RECORDS
+            </button>
         </div>
     {% endif %}
 </div>

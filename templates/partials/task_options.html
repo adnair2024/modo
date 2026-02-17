@@ -1,0 +1,4 @@
+<option value="">Select Task...</option>
+{% for task in tasks %}
+    <option value="{{ task.id }}">{{ task.title }}</option>
+{% endfor %}

@@ -1,9 +1,221 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=VT323&display=swap');
+
 :root {
-    --bg-primary: #f3f4f6;
-    --text-primary: #111827;
+    --dot-grid-size: 24px;
+    --border-width: 1px;
 }
 
+[data-theme="light"] {
+    --bg-main: #F2F2F2;
+    --text-main: #1A1A1A;
+    --border-main: #1A1A1A;
+    --grid-color: rgba(0, 0, 0, 0.05);
+    --bg-alt: #FFFFFF;
+}
+
+[data-theme="light"] .opacity-20 { opacity: 0.45 !important; }
+[data-theme="light"] .opacity-30 { opacity: 0.6 !important; }
+[data-theme="light"] .opacity-40 { opacity: 0.75 !important; }
+[data-theme="light"] .opacity-50 { opacity: 0.85 !important; }
+[data-theme="light"] .opacity-60 { opacity: 0.9 !important; }
+
 [data-theme="dark"] {
-    --bg-primary: #1f2937;
-    --text-primary: #f9fafb;
+    --bg-main: #1A1A1A;
+    --text-main: #E5E5E5;
+    --border-main: #E5E5E5;
+    --grid-color: rgba(255, 255, 255, 0.03);
+    --bg-alt: #121212;
+}
+
+[data-theme="amoled"] {
+    --bg-main: #000000;
+    --text-main: #FFFFFF;
+    --border-main: #FFFFFF;
+    --grid-color: rgba(255, 255, 255, 0.05);
+    --bg-alt: #000000;
+}
+
+* {
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    font-family: 'JetBrains Mono', monospace;
+    border-color: var(--border-main); /* Global border color override */
+}
+
+body {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    background-image: radial-gradient(var(--grid-color) 1px, transparent 1px);
+    background-size: var(--dot-grid-size) var(--dot-grid-size);
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+/* Force some tailwind overrides to respect our system */
+.bg-white, .dark\:bg-black {
+    background-color: var(--bg-alt) !important;
+}
+
+.border-black, .dark\:border-white, .border-gray-200 {
+    border-color: var(--border-main) !important;
+}
+
+.text-gray-900, .dark\:text-gray-100, .text-gray-800, .text-gray-700 {
+    color: var(--text-main) !important;
+}
+
+.mono-display {
+    font-family: 'VT323', monospace;
+}
+
+[x-cloak] { 
+    display: none !important; 
+}
+
+/* Digital Noir Components */
+.noir-border {
+    border: var(--border-width) solid var(--border-main);
+}
+
+.noir-container {
+    padding: 1.25rem;
+}
+
+/* Header Sections (No full box, just bottom line) */
+.noir-header {
+    border-bottom: var(--border-width) solid var(--border-main);
+    padding-bottom: 1rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    margin-bottom: 2rem;
+}
+
+.noir-button {
+    background-color: var(--accent-color);
+    color: var(--bg-alt);
+    border: var(--border-width) solid var(--accent-color);
+    text-transform: uppercase;
+    font-weight: bold;
+    padding: 0.75rem 1.5rem;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.noir-button:hover:not(:disabled) {
+    filter: brightness(1.1);
+    box-shadow: 0 0 20px rgba(var(--accent-rgb), 0.2);
+}
+
+.noir-button:active:not(:disabled) {
+    transform: translateY(1px);
+    filter: brightness(0.9);
+}
+
+.noir-button:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    filter: grayscale(1);
+}
+
+.noir-button-outline {
+    background-color: transparent;
+    color: var(--accent-color);
+    border: var(--border-width) solid var(--accent-color);
+    text-transform: uppercase;
+    font-weight: bold;
+    padding: 0.75rem 1.5rem;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    letter-spacing: 0.1em;
+    cursor: pointer;
+}
+
+.noir-button-outline:hover:not(:disabled) {
+    background-color: var(--accent-color);
+    color: var(--bg-alt);
+    box-shadow: 0 0 20px rgba(var(--accent-rgb), 0.2);
+}
+
+.noir-tag {
+    font-size: 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border: 1px solid var(--accent-color);
+    background-color: rgba(var(--accent-rgb), 0.1);
+    color: var(--accent-color);
+    letter-spacing: 0.05em;
+}
+
+.noir-input {
+    background-color: transparent;
+    border: none;
+    border-bottom: var(--border-width) solid var(--border-main);
+    color: var(--text-main);
+    padding: 0.5rem;
+}
+
+.noir-input:focus {
+    outline: none;
+    border-bottom-color: var(--accent-color);
+}
+
+/* Dot Matrix Progress */
+.dot-matrix-row {
+    display: flex;
+    gap: 4px;
+}
+
+.dot-matrix-dot {
+    width: 6px;
+    height: 6px;
+    border: 1px solid var(--accent-color);
+}
+
+.dot-matrix-dot.active {
+    background-color: var(--accent-color);
+    box-shadow: 0 0 4px var(--accent-color);
+}
+
+.dot-matrix-dot.inactive {
+    opacity: 0.1;
+}
+
+/* CRT Halftone Aura */
+.crt-aura {
+    position: relative;
+    background: radial-gradient(circle, var(--accent-color) 0%, transparent 70%);
+    mask-image: radial-gradient(circle, white 1px, transparent 1px);
+    mask-size: 8px 8px;
+    opacity: 0.2;
+}
+
+/* Custom Scrollbar (Digital Noir) */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: var(--bg-main);
+    border-left: 1px solid var(--border-main);
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--border-main);
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-color);
+}
+
+/* Force Padding/Spacing on Terminal Blocks */
+.noir-border {
+    border: var(--border-width) solid var(--border-main);
+}
+
+/* Genesis Pulsing */
+#genesis-terminal:focus-within {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 15px rgba(var(--accent-rgb), 0.1);
 }

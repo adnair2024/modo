@@ -1,43 +1,42 @@
 {% if notifications %}
     {% for notif in notifications %}
-    <div class="p-3 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 relative group transition duration-150 ease-in-out">
-        <div class="flex items-start">
-            <div class="flex-shrink-0">
-                {% if notif.type == 'success' %}
-                <span class="text-green-500">✓</span>
-                {% elif notif.type == 'warning' %}
-                <span class="text-yellow-500">⚠</span>
-                {% else %}
-                <span class="text-blue-500">ℹ</span>
-                {% endif %}
+    <div class="p-4 border-b noir-border border-opacity-10 hover:bg-accent/5 relative group transition-colors">
+        <div class="flex items-start gap-3">
+            <div class="flex-shrink-0 pt-1">
+                <span class="text-accent font-bold">{% if notif.type == 'success' %}[OK]{% elif notif.type == 'warning' %}[WRN]{% else %}[INF]{% endif %}</span>
             </div>
-            <div class="ml-3 w-0 flex-1">
-                <p class="text-sm leading-5 font-medium text-gray-900 dark:text-gray-200">{{ notif.message | safe }}</p>
+            <div class="flex-1 min-w-0">
+                <p class="text-[10px] font-bold uppercase leading-relaxed tracking-tight">{{ notif.message | safe }}</p>
+                
                 {% if notif.type == 'project_invite' and notif.project_id %}
-                <div class="mt-2 flex gap-2">
+                <div class="mt-3 flex gap-2">
                     {% set invite = current_user.id | get_pending_invite(notif.project_id) %}
                     {% if invite %}
                     <form action="{{ url_for('projects.respond_project_invite', invite_id=invite.id, action='accept') }}" method="POST">
-                        <button class="bg-indigo-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-indigo-700 transition">Accept</button>
+                        <button class="noir-button text-[8px] py-1 px-3">ACCEPT</button>
                     </form>
                     <form action="{{ url_for('projects.respond_project_invite', invite_id=invite.id, action='decline') }}" method="POST">
-                        <button class="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-1 rounded text-xs font-bold hover:bg-gray-300 dark:hover:bg-gray-600 transition">Decline</button>
+                        <button class="noir-button-outline text-[8px] py-1 px-3">DECLINE</button>
                     </form>
                     {% endif %}
                 </div>
                 {% endif %}
-                <p class="text-xs leading-4 text-gray-500 dark:text-gray-400 mt-1"><span class="utc-time" data-ts="{{ notif.created_at.isoformat() }}Z">{{ notif.created_at.strftime('%H:%M') }}</span></p>
+                
+                <p class="text-[8px] font-bold opacity-30 uppercase mt-2">TIMESTAMP: {{ notif.created_at.strftime('%H:%M') }}</p>
             </div>
         </div>
-        <button class="absolute top-2 right-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 opacity-0 group-hover:opacity-100 transition"
+        
+        <button class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
                 hx-post="/api/notifications/mark_read/{{ notif.id }}" 
                 hx-swap="outerHTML" 
                 hx-target="closest div"
                 @click.stop="$el.closest('.group').remove(); if(unreadCount > 0) unreadCount--;">
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            <span class="text-[8px] font-bold opacity-50 hover:opacity-100">[ACK]</span>
         </button>
     </div>
     {% endfor %}
 {% else %}
-    <div class="p-4 text-center text-gray-500 text-sm">No new notifications</div>
+    <div class="p-12 text-center opacity-30">
+        <span class="text-[10px] font-bold uppercase tracking-widest">ALERTS_CLEAR // NO_PENDING_MESSAGES</span>
+    </div>
 {% endif %}

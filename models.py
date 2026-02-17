@@ -1,17 +1,20 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
-from datetime import datetime
+from datetime import datetime, timezone
 
 db = SQLAlchemy()
+
+def utc_now():
+    return datetime.now(timezone.utc)
 
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
-    date_joined = db.Column(db.DateTime, default=datetime.utcnow)
+    date_joined = db.Column(db.DateTime, default=utc_now)
     
     # Presence & Live Status
-    last_seen = db.Column(db.DateTime, default=datetime.utcnow)
+    last_seen = db.Column(db.DateTime, default=utc_now, index=True)
     show_last_seen = db.Column(db.Boolean, default=True)
     current_focus_start = db.Column(db.DateTime, nullable=True) # When they started
     current_focus_end = db.Column(db.DateTime, nullable=True)   # When it will end
@@ -44,6 +47,7 @@ class User(UserMixin, db.Model):
     is_verified = db.Column(db.Boolean, default=False)
     is_admin = db.Column(db.Boolean, default=False)
     is_banned = db.Column(db.Boolean, default=False)
+    must_logout = db.Column(db.Boolean, default=False)
 
     notifications = db.relationship('Notification', backref='user', lazy=True, cascade="all, delete-orphan")
 
@@ -57,8 +61,8 @@ class User(UserMixin, db.Model):
         
         # Return unique tasks sorted by priority/creation
         all_tasks = list(set(personal_tasks + project_tasks))
-        # Use (0, datetime.min) as fallback for None values
-        all_tasks.sort(key=lambda t: (t.priority or 0, t.created_at or datetime.min), reverse=True)
+        # Use aware fallback
+        all_tasks.sort(key=lambda t: (t.priority or 0, t.created_at or datetime.min.replace(tzinfo=timezone.utc)), reverse=True)
         return all_tasks
 
     @property
@@ -70,7 +74,7 @@ class Friendship(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     friend_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     status = db.Column(db.String(20), default='pending') # pending, accepted
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
 
     __table_args__ = (db.UniqueConstraint('user_id', 'friend_id', name='_user_friend_uc'),)
 
@@ -79,7 +83,7 @@ class StudyRoom(db.Model):
     host_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     guest_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     status = db.Column(db.String(20), default='waiting') # waiting, active, finished
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
     
     # Sync Settings
     focus_duration = db.Column(db.Integer, default=25)
@@ -90,7 +94,7 @@ class StudyRoom(db.Model):
     active_mode = db.Column(db.String(20), default='focus') # focus, break
     active_start_time = db.Column(db.DateTime, nullable=True) # If set, timer is running
     seconds_remaining = db.Column(db.Integer, nullable=True) # Snapshot when paused
-    last_activity = db.Column(db.DateTime, default=datetime.utcnow)
+    last_activity = db.Column(db.DateTime, default=utc_now)
 
     host = db.relationship('User', foreign_keys=[host_id], backref='hosted_rooms', lazy=True)
     guest = db.relationship('User', foreign_keys=[guest_id], backref='guest_rooms', lazy=True)
@@ -110,7 +114,7 @@ class Task(db.Model):
     description = db.Column(db.Text, nullable=True)
     status = db.Column(db.String(20), default='todo') # todo, in_progress, done
     priority = db.Column(db.Integer, default=1) # 1: Low, 2: Medium, 3: High
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
     due_date = db.Column(db.DateTime, nullable=True)
     estimated_pomodoros = db.Column(db.Integer, default=1)
     completed_pomodoros = db.Column(db.Integer, default=0)
@@ -129,7 +133,7 @@ class Project(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
     owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     
     members = db.relationship('ProjectMember', backref='project', lazy=True, cascade="all, delete-orphan")
@@ -140,7 +144,7 @@ class ProjectMember(db.Model):
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     role = db.Column(db.String(20), default='member') # owner, member
-    joined_at = db.Column(db.DateTime, default=datetime.utcnow)
+    joined_at = db.Column(db.DateTime, default=utc_now)
     
     user = db.relationship('User', foreign_keys=[user_id], backref='project_memberships', lazy=True)
 
@@ -157,7 +161,7 @@ class ProjectInvite(db.Model):
     sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     recipient_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     status = db.Column(db.String(20), default='pending') # pending, accepted, declined
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
 
     sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_invites', lazy=True)
     recipient = db.relationship('User', foreign_keys=[recipient_id], backref='received_invites', lazy=True)
@@ -168,7 +172,7 @@ class ProjectActivity(db.Model):
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     action = db.Column(db.String(500), nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=utc_now)
     
     user = db.relationship('User', backref='project_activities', lazy=True)
     project = db.relationship('Project', backref='activities', lazy=True, order_by="ProjectActivity.timestamp.desc()")
@@ -176,7 +180,7 @@ class ProjectActivity(db.Model):
 class FocusSession(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     minutes = db.Column(db.Integer, nullable=False)
-    date = db.Column(db.DateTime, default=datetime.utcnow)
+    date = db.Column(db.DateTime, default=utc_now, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     task_id = db.Column(db.Integer, db.ForeignKey('task.id'), nullable=True)
     partner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
@@ -199,15 +203,15 @@ class EventCompletion(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    date = db.Column(db.Date, nullable=False) # Stores the specific date of the occurrence
-    completed_at = db.Column(db.DateTime, default=datetime.utcnow)
+    date = db.Column(db.Date, nullable=False, index=True) # Stores the specific date of the occurrence
+    completed_at = db.Column(db.DateTime, default=utc_now)
 
     __table_args__ = (db.UniqueConstraint('event_id', 'date', name='_event_date_uc'),)
 
 class Notification(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     message = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
     is_read = db.Column(db.Boolean, default=False)
     type = db.Column(db.String(20), default='info')
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -217,15 +221,15 @@ class Notification(db.Model):
 class Habit(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     completions = db.relationship('HabitCompletion', backref='habit', lazy=True, cascade="all, delete-orphan")
 
 class HabitCompletion(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     habit_id = db.Column(db.Integer, db.ForeignKey('habit.id'), nullable=False)
-    date = db.Column(db.Date, nullable=False) # The date for which it counts
-    completed_at = db.Column(db.DateTime, default=datetime.utcnow)
+    date = db.Column(db.Date, nullable=False, index=True) # The date for which it counts
+    completed_at = db.Column(db.DateTime, default=utc_now)
 
     __table_args__ = (db.UniqueConstraint('habit_id', 'date', name='_habit_date_uc'),)
 
@@ -243,7 +247,7 @@ class UserAchievement(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     achievement_id = db.Column(db.Integer, db.ForeignKey('achievement.id'), nullable=False)
-    earned_at = db.Column(db.DateTime, default=datetime.utcnow)
+    earned_at = db.Column(db.DateTime, default=utc_now)
     
     user = db.relationship('User', backref='achievements', lazy=True)
 
@@ -252,9 +256,7 @@ class ChatMessage(db.Model):
     room_id = db.Column(db.Integer, db.ForeignKey('study_room.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     message = db.Column(db.Text, nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=utc_now)
     
     user = db.relationship('User', backref='messages', lazy=True)
     room = db.relationship('StudyRoom', backref=db.backref('messages', cascade="all, delete-orphan"), lazy=True)
-
-
