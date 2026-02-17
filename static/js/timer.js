@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     let timerInterval;
-    let secondsLeft = (window.userSettings && window.userSettings.focusDuration ? window.userSettings.focusDuration : 25) * 60;
+    let secondsLeft = null;
     let isRunning = false;
     let currentTaskId = null;
     let currentSubtaskId = null;
@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 isRunning = false;
                 localStorage.setItem('timerStatus', 'paused');
             }
-        } else if (savedSeconds) {
+        } else if (savedSeconds !== null && savedSeconds !== undefined && savedSeconds !== "") {
              secondsLeft = parseInt(savedSeconds);
              isRunning = false;
         } else {
@@ -78,10 +78,9 @@ document.addEventListener('DOMContentLoaded', () => {
              else secondsLeft = settings.focusDuration * 60;
         }
         
-        // Force sync duration if in sync mode and not running (to override any local stale state or defaults)
-        if (settings.syncMode && !isRunning && !savedSeconds) {
-             if (currentMode === 'break') secondsLeft = settings.breakDuration * 60;
-             else secondsLeft = settings.focusDuration * 60;
+        // Final fallback if something went wrong
+        if (secondsLeft === null || isNaN(secondsLeft)) {
+            secondsLeft = settings.focusDuration * 60;
         }
 
         updateUI();

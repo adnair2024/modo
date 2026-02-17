@@ -289,17 +289,12 @@
                             requestAnimationFrame(() => {
                                 let newX = e.clientX - this.offsetX;
                                 let newY = e.clientY - this.offsetY;
-                                
-                                // Boundary Detection
                                 const width = this.minimized ? 48 : 300;
                                 const height = this.minimized ? 48 : 250;
-                                
                                 newX = Math.max(0, Math.min(newX, window.innerWidth - width));
                                 newY = Math.max(0, Math.min(newY, window.innerHeight - height));
-                                
                                 this.x = newX;
                                 this.y = newY;
-                                
                                 localStorage.setItem('timerX', this.x);
                                 localStorage.setItem('timerY', this.y);
                             });
@@ -317,11 +312,8 @@
                         x = Math.max(0, Math.min(x, window.innerWidth - width));
                         y = Math.max(0, Math.min(y, window.innerHeight - height));
                     };
-                    
-                    // Run on init and after a small delay to ensure layout
                     check();
                     setTimeout(check, 100);
-
                     $watch('minimized', value => {
                         localStorage.setItem('timerMinimized', value);
                         setTimeout(check, 50);
@@ -331,49 +323,65 @@
                  @mousemove.window="doDrag($event)"
                  @mouseup.window="stopDrag()"
                  :style="`left: ${x}px; top: ${y}px; cursor: ${isDragging ? 'grabbing' : 'default'}`"
-                 class="fixed noir-border bg-[var(--bg-alt)] shadow-2xl z-50"
-                 :class="minimized ? 'w-12 h-12 p-0 overflow-hidden rounded-full flex items-center justify-center cursor-grab' : 'p-4 flex flex-col gap-4 min-w-[300px]'">
+                 class="fixed noir-border bg-[var(--bg-alt)] shadow-2xl z-50 overflow-hidden"
+                 :class="minimized ? 'w-12 h-12 rounded-full cursor-grab' : 'p-4 flex flex-col gap-4 min-w-[300px]'">
                 
                 <!-- Minimized View -->
-                <div x-show="minimized">
-                    <div class="w-full h-full flex items-center justify-center bg-accent text-[var(--bg-alt)] hover:scale-110 transition-transform select-none"
-                         @mousedown="startDrag($event)"
-                         @dblclick="minimized = false">
-                        <span id="min-timer-display" class="text-[10px] font-bold">{{ (active_sync_room.focus_duration if active_sync_room else (current_user.focus_duration or 25)) }}m</span>
-                    </div>
+                <div x-show="minimized" class="w-full h-full flex items-center justify-center bg-accent text-[var(--bg-alt)] hover:scale-110 transition-transform select-none"
+                     @mousedown="startDrag($event)"
+                     @dblclick="minimized = false">
+                    <span id="min-timer-display" class="text-[10px] font-bold">{{ (active_sync_room.focus_duration if active_sync_room else (current_user.focus_duration or 25)) }}m</span>
                 </div>
 
                 <!-- Full View -->
-                <div x-show="!minimized" class="contents">
-                        <div class="flex justify-between items-center border-b noir-border pb-2 opacity-50 cursor-grab" @mousedown="startDrag($event)">
+                <div x-show="!minimized" class="flex flex-col gap-4">
+                    <div class="flex justify-between items-center border-b noir-border pb-2 opacity-50 cursor-grab" @mousedown="startDrag($event)">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[9px] font-bold uppercase tracking-widest">Hardware_Monitor</span>
                             <div class="flex items-center gap-2">
-                                <span class="text-[9px] font-bold uppercase tracking-widest">Hardware_Monitor</span>
-                                <div class="flex items-center gap-2">
-                                    <span class="text-[8px] font-bold" id="global-timer-status">IDLE</span>
-                                    <div class="w-1.5 h-1.5 bg-accent animate-pulse" id="global-timer-dot"></div>
-                                </div>
+                                <span class="text-[8px] font-bold" id="global-timer-status">IDLE</span>
+                                <div class="w-1.5 h-1.5 bg-accent animate-pulse" id="global-timer-dot"></div>
                             </div>
-                            <button @click="minimized = true" class="text-[10px] font-bold hover:text-accent transition-colors">[ _ ]</button>
+                        </div>
+                        <button @click="minimized = true" class="text-[10px] font-bold hover:text-accent transition-colors">[ _ ]</button>
+                    </div>
+                    
+                    <div id="global-active-process" class="hidden">
+                        <p class="text-[8px] font-bold opacity-40 uppercase tracking-widest mb-1">Active_Process</p>
+                        <p class="text-[10px] font-bold text-accent truncate uppercase" id="global-active-subtask-display"></p>
+                    </div>
+                    
+                    <div class="flex items-center justify-between gap-8">
+                        <div class="flex flex-col">
+                            <span id="global-timer-display" class="text-3xl font-bold mono-display text-accent tracking-widest">{{ (active_sync_room.focus_duration if active_sync_room else (current_user.focus_duration or 25)) }}:00</span>
                         </div>
                         
-                        <div id="global-active-process" class="hidden">
-                            <p class="text-[8px] font-bold opacity-40 uppercase tracking-widest mb-1">Active_Process</p>
-                            <p class="text-[10px] font-bold text-accent truncate uppercase" id="global-active-subtask-display"></p>
+                        <div class="flex-1 flex flex-col text-right">
+                            <span class="text-[8px] font-bold opacity-40 uppercase mb-1">Execution_Target</span>
+                            <select id="global-timer-task" class="bg-transparent border noir-border border-opacity-20 text-[10px] font-bold focus:outline-none focus:text-accent focus:border-accent uppercase p-1 text-right mb-1">
+                                <option value="">[IDLE_STATE]</option>
+                                {% for task in current_user.all_accessible_tasks %}
+                                    {% if task.status != 'done' %}
+                                    <option value="{{ task.id }}">{{ task.title }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                            <select id="global-timer-subtask" class="bg-transparent border noir-border border-opacity-20 text-[9px] font-bold focus:outline-none focus:text-accent focus:border-accent uppercase p-1 text-right hidden">
+                                <option value="">[NO_SUBTASK]</option>
+                            </select>
                         </div>
-                        
-                        <div class="flex items-center justify-between gap-8">
-                            <div class="flex flex-col">
-                                <span id="global-timer-display" class="text-3xl font-bold mono-display text-accent tracking-widest">{{ (active_sync_room.focus_duration if active_sync_room else (current_user.focus_duration or 25)) }}:00</span>
-                            </div>
-                            
-                            <div class="flex-1 flex flex-col text-right">
-                                <span class="text-[8px] font-bold opacity-40 uppercase mb-1">Execution_Target</span>
-                                <select id="global-timer-task" class="bg-transparent border noir-border border-opacity-20 text-[10px] font-bold focus:outline-none focus:text-accent focus:border-accent uppercase p-1 text-right mb-1">
-                                    <option value="">[IDLE_STATE]</option>
-                                    {% for task in current_user.all_accessible_tasks %}
-                                        {% if task.status != 'done' %}
-                                        <option value="{{ task.id }}">{{ task.title }}</option>
-                                        {% endif %}
+                    </div>
+
+                    <div class="grid grid-cols-4 gap-2">
+                        <button id="global-timer-start" class="noir-button text-[9px] py-2">START</button>
+                        <button id="global-timer-pause" class="noir-button text-[9px] py-2 hidden" style="filter: hue-rotate(45deg);">PAUSE</button>
+                        <button id="global-timer-skip" class="noir-button-outline text-[9px] py-2 hidden">SKIP</button>
+                        <button id="global-timer-reset" class="noir-button-outline text-[9px] py-2">RESET</button>
+                        <button id="global-timer-end" class="noir-button-outline text-[9px] py-2 hidden">END</button>
+                    </div>
+                </div>
+            </div>
+{% endif %}
                                     {% endfor %}
                                 </select>
                                 <select id="global-timer-subtask" class="bg-transparent border noir-border border-opacity-20 text-[9px] font-bold focus:outline-none focus:text-accent focus:border-accent uppercase p-1 text-right hidden">
