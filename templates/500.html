@@ -1,44 +1,28 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
 
 {% block content %}
-<div class="h-[80vh] flex flex-col items-center justify-center p-6 text-center">
-    <div class="max-w-2xl w-full space-y-12">
-        <!-- Error Code -->
-        <div class="relative inline-block">
-            <h1 class="text-[12rem] font-bold mono-display leading-none opacity-10 select-none">500</h1>
-            <div class="absolute inset-0 flex items-center justify-center">
-                <span class="text-2xl font-bold uppercase tracking-[0.5em] bg-[var(--bg-main)] px-4">Kernel_Panic</span>
-            </div>
+<div class='h-full flex flex-col items-center justify-center space-y-8 py-24 text-center'>
+    <div class='space-y-4'>
+        <h1 class='text-9xl font-bold tracking-tighter mono-display text-red-600 opacity-50'>500</h1>
+        <div class='space-y-2'>
+            <h2 class='text-3xl font-bold uppercase tracking-widest'>CRITICAL_SYSTEM_FAILURE</h2>
+            <p class='text-xs font-bold opacity-40 uppercase tracking-[0.3em]'>Module: Kernel_Panic // Status: Unstable</p>
         </div>
+    </div>
 
-        <!-- Terminal Output -->
-        <div class="noir-border bg-[var(--bg-alt)] p-8 text-left space-y-4 relative overflow-hidden">
-            <div class="flex items-center gap-2 border-b noir-border border-opacity-20 pb-2 mb-4">
-                <div class="w-2 h-2 bg-red-600 animate-pulse"></div>
-                <span class="text-[10px] font-bold uppercase tracking-widest opacity-60">System_Failure_Log</span>
-            </div>
-            
-            <div class="space-y-2 mono-display text-xs md:text-sm">
-                <p class="opacity-90"><span class="text-red-600 font-bold">[CRITICAL]</span> Unexpected exception encountered in core process.</p>
-                <p class="opacity-70">> SIGABRT received. Memory dump initiated...</p>
-                <p class="opacity-70">> Database session rolled back to prevent corruption.</p>
-                <p class="opacity-70">> Internal node hierarchy unreachable.</p>
-            </div>
-
-            <div class="pt-6">
-                <p class="text-[10px] font-bold uppercase tracking-widest opacity-100">
-                    The system encountered an internal error. If this persists, verify your environment variables and database connection.
-                </p>
-            </div>
+    <div class='max-w-md noir-border bg-[var(--bg-alt)] p-8 space-y-6'>
+        <p class='text-sm font-bold leading-relaxed uppercase opacity-80'>
+            The system encountered an unexpected exception while executing the requested protocol. Core data remains intact, but the current operation has been aborted to prevent further instability.
+        </p>
+        
+        <div class='pt-4'>
+            <a href="{{ url_for('main.index') }}" class='noir-button block w-full py-4 text-[10px] tracking-[0.5em]'>REBOOT_SYSTEM</a>
         </div>
+    </div>
 
-        <!-- Recovery Action -->
-        <div class="flex flex-col items-center gap-6">
-            <a href="{{ url_for('main.index') }}" class="noir-button px-12 py-4 text-xs tracking-[0.3em]">
-                REBOOT_SYSTEM_INTERFACE
-            </a>
-            <p class="text-[8px] font-bold opacity-30 uppercase tracking-[0.4em]">Error_ID: {{ range(10000, 99999) | random }}_FAIL_CODE</p>
-        </div>
+    <div class='flex items-center gap-4 opacity-20'>
+        <span class='w-2 h-2 bg-red-600'></span>
+        <span class='text-[8px] font-bold uppercase tracking-widest'>Awaiting_Manual_Override...</span>
     </div>
 </div>
 {% endblock %}

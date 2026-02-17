@@ -1,44 +1,28 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
 
 {% block content %}
-<div class="h-[80vh] flex flex-col items-center justify-center p-6 text-center">
-    <div class="max-w-2xl w-full space-y-12">
-        <!-- Error Code -->
-        <div class="relative inline-block">
-            <h1 class="text-[12rem] font-bold mono-display leading-none opacity-10 select-none">404</h1>
-            <div class="absolute inset-0 flex items-center justify-center">
-                <span class="text-2xl font-bold uppercase tracking-[0.5em] bg-[var(--bg-main)] px-4">Sector_Missing</span>
-            </div>
+<div class='h-full flex flex-col items-center justify-center space-y-8 py-24 text-center'>
+    <div class='space-y-4'>
+        <h1 class='text-9xl font-bold tracking-tighter mono-display opacity-20'>404</h1>
+        <div class='space-y-2'>
+            <h2 class='text-3xl font-bold uppercase tracking-widest'>SECTOR_NOT_FOUND</h2>
+            <p class='text-xs font-bold opacity-40 uppercase tracking-[0.3em]'>Error: Null_Reference // Target: Undefined</p>
         </div>
+    </div>
 
-        <!-- Terminal Output -->
-        <div class="noir-border bg-[var(--bg-alt)] p-8 text-left space-y-4 relative overflow-hidden">
-            <div class="flex items-center gap-2 border-b noir-border border-opacity-20 pb-2 mb-4">
-                <div class="w-2 h-2 bg-accent animate-pulse"></div>
-                <span class="text-[10px] font-bold uppercase tracking-widest opacity-60">System_Navigator_Log</span>
-            </div>
-            
-            <div class="space-y-2 mono-display text-xs md:text-sm">
-                <p class="opacity-90"><span class="text-accent font-bold">[INFO]</span> Target coordinate unreachable in current namespace.</p>
-                <p class="opacity-70">> Pinging node address... TIMEOUT.</p>
-                <p class="opacity-70">> Verification of routing tables completed.</p>
-                <p class="opacity-70">> Request ID could not be matched to valid sector.</p>
-            </div>
-
-            <div class="pt-6">
-                <p class="text-[10px] font-bold uppercase tracking-widest opacity-100">
-                    The requested page does not exist. Verify the URL or return to the central hub.
-                </p>
-            </div>
+    <div class='max-w-md noir-border bg-[var(--bg-alt)] p-8 space-y-6'>
+        <p class='text-sm font-bold leading-relaxed uppercase opacity-80'>
+            The requested data node does not exist in the current registry. You may have entered an invalid coordinate or the sector has been purged from the system.
+        </p>
+        
+        <div class='pt-4'>
+            <a href="{{ url_for('main.index') }}" class='noir-button block w-full py-4 text-[10px] tracking-[0.5em]'>RETURN_TO_BASE</a>
         </div>
+    </div>
 
-        <!-- Recovery Action -->
-        <div class="flex flex-col items-center gap-6">
-            <a href="{{ url_for('main.index') }}" class="noir-button px-12 py-4 text-xs tracking-[0.3em]">
-                RETURN_TO_INDEX
-            </a>
-            <p class="text-[8px] font-bold opacity-30 uppercase tracking-[0.4em]">ERR_PATH_NOT_RESOLVED</p>
-        </div>
+    <div class='flex items-center gap-4 opacity-20'>
+        <span class='w-2 h-2 bg-accent'></span>
+        <span class='text-[8px] font-bold uppercase tracking-widest'>Scanning_Alternative_Routes...</span>
     </div>
 </div>
 {% endblock %}
