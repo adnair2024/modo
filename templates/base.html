@@ -29,7 +29,7 @@
         
         window.modoAlert = (msg, title = 'SYSTEM_ALERT') => {
             return new Promise(resolve => {
-                const bodyData = document.body.__x.;
+                const bodyData = document.body.__x.$data;
                 bodyData.systemModal.title = title;
                 bodyData.systemModal.msg = msg;
                 bodyData.systemModal.isConfirm = false;
@@ -40,7 +40,7 @@
 
         window.modoConfirm = (msg, title = 'SYSTEM_CONFIRM') => {
             return new Promise(resolve => {
-                const bodyData = document.body.__x.;
+                const bodyData = document.body.__x.$data;
                 bodyData.systemModal.title = title;
                 bodyData.systemModal.msg = msg;
                 bodyData.systemModal.isConfirm = true;

@@ -107,3 +107,9 @@ The CLI currently defaults to the `v1beta` API version. If a model is not found,
 python3 -c "import google.generativeai as genai; [print(m.name) for m in genai.list_models()]"
 ```
 Always prefer model names that appear in this list.
+
+### 3. Timer Reset & Early Termination
+If the timer resets on reload or the 'Terminate Early' button fails to open the confirmation modal:
+
+*   **State Recovery:** Ensure `window.userSettings` is correctly initialized in `base.html` before `timer.js` is loaded. This allows the timer to calculate the remaining time based on the server-provided `current_focus_end`.
+*   **Alpine.js Data Access:** When accessing Alpine.js data from plain JavaScript (like in `timer.js` or global functions), always use `document.body.__x.$data` instead of just `document.body.__x`. This ensures you are interacting with the reactive data object.

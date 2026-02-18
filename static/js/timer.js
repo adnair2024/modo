@@ -38,21 +38,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function loadState() {
         
-        
         // Server Recovery Fallback
-        if (!localStorage.getItem('timerStatus') && settings.serverMode !== 'none' && settings.serverEnd) {
-            localStorage.setItem('timerMode', settings.serverMode);
-            localStorage.setItem('timerEnd', settings.serverEnd);
-            localStorage.setItem('timerStatus', 'running');
+        if (!localStorage.getItem("timerStatus") && settings.serverMode !== "none" && settings.serverEnd) {
+            localStorage.setItem("timerMode", settings.serverMode);
+            localStorage.setItem("timerEnd", settings.serverEnd);
+            localStorage.setItem("timerStatus", "running");
         }
 
-        const savedEnd = localStorage.getItem('timerEnd');
-        const savedStatus = localStorage.getItem('timerStatus');
-        const savedTask = localStorage.getItem('timerTask');
-        const savedSubtask = localStorage.getItem('timerSubtask');
-        const savedSeconds = localStorage.getItem('timerSecondsLeft');
-        const savedMode = localStorage.getItem('timerMode');
-        const settings = window.userSettings || { focusDuration: 25, breakDuration: 5 };
+        const savedEnd = localStorage.getItem("timerEnd");
+        const savedStatus = localStorage.getItem("timerStatus");
+        const savedTask = localStorage.getItem("timerTask");
+        const savedSubtask = localStorage.getItem("timerSubtask");
+        const savedSeconds = localStorage.getItem("timerSecondsLeft");
+        const savedMode = localStorage.getItem("timerMode");
 
         if (savedTask) {
             currentTaskId = savedTask;
@@ -65,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
             currentMode = savedMode;
         }
 
-        if (savedStatus === 'running' && savedEnd) {
+        if (savedStatus === "running" && savedEnd) {
             const now = Date.now();
             const remaining = Math.ceil((parseInt(savedEnd) - now) / 1000);
             
@@ -76,23 +74,22 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 secondsLeft = 0;
                 isRunning = false;
-                localStorage.setItem('timerStatus', 'paused');
+                localStorage.setItem("timerStatus", "paused");
             }
         } else if (savedSeconds !== null && savedSeconds !== undefined && savedSeconds !== "") {
              secondsLeft = parseInt(savedSeconds);
              isRunning = false;
         } else {
-             // Defaults if nothing saved
-             if (currentMode === 'break') secondsLeft = settings.breakDuration * 60;
+             if (currentMode === "break") secondsLeft = settings.breakDuration * 60;
              else secondsLeft = settings.focusDuration * 60;
         }
         
-        // Final fallback if something went wrong
         if (secondsLeft === null || isNaN(secondsLeft)) {
             secondsLeft = settings.focusDuration * 60;
         }
 
         updateUI();
+    }
     }
 
     function checkExternalUpdates() {
@@ -282,7 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Dispatch Tick Event for Dot Matrix
-        const settings = window.userSettings || { focusDuration: 25, breakDuration: 5 };
+
         const total = currentMode === 'break' ? settings.breakDuration * 60 : settings.focusDuration * 60;
         const percent = ((total - secondsLeft) / total) * 100;
         
@@ -483,7 +480,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
         function endSession() {
-        const settings = window.userSettings || { focusDuration: 25, breakDuration: 5 };
+            const totalSeconds = settings.focusDuration * 60;
+            const elapsedSeconds = totalSeconds - secondsLeft;
+            
+            if (elapsedSeconds < 60) {
+                 window.modoNotify("Insufficient elapsed time (< 1m)", "warning");
+                 resetTimer();
+                 return;
+            }
+
+            const minutesLogged = Math.floor(elapsedSeconds / 60);
+            
+            const bodyData = document.body.__x.$data;
+            if (bodyData) {
+                bodyData.endSessionModal.mins = minutesLogged;
+                bodyData.endSessionModal.taskId = currentTaskId;
+                bodyData.endSessionModal.open = true;
+            }
+        }
+
         const totalSeconds = settings.focusDuration * 60;
         const elapsedSeconds = totalSeconds - secondsLeft;
         
@@ -570,8 +585,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function completeTimer() {
-        pauseTimer();
         const settings = window.userSettings || { focusDuration: 25, breakDuration: 5 };
+        pauseTimer();
+
         
         if (currentMode === 'focus') {
             // Log Session
@@ -625,7 +641,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         } else {
             // Break Complete
-            const settings = window.userSettings || { focusDuration: 25, breakDuration: 5 };
+    
             
             // Switch to Focus
             currentMode = 'focus';
