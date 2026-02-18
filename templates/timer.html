@@ -36,7 +36,7 @@
                 <select id="page-timer-task" class="noir-input w-full font-bold uppercase bg-transparent">
                     <option value="">[NO_SELECTION]</option>
                     {% for task in tasks %}
-                        <option value="{{ task.id }}">{{ task.title }}</option>
+                        <option value="{{ task.id }}" data-est="{{ task.estimated_pomodoros }}" data-done="{{ task.completed_pomodoros }}">{{ task.title }}</option>
                     {% endfor %}
                 </select>
             </div>

@@ -1,5 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const settings = window.userSettings || {};
     // Elements
+    
     const elements = {
         global: {
             display: document.getElementById('global-timer-display'),
@@ -80,20 +82,18 @@ document.addEventListener('DOMContentLoaded', () => {
              secondsLeft = parseInt(savedSeconds);
              isRunning = false;
         } else {
-             if (currentMode === "break") secondsLeft = settings.breakDuration * 60;
-             else secondsLeft = settings.focusDuration * 60;
+             if (currentMode === "break") secondsLeft = (settings.breakDuration || 5) * 60;
+             else secondsLeft = (settings.focusDuration || 25) * 60;
         }
         
         if (secondsLeft === null || isNaN(secondsLeft)) {
-            secondsLeft = settings.focusDuration * 60;
+            secondsLeft = (settings.focusDuration || 25) * 60;
         }
 
         updateUI();
     }
-    }
 
     function checkExternalUpdates() {
-        const settings = window.userSettings || {};
         const now = Date.now();
         
         // 1. Sync Presence (Push my status)
@@ -217,7 +217,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Auto-select first incomplete subtask if autoSelectPriority is on
-        const settings = window.userSettings || {};
         if (!selectedSubtaskId && incompleteSubtasks.length > 0 && settings.autoSelectPriority) {
             selectedSubtaskId = incompleteSubtasks[0].id;
             currentSubtaskId = selectedSubtaskId;
@@ -280,7 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Dispatch Tick Event for Dot Matrix
 
-        const total = currentMode === 'break' ? settings.breakDuration * 60 : settings.focusDuration * 60;
+        const total = (currentMode === 'break' ? (settings.breakDuration || 5) * 60 : (settings.focusDuration || 25) * 60) || 1500;
         const percent = ((total - secondsLeft) / total) * 100;
         
         document.body.dispatchEvent(new CustomEvent('timerTick', { 
@@ -307,7 +306,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Update Pomodoro Progress Blocks in Bubble
         const pomProgressContainer = document.getElementById('global-pom-progress');
         if (pomProgressContainer && elements.global.task) {
-            const selectedOption = elements.global.task.options[elements.global.task.selectedIndex];
+            const selectedOption = elements.global.task ? elements.global.task.options[elements.global.task.selectedIndex] : null;
             if (selectedOption && selectedOption.value) {
                 const est = parseInt(selectedOption.dataset.est || 1);
                 const done = parseInt(selectedOption.dataset.done || 0);
@@ -381,7 +380,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function startTimer(setNewEndTime = true) {
-        const settings = window.userSettings || {};
         
         // SYNC OVERRIDE
         if (settings.syncMode && settings.activeRoomId) {
@@ -461,7 +459,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function pauseTimer(notifyServer = true) {
-        const settings = window.userSettings || {};
         
         if (notifyServer && settings.syncMode && settings.activeRoomId) {
              fetch('/api/study/control', {
@@ -479,39 +476,19 @@ document.addEventListener('DOMContentLoaded', () => {
         syncPresence();
     }
 
-        function endSession() {
-            const totalSeconds = settings.focusDuration * 60;
-            const elapsedSeconds = totalSeconds - secondsLeft;
-            
-            if (elapsedSeconds < 60) {
-                 window.modoNotify("Insufficient elapsed time (< 1m)", "warning");
-                 resetTimer();
-                 return;
-            }
-
-            const minutesLogged = Math.floor(elapsedSeconds / 60);
-            
-            const bodyData = document.body.__x.$data;
-            if (bodyData) {
-                bodyData.endSessionModal.mins = minutesLogged;
-                bodyData.endSessionModal.taskId = currentTaskId;
-                bodyData.endSessionModal.open = true;
-            }
-        }
-
-        const totalSeconds = settings.focusDuration * 60;
+    function endSession() {
+        const settings = window.userSettings || { focusDuration: 25 };
+        const totalSeconds = (settings.focusDuration || 25) * 60;
         const elapsedSeconds = totalSeconds - secondsLeft;
         
         if (elapsedSeconds < 60) {
-             // We can still use alert for very minor errors or just ignore
-             window.modoNotify('Insufficient elapsed time (< 1m)', 'warning');
+             window.modoNotify("Insufficient elapsed time (< 1m)", "warning");
              resetTimer();
              return;
         }
 
         const minutesLogged = Math.floor(elapsedSeconds / 60);
         
-        // Open the custom Alpine modal instead of confirm()
         const bodyData = document.body.__x.$data;
         if (bodyData) {
             bodyData.endSessionModal.mins = minutesLogged;
@@ -519,7 +496,6 @@ document.addEventListener('DOMContentLoaded', () => {
             bodyData.endSessionModal.open = true;
         }
     }
-
     window.finalizeEndSession = function(confirm) {
         const bodyData = document.body.__x.$data;
         if (!bodyData) return;
@@ -530,7 +506,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (confirm) {
              pauseTimer(); 
-             const settings = window.userSettings || {};
              const payload = { minutes: parseInt(minutesLogged), task_id: taskId };
              if (settings.syncMode && settings.activeRoomId) payload.room_id = settings.activeRoomId;
 
@@ -546,7 +521,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function resetTimer() {
-        const settings = window.userSettings || {};
         
         if (settings.syncMode && settings.activeRoomId) {
              fetch('/api/study/control', {
@@ -559,13 +533,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         pauseTimer(false);
         // Reset to default of current mode
-        secondsLeft = currentMode === 'break' ? settings.breakDuration * 60 : settings.focusDuration * 60;
+        secondsLeft = currentMode === 'break' ? (settings.breakDuration || 5) * 60 : (settings.focusDuration || 25) * 60;
         localStorage.removeItem('timerSecondsLeft');
         updateUI();
     }
     
     function skipBreak() {
-        const settings = window.userSettings || {};
         
         if (settings.syncMode && settings.activeRoomId) {
              fetch('/api/study/control', {
@@ -578,7 +551,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         pauseTimer(false);
         currentMode = 'focus';
-        secondsLeft = settings.focusDuration * 60;
+        secondsLeft = (settings.focusDuration || 25) * 60;
         localStorage.setItem('timerMode', currentMode);
         localStorage.removeItem('timerSecondsLeft');
         updateUI();
@@ -591,7 +564,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (currentMode === 'focus') {
             // Log Session
-            const payload = { minutes: parseInt(settings.focusDuration), task_id: currentTaskId };
+            const payload = { minutes: parseInt((settings.focusDuration || 25)), task_id: currentTaskId };
             if (settings.syncMode && settings.activeRoomId) payload.room_id = settings.activeRoomId;
 
             fetch('/api/log_session', {
@@ -613,7 +586,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Switch to Break
                 currentMode = 'break';
-                secondsLeft = settings.breakDuration * 60;
+                secondsLeft = (settings.breakDuration || 5) * 60;
                 localStorage.setItem('timerMode', currentMode);
                 localStorage.removeItem('timerSecondsLeft'); 
                 
@@ -645,7 +618,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Switch to Focus
             currentMode = 'focus';
-            secondsLeft = settings.focusDuration * 60;
+            secondsLeft = (settings.focusDuration || 25) * 60;
             localStorage.setItem('timerMode', currentMode);
             localStorage.removeItem('timerSecondsLeft');
 
