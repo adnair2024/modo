@@ -228,3 +228,9 @@ body {
 .animate-aura {
     animation: aura-pulse 4s ease-in-out infinite;
 }
+
+
+
+#page-timer-display, #global-timer-display {
+    color: var(--accent-color) !important;
+}
