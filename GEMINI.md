@@ -85,3 +85,25 @@ To get your environment ready locally:
 We are using:
 - [-] Koyeb for App Hosting
 - [-] Supabase for database Hosting
+
+---
+
+## 🛠️ Troubleshooting & Model Maintenance
+
+### 1. Model Not Found (404 Errors)
+If you encounter an error like `404 models/gemini-x.x-xxxx is not found`, it usually means the specific versioned model name has been retired or is not supported by the current API version.
+
+**The Fix:**
+*   Use the `-latest` aliases instead of specific version numbers.
+    *   **Flash:** Use `gemini-flash-latest` instead of `gemini-1.5-flash`.
+    *   **Pro:** Use `gemini-pro-latest` instead of `gemini-1.5-pro`.
+*   Ensure **Preview Features** are enabled in your configuration:
+    *   In `~/.gemini/settings.json`, set `"previewFeatures": true`.
+    *   In `~/.config/gemini-cli.toml`, ensure the `model` is set to a `-latest` alias.
+
+### 2. API Version Discrepancies
+The CLI currently defaults to the `v1beta` API version. If a model is not found, verify its availability for `v1beta` using:
+```bash
+python3 -c "import google.generativeai as genai; [print(m.name) for m in genai.list_models()]"
+```
+Always prefer model names that appear in this list.
