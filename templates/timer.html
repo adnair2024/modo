@@ -12,10 +12,10 @@
     <!-- The CRT Halftone Aura & Clock -->
     <div class="relative group">
         <!-- CRT Halftone Aura Mask (CSS handled) -->
-        <div class="absolute inset-[-100px] crt-aura transition-opacity duration-1000 group-hover:opacity-30"></div>
+        <div class="absolute inset-[-100px] crt-aura animate-aura transition-opacity duration-1000 group-hover:opacity-60"></div>
         
         <div class="relative flex flex-col items-center">
-            <span id="page-timer-display" class="text-[12rem] leading-none font-bold mono-display text-accent tracking-tighter select-none">{{ (active_sync_room.focus_duration if active_sync_room else (current_user.focus_duration or 25)) }}:00</span>
+            <span id="page-timer-display" class="text-[12rem] leading-none font-bold mono-display text-accent tracking-tighter select-none drop-shadow-[0_0_30px_rgba(var(--accent-rgb),0.3)]">{{ (active_sync_room.focus_duration if active_sync_room else (current_user.focus_duration or 25)) }}:00</span>
             <div id="timer-mode-label" class="text-sm font-bold uppercase tracking-[1em] text-accent opacity-50 ml-[1em]">IDLE_READY</div>
         </div>
     </div>

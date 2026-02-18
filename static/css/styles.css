@@ -189,8 +189,9 @@ body {
     position: relative;
     background: radial-gradient(circle, var(--accent-color) 0%, transparent 70%);
     mask-image: radial-gradient(circle, white 1px, transparent 1px);
-    mask-size: 8px 8px;
-    opacity: 0.2;
+    mask-size: 4px 4px;
+    opacity: 0.4;
+    filter: drop-shadow(0 0 20px var(--accent-color));
 }
 
 /* Custom Scrollbar (Digital Noir) */
@@ -218,4 +219,12 @@ body {
 #genesis-terminal:focus-within {
     border-color: var(--accent-color);
     box-shadow: 0 0 15px rgba(var(--accent-rgb), 0.1);
+}
+
+@keyframes aura-pulse {
+    0%, 100% { opacity: 0.4; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.05); }
+}
+.animate-aura {
+    animation: aura-pulse 4s ease-in-out infinite;
 }
