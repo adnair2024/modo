@@ -4,9 +4,9 @@
         <button hx-post="{{ url_for('main.toggle_task', task_id=task.id) }}" hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}' 
                 hx-target="#task-{{ task.id }}" 
                 hx-swap="outerHTML"
-                class="w-8 h-8 border noir-border flex items-center justify-center transition-colors {{ 'bg-accent border-accent' if task.status == 'done' else 'hover:border-accent' }}">
+                class="w-8 h-8 border flex items-center justify-center transition-colors {{ 'border-accent bg-accent/10 text-accent' if task.status == 'done' else 'noir-border hover:border-accent' }}">
             {% if task.status == 'done' %}
-                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
             {% endif %}
         </button>
     </div>
@@ -51,9 +51,9 @@
                     <button hx-post="{{ url_for('main.toggle_subtask', subtask_id=subtask.id) }}" hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}'
                             hx-target="#task-{{ task.id }}"
                             hx-swap="outerHTML"
-                            class="w-4 h-4 border border-accent/40 flex items-center justify-center transition-colors {{ 'bg-accent border-accent' if subtask.is_completed else '' }}">
+                            class="w-4 h-4 border flex items-center justify-center transition-colors {{ 'border-accent bg-accent/10 text-accent' if subtask.is_completed else 'border-accent/40' }}">
                         {% if subtask.is_completed %}
-                            <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
                         {% endif %}
                     </button>
                     <span class="text-[11px] font-bold uppercase tracking-wider cursor-pointer {{ 'line-through opacity-60' if subtask.is_completed else 'opacity-100' }}"
