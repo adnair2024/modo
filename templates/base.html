@@ -434,7 +434,9 @@
             focusDuration: {{ active_sync_room.focus_duration if active_sync_room else (current_user.focus_duration or 25) }},
             breakDuration: {{ active_sync_room.break_duration if active_sync_room else (current_user.break_duration or 5) }},
             syncMode: {{ 'true' if active_sync_room else 'false' }},
-            activeRoomId: {{ active_sync_room.id if active_sync_room else 'null' }}
+            activeRoomId: {{ active_sync_room.id if active_sync_room else 'null' }},
+            serverMode: '{{ current_user.current_focus_mode }}',
+            serverEnd: {{ current_user.current_focus_end.timestamp() * 1000 if current_user.current_focus_end else 'null' }}
         };
     </script>
     {% endif %}

@@ -37,6 +37,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function loadState() {
+        
+        
+        // Server Recovery Fallback
+        if (!localStorage.getItem('timerStatus') && settings.serverMode !== 'none' && settings.serverEnd) {
+            localStorage.setItem('timerMode', settings.serverMode);
+            localStorage.setItem('timerEnd', settings.serverEnd);
+            localStorage.setItem('timerStatus', 'running');
+        }
+
         const savedEnd = localStorage.getItem('timerEnd');
         const savedStatus = localStorage.getItem('timerStatus');
         const savedTask = localStorage.getItem('timerTask');
