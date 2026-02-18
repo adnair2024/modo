@@ -294,7 +294,7 @@ def add_subtask(task_id):
     title = request.form.get('title')
     if title:
         new_subtask = Subtask(title=title[:200], task_id=task.id)
-        db.session.add(new_subtask); db.session.commit()
+        db.session.add(new_subtask); db.session.commit(); db.session.refresh(task)
     return render_template('partials/task_item.html', task=task, now=datetime.now(timezone.utc))
 
 @main_bp.route('/subtask/<int:subtask_id>/toggle', methods=['POST'])
@@ -303,9 +303,11 @@ def toggle_subtask(subtask_id):
     subtask = db.session.get(Subtask, subtask_id)
     if not subtask: abort(404)
     if not check_task_access(subtask.parent): abort(403)
+    parent_task = subtask.parent
     subtask.is_completed = not subtask.is_completed
     db.session.commit()
-    return render_template('partials/task_item.html', task=subtask.parent, now=datetime.now(timezone.utc))
+    db.session.refresh(parent_task)
+    return render_template('partials/task_item.html', task=parent_task, now=datetime.now(timezone.utc))
 
 @main_bp.route('/subtask/<int:subtask_id>', methods=['DELETE'])
 @login_required
@@ -314,7 +316,7 @@ def delete_subtask(subtask_id):
     if not subtask: abort(404)
     task = subtask.parent
     if not check_task_access(task): abort(403)
-    db.session.delete(subtask); db.session.commit()
+    db.session.delete(subtask); db.session.commit(); db.session.refresh(task)
     return render_template('partials/task_item.html', task=task, now=datetime.now(timezone.utc))
 
 @main_bp.route('/subtask/<int:subtask_id>/edit', methods=['GET'])
