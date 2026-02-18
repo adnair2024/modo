@@ -1,4 +1,4 @@
-<form hx-put="{{ url_for('main.update_subtask', subtask_id=subtask.id) }}" 
+<form hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}' hx-put="{{ url_for('main.update_subtask', subtask_id=subtask.id) }}" 
       hx-target="#task-{{ subtask.task_id }}" 
       hx-swap="outerHTML"
       class="flex items-center gap-2 w-full">

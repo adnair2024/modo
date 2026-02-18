@@ -11,7 +11,7 @@
                        name="username" 
                        placeholder="SCAN_USER_ID_" 
                        class="noir-input w-48 md:w-64 text-xs font-bold"
-                       hx-post="/friends/search" 
+                       hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}' hx-post="/friends/search" 
                        hx-trigger="keyup changed delay:300ms, search" 
                        hx-target="#search-results"
                        @focus="searchOpen = true"

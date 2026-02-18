@@ -1,5 +1,5 @@
 <div class="flex items-start gap-3 group">
-    <button hx-post="{{ url_for('main.toggle_event', event_id=event.id, date=event.date_str) }}"
+    <button hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}' hx-post="{{ url_for('main.toggle_event', event_id=event.id, date=event.date_str) }}"
             hx-swap="outerHTML"
             hx-target="closest div.flex"
             class="mt-1 w-5 h-5 border-2 border-indigo-200 hover:border-indigo-400 rounded-full flex items-center justify-center flex-shrink-0 transition-colors {{ 'bg-indigo-500 border-indigo-500' if event.is_completed else 'bg-white bg-opacity-80' }}">

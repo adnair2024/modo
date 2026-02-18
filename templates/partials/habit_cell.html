@@ -1,6 +1,6 @@
 <button 
     id="habit-cell-{{ habit.id }}-{{ day.date }}"
-    hx-post="{{ url_for('main.toggle_habit', habit_id=habit.id, date=day.date) }}" 
+    hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}' hx-post="{{ url_for('main.toggle_habit', habit_id=habit.id, date=day.date) }}" 
     hx-swap="outerHTML"
     class="w-10 h-10 noir-border flex items-center justify-center transition-all duration-0 focus:outline-none 
            {{ 'bg-accent border-accent text-black dark:text-white' if day.is_done else 'bg-transparent noir-border opacity-20 hover:opacity-100 hover:border-accent' }}

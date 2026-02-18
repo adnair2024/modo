@@ -1,5 +1,5 @@
 <div id="event-{{ event.id }}" class="noir-border bg-[var(--bg-alt)] p-8 space-y-8">
-    <form hx-post="{{ url_for('schedule.update_event', event_id=event.id) }}" hx-target="#event-{{ event.id }}" hx-swap="outerHTML" class="space-y-8">
+    <form hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}' hx-post="{{ url_for('schedule.update_event', event_id=event.id) }}" hx-target="#event-{{ event.id }}" hx-swap="outerHTML" class="space-y-8">
         <h2 class="text-xl font-bold mono-display uppercase border-b noir-border pb-2">Modify_Temporal_Point</h2>
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">

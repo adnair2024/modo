@@ -1,6 +1,6 @@
 <div class="flex items-center justify-between p-2 border noir-border border-opacity-10 bg-black bg-opacity-5" id="habit-home-{{ habit.id }}">
     <span class="text-sm font-bold uppercase tracking-wider opacity-90">{{ habit.title }}</span>
-    <button hx-post="{{ url_for('main.toggle_habit', habit_id=habit.id) }}"
+    <button hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}' hx-post="{{ url_for('main.toggle_habit', habit_id=habit.id) }}"
             hx-target="#habit-home-{{ habit.id }}"
             hx-swap="outerHTML"
             class="w-6 h-6 border noir-border flex items-center justify-center transition-colors {{ 'bg-accent border-accent' if completed else 'opacity-40 hover:opacity-100' }}">

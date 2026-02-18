@@ -1,7 +1,7 @@
 <div id="task-{{ task.id }}" class="group flex items-start gap-6 noir-border noir-container bg-[var(--bg-alt)] hover:border-accent transition-colors">
     <!-- Status Check -->
     <div class="flex-shrink-0 pt-1">
-        <button hx-post="{{ url_for('main.toggle_task', task_id=task.id) }}" 
+        <button hx-post="{{ url_for('main.toggle_task', task_id=task.id) }}" hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}' 
                 hx-target="#task-{{ task.id }}" 
                 hx-swap="outerHTML"
                 class="w-8 h-8 border noir-border flex items-center justify-center transition-colors {{ 'bg-accent border-accent' if task.status == 'done' else 'hover:border-accent' }}">
@@ -64,7 +64,7 @@
                           title="Double-click to edit">
                         {{ subtask.title }}
                     </span>
-                    <button hx-delete="{{ url_for('main.delete_subtask', subtask_id=subtask.id) }}"
+                    <button hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}' hx-delete="{{ url_for('main.delete_subtask', subtask_id=subtask.id) }}"
                             hx-target="#task-{{ task.id }}"
                             hx-swap="outerHTML"
                             class="opacity-0 group-hover/sub:opacity-100 text-[8px] font-bold text-red-600 uppercase hover:underline">
@@ -88,6 +88,6 @@
     <!-- Actions -->
     <div class="flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
         <button hx-get="{{ url_for('main.get_edit_task', task_id=task.id) }}" hx-target="#task-{{ task.id }}" class="text-[10px] font-bold hover:text-accent uppercase underline underline-offset-4 tracking-widest">Edit</button>
-        <button hx-delete="{{ url_for('main.delete_task', task_id=task.id) }}" hx-target="#task-{{ task.id }}" hx-swap="delete" class="text-[10px] font-bold hover:text-red-600 uppercase underline underline-offset-4 tracking-widest">Delete</button>
+        <button hx-delete="{{ url_for('main.delete_task', task_id=task.id) }}" hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}' hx-target="#task-{{ task.id }}" hx-swap="delete" class="text-[10px] font-bold hover:text-red-600 uppercase underline underline-offset-4 tracking-widest">Delete</button>
     </div>
 </div>

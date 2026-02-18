@@ -12,7 +12,7 @@
 
     <!-- Add Habit Block -->
     <div class="noir-border bg-[var(--bg-alt)]">
-        <form hx-post="{{ url_for('main.add_habit') }}" 
+        <form hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}' hx-post="{{ url_for('main.add_habit') }}" 
               hx-target="#habit-list-container" 
               hx-on::after-request="this.reset()"
               class="flex gap-6">

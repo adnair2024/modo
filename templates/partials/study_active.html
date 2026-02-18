@@ -71,7 +71,7 @@
              </div>
         </div>
 
-        <form hx-post="{{ url_for('study.study_chat', room_id=room.id) }}" 
+        <form hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}' hx-post="{{ url_for('study.study_chat', room_id=room.id) }}" 
               hx-target="#chat-messages" 
               hx-swap="innerHTML"
               hx-on::after-request="this.reset();"
