@@ -48,7 +48,7 @@
         <div class="mt-4 space-y-2 border-l-2 border-accent/20 pl-4 py-1">
             {% for subtask in task.subtasks %}
                 <div class="flex items-center gap-3 group/sub">
-                    <button hx-post="{{ url_for('main.toggle_subtask', subtask_id=subtask.id) }}"
+                    <button hx-post="{{ url_for('main.toggle_subtask', subtask_id=subtask.id) }}" hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}'
                             hx-target="#task-{{ task.id }}"
                             hx-swap="outerHTML"
                             class="w-4 h-4 border border-accent/40 flex items-center justify-center transition-colors {{ 'bg-accent border-accent' if subtask.is_completed else '' }}">
@@ -75,7 +75,7 @@
         </div>
         {% endif %}
         
-        <form hx-post="{{ url_for('main.add_subtask', task_id=task.id) }}" 
+        <form hx-post="{{ url_for('main.add_subtask', task_id=task.id) }}" hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}' 
               hx-target="#task-{{ task.id }}"
               hx-swap="outerHTML"
               class="mt-3 flex gap-2 opacity-60 focus-within:opacity-100 transition-opacity">

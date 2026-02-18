@@ -237,7 +237,7 @@
                     <span class="text-xs font-bold uppercase tracking-widest text-[var(--text-main)]">Create_Task</span>
                 </div>
                 
-                <form hx-post="{{ url_for('main.add_task') }}" hx-target="#task-list" hx-swap="afterbegin" hx-on::after-request="this.reset()" class="space-y-6">
+                <form hx-post="{{ url_for('main.add_task') }}" hx-target="#task-list" hx-swap="afterbegin" hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}' hx-on::after-request="this.reset()" class="space-y-6">
                     <div class="space-y-4">
                         <div>
                             <label class="block text-[10px] font-bold opacity-90 uppercase mb-1 tracking-widest text-center">Title</label>
