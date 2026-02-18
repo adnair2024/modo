@@ -507,7 +507,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (confirm) {
              pauseTimer(); 
              const settings = window.userSettings || {};
-             const payload = { minutes: minutesLogged, task_id: taskId };
+             const payload = { minutes: parseInt(minutesLogged), task_id: taskId };
              if (settings.syncMode && settings.activeRoomId) payload.room_id = settings.activeRoomId;
 
              fetch('/api/log_session', {
@@ -566,7 +566,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (currentMode === 'focus') {
             // Log Session
-            const payload = { minutes: settings.focusDuration, task_id: currentTaskId };
+            const payload = { minutes: parseInt(settings.focusDuration), task_id: currentTaskId };
             if (settings.syncMode && settings.activeRoomId) payload.room_id = settings.activeRoomId;
 
             fetch('/api/log_session', {

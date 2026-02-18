@@ -53,28 +53,16 @@ class User(UserMixin, db.Model):
 
     @property
     def all_accessible_tasks(self):
-        # Optimized for UI dropdowns: only active tasks, limit to 50
-        from sqlalchemy import or_
-        # Personal tasks
-        personal_query = Task.query.filter_by(user_id=self.id, section_id=None, status='todo')
-        
-        # Project tasks (only todo)
-        project_query = Task.query.join(ProjectSection).join(Project).join(ProjectMember).filter(
+        # Fetch all active (todo) tasks for the user and their projects
+        personal_tasks = Task.query.filter_by(user_id=self.id, section_id=None, status='todo').all()
+        project_tasks = Task.query.join(ProjectSection).join(Project).join(ProjectMember).filter(
             ProjectMember.user_id == self.id,
             Task.status == 'todo'
-        )
+        ).all()
         
-        # Combine and limit
-        # This is a bit complex with SQLAlchemy objects, simpler to just get IDs and then query
-        personal_ids = [t.id for t in personal_query.limit(50).all()]
-        project_ids = [t.id for t in project_query.limit(50).all()]
-        
-        combined_ids = list(set(personal_ids + project_ids))[:50]
-        
-        if not combined_ids:
-            return []
-            
-        return Task.query.filter(Task.id.in_(combined_ids)).order_by(Task.priority.desc(), Task.created_at.desc()).all()
+        all_tasks = list(set(personal_tasks + project_tasks))
+        all_tasks.sort(key=lambda t: (t.priority or 0, t.created_at or datetime.min.replace(tzinfo=timezone.utc)), reverse=True)
+        return all_tasks
 
     @property
     def total_focus_hours(self):

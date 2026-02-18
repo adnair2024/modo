@@ -16,7 +16,12 @@ def log_session():
     task_id = data.get('task_id')
     room_id = data.get('room_id')
     
-    if minutes:
+    try:
+        minutes = int(minutes)
+    except (TypeError, ValueError):
+        minutes = 0
+    
+    if minutes > 0:
         session = FocusSession(minutes=minutes, user_id=current_user.id, task_id=task_id)
         
         if room_id:
