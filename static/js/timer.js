@@ -30,6 +30,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentSubtaskId = null;
     let currentMode = 'focus'; 
 
+    function getBodyData() {
+        if (window.Alpine && window.Alpine.$data) return window.Alpine.$data(document.body);
+        if (document.body.__x && document.body.__x.$data) return document.body.__x.$data;
+        if (document.body._x_dataStack) return document.body._x_dataStack[0];
+        return null;
+    }
+
     function init() {
         loadState();
         attachListeners();
@@ -126,10 +133,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateUI();
             });
     }
-
+    
     function syncPresence() {
         const status = isRunning ? 'running' : 'paused'; 
-        const csrfToken = document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').content : '';
+        const csrfEl = document.querySelector('meta[name="csrf-token"]');
+        const csrfToken = csrfEl ? csrfEl.content : '';
         fetch('/api/sync_presence', {
             method: 'POST',
             headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
@@ -168,7 +176,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateSubtaskSelects(subtasks, selectedSubtaskId = null) {
         const selects = [elements.global.subtask, elements.page.subtask];
-        const incompleteSubtasks = subtasks.filter(s => !s.is_completed);
+        const incompleteSubtasks = (subtasks || []).filter(s => !s.is_completed);
+        
         if (selectedSubtaskId) {
             const stillActive = incompleteSubtasks.find(s => s.id == selectedSubtaskId);
             if (!stillActive) {
@@ -182,8 +191,12 @@ document.addEventListener('DOMContentLoaded', () => {
             currentSubtaskId = selectedSubtaskId;
             localStorage.setItem('timerSubtask', currentSubtaskId);
         }
+
         const container = document.getElementById('page-timer-subtask-container');
-        if (container) container.classList.toggle('hidden', incompleteSubtasks.length === 0);
+        if (container) {
+            container.classList.toggle('hidden', incompleteSubtasks.length === 0);
+        }
+
         selects.forEach(select => {
             if (!select) return;
             if (incompleteSubtasks.length === 0) {
@@ -292,9 +305,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function startTimer(setNewEndTime = true) {
         if (settings.syncMode && settings.activeRoomId) {
+            const csrfEl = document.querySelector('meta[name="csrf-token"]');
             fetch('/api/study/control', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content},
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfEl ? csrfEl.content : ''},
                 body: JSON.stringify({ room_id: settings.activeRoomId, action: 'start' })
             });
             return; 
@@ -341,9 +355,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function pauseTimer(notifyServer = true) {
         if (notifyServer && settings.syncMode && settings.activeRoomId) {
+             const csrfEl = document.querySelector('meta[name="csrf-token"]');
              fetch('/api/study/control', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content},
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfEl ? csrfEl.content : ''},
                 body: JSON.stringify({ room_id: settings.activeRoomId, action: 'pause' })
             });
         }
@@ -362,7 +377,7 @@ document.addEventListener('DOMContentLoaded', () => {
              resetTimer();
              return;
         }
-        const bData = document.body.__x ? document.body.__x.$data : null;
+        const bData = getBodyData();
         if (bData) {
             bData.endSessionModal.mins = Math.floor(elapsed / 60);
             bData.endSessionModal.taskId = currentTaskId;
@@ -371,16 +386,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     window.finalizeEndSession = function(confirm) {
-        const bData = document.body.__x ? document.body.__x.$data : null;
+        const bData = getBodyData();
         if (!bData) return;
         const minutesLogged = bData.endSessionModal.mins;
         const taskId = bData.endSessionModal.taskId;
         bData.endSessionModal.open = false;
         if (confirm) {
              pauseTimer(); 
+             const csrfEl = document.querySelector('meta[name="csrf-token"]');
              fetch('/api/log_session', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content},
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfEl ? csrfEl.content : ''},
                 body: JSON.stringify({ minutes: parseInt(minutesLogged), task_id: taskId, room_id: settings.activeRoomId })
             }).then(() => {
                 window.modoNotify('Session logged!', 'success');
@@ -391,9 +407,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function resetTimer() {
         if (settings.syncMode && settings.activeRoomId) {
+             const csrfEl = document.querySelector('meta[name="csrf-token"]');
              fetch('/api/study/control', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content},
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfEl ? csrfEl.content : ''},
                 body: JSON.stringify({ room_id: settings.activeRoomId, action: 'reset' })
             });
             return;
@@ -406,9 +423,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function skipBreak() {
         if (settings.syncMode && settings.activeRoomId) {
+             const csrfEl = document.querySelector('meta[name="csrf-token"]');
              fetch('/api/study/control', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content},
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfEl ? csrfEl.content : ''},
                 body: JSON.stringify({ room_id: settings.activeRoomId, action: 'skip' })
             });
             return;
@@ -424,9 +442,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function completeTimer() {
         pauseTimer();
         if (currentMode === 'focus') {
+            const csrfEl = document.querySelector('meta[name="csrf-token"]');
             fetch('/api/log_session', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content},
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfEl ? csrfEl.content : ''},
                 body: JSON.stringify({ minutes: parseInt(settings.focusDuration || 25), task_id: currentTaskId, room_id: settings.activeRoomId })
             }).then(() => {
                 document.body.dispatchEvent(new CustomEvent('tasksChanged'));
@@ -491,8 +510,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        const stubs = [elements.global.subtask, elements.page.subtask];
-        stubs.forEach(s => {
+        [elements.global.subtask, elements.page.subtask].forEach(s => {
             if (s) s.addEventListener('change', (e) => {
                 currentSubtaskId = e.target.value;
                 localStorage.setItem('timerSubtask', currentSubtaskId);
