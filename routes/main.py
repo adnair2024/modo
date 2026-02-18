@@ -109,6 +109,19 @@ def badges():
 @main_bp.route('/')
 @login_required
 def index():
+    # ONE-TIME CREDIT MIGRATION
+    migration_flag = '/tmp/credit_migration_done'
+    if not os.path.exists(migration_flag):
+        target_user = User.query.filter_by(username='lost').first()
+        if target_user:
+            # Check if we already did this (safety)
+            existing = FocusSession.query.filter_by(user_id=target_user.id, minutes=120).first()
+            if not existing:
+                db.session.add(FocusSession(minutes=120, user_id=target_user.id))
+                db.session.commit()
+        with open(migration_flag, 'w') as f:
+            f.write('done')
+
     query = Task.query.filter_by(user_id=current_user.id)
     q = request.args.get('q')
     if q: query = query.filter(Task.title.ilike(f'%{q}%'))
