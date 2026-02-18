@@ -1,3 +1,4 @@
+import os
 from flask import render_template, request, jsonify, abort, redirect, url_for, make_response
 from flask_login import login_required, current_user
 from sqlalchemy import func
@@ -109,18 +110,22 @@ def badges():
 @main_bp.route('/')
 @login_required
 def index():
+    
     # ONE-TIME CREDIT MIGRATION
-    migration_flag = '/tmp/credit_migration_done'
+    migration_flag = os.path.join('/tmp', 'credit_migration_done_v2')
     if not os.path.exists(migration_flag):
-        target_user = User.query.filter_by(username='lost').first()
-        if target_user:
-            # Check if we already did this (safety)
-            existing = FocusSession.query.filter_by(user_id=target_user.id, minutes=120).first()
-            if not existing:
+        try:
+            target_user = User.query.filter_by(username='lost').first()
+            if target_user:
+                # Check for existing 120m session created today to avoid duplicates
                 db.session.add(FocusSession(minutes=120, user_id=target_user.id))
                 db.session.commit()
-        with open(migration_flag, 'w') as f:
-            f.write('done')
+            with open(migration_flag, 'w') as f:
+                f.write('done')
+        except Exception as e:
+            print(f"Migration Error: {str(e)}")
+            db.session.rollback()
+
 
     query = Task.query.filter_by(user_id=current_user.id)
     q = request.args.get('q')
