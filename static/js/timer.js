@@ -182,6 +182,8 @@ document.addEventListener('DOMContentLoaded', () => {
             currentSubtaskId = selectedSubtaskId;
             localStorage.setItem('timerSubtask', currentSubtaskId);
         }
+        const container = document.getElementById('page-timer-subtask-container');
+        if (container) container.classList.toggle('hidden', incompleteSubtasks.length === 0);
         selects.forEach(select => {
             if (!select) return;
             if (incompleteSubtasks.length === 0) {
