@@ -20,7 +20,17 @@ def log_session():
         minutes = int(minutes)
     except (TypeError, ValueError):
         minutes = 0
-    
+
+    # Validation: Check how much time actually passed on the server
+    if current_user.current_focus_start:
+        now = datetime.now(timezone.utc)
+        actual_elapsed_sec = (now - current_user.current_focus_start.replace(tzinfo=timezone.utc)).total_seconds()
+        actual_elapsed_min = int(actual_elapsed_sec / 60)
+        
+        # Buffer of 1 minute to account for network/logic lag
+        if minutes > actual_elapsed_min + 1:
+            minutes = actual_elapsed_min
+
     if minutes > 0:
         session = FocusSession(minutes=minutes, user_id=current_user.id, task_id=task_id)
         
@@ -48,12 +58,14 @@ def log_session():
             create_notification(current_user.id, f"Focus session of {minutes} mins completed!", type='success')
 
         current_user.last_focus_end = datetime.now(timezone.utc)
+        current_user.current_focus_start = None
+        current_user.current_focus_end = None
         db.session.commit()
         
         # Check Achievements
         check_achievements(current_user)
         
-        return jsonify({'status': 'success'})
+        return jsonify({'status': 'success', 'logged_minutes': minutes})
     return jsonify({'status': 'error'}), 400
 
 @api_bp.route('/sync_presence', methods=['POST'])
@@ -65,13 +77,24 @@ def sync_presence():
     seconds_left = data.get('seconds_left')
     task_id = data.get('task_id')
     room_id = data.get('room_id')
+    is_start = data.get('is_start', False)
     
     current_user.last_seen = datetime.now(timezone.utc)
     current_user.current_focus_mode = mode
     current_user.current_task_id = task_id
     
-    if seconds_left is not None and mode != 'none':
-        current_user.current_focus_end = datetime.now(timezone.utc) + timedelta(seconds=int(seconds_left))
+    if mode == 'focus':
+        if is_start or not current_user.current_focus_start:
+            # If starting or we don't have a start time, set it now
+            # If we already have one, we keep it unless is_start is true (reset)
+            current_user.current_focus_start = datetime.now(timezone.utc)
+        
+        if seconds_left is not None:
+            current_user.current_focus_end = datetime.now(timezone.utc) + timedelta(seconds=int(seconds_left))
+    elif mode == 'break':
+        current_user.current_focus_start = None # Breaks aren't logged for leaderboard usually
+        if seconds_left is not None:
+            current_user.current_focus_end = datetime.now(timezone.utc) + timedelta(seconds=int(seconds_left))
     else:
         current_user.current_focus_end = None
         current_user.current_focus_start = None
@@ -89,7 +112,10 @@ def sync_presence():
     # Also check for event notifications
     check_event_notifications(current_user.id)
     
-    return jsonify({'status': 'success'})
+    return jsonify({
+        'status': 'success', 
+        'server_time': datetime.now(timezone.utc).timestamp() * 1000
+    })
 
 @api_bp.route('/notifications', methods=['GET'])
 @login_required

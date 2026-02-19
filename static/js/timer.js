@@ -30,6 +30,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentSubtaskId = null;
     let currentMode = 'focus'; 
     let clockOffset = 0;
+    
+    // Master Tab Logic
+    const TAB_ID = Math.random().toString(36).substring(2, 9);
+    let isMaster = false;
 
     function getBodyData() {
         if (window.Alpine && window.Alpine.$data) return window.Alpine.$data(document.body);
@@ -42,10 +46,29 @@ document.addEventListener('DOMContentLoaded', () => {
         if (settings.serverTime) clockOffset = Date.now() - settings.serverTime;
         loadState();
         attachListeners();
+        
+        // Master election & Heartbeat
+        checkMaster();
+        setInterval(checkMaster, 2000);
+        
         setInterval(checkExternalUpdates, 1000);
         window.addEventListener('beforeunload', () => {
+            if (isMaster) localStorage.removeItem('timerMaster');
             if (isRunning) localStorage.setItem('timerSecondsLeft', secondsLeft);
         });
+    }
+
+    function checkMaster() {
+        const master = localStorage.getItem('timerMaster');
+        const now = Date.now();
+        const masterData = master ? JSON.parse(master) : null;
+
+        if (!masterData || masterData.id === TAB_ID || (now - masterData.ts > 4000)) {
+            isMaster = true;
+            localStorage.setItem('timerMaster', JSON.stringify({ id: TAB_ID, ts: now }));
+        } else {
+            isMaster = false;
+        }
     }
 
     function loadState() {
@@ -86,8 +109,10 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (savedSeconds && savedSeconds !== 'NaN' && savedSeconds !== 'null') {
              secondsLeft = parseInt(savedSeconds);
              isRunning = false;
+             if (timerInterval) clearInterval(timerInterval);
         } else {
              secondsLeft = (currentMode === 'break' ? (settings.breakDuration || 5) : (settings.focusDuration || 25)) * 60;
+             if (timerInterval) clearInterval(timerInterval);
         }
         
         if (isNaN(secondsLeft) || secondsLeft === null) {
@@ -98,6 +123,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function checkExternalUpdates() {
+        if (!isMaster) return; // Only master handles server sync
+        
         const now = Date.now();
         if (!lastSync || now - lastSync > 5000) syncPresence();
         if (settings.syncMode && settings.activeRoomId) {
@@ -127,11 +154,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         localStorage.setItem('timerStatus', 'running');
                         startInterval(); 
                     }
-                    if (Math.abs(secondsLeft - data.seconds_remaining) > 2) secondsLeft = data.seconds_remaining;
+                    if (Math.abs(secondsLeft - data.seconds_remaining) > 2) {
+                        secondsLeft = data.seconds_remaining;
+                        const nowAdjusted = Date.now() - clockOffset;
+                        localStorage.setItem('timerEnd', nowAdjusted + (secondsLeft * 1000));
+                    }
                 } else {
                     if (isRunning) pauseTimer(false);
                     if (secondsLeft !== data.seconds_remaining) {
                         secondsLeft = data.seconds_remaining;
+                        localStorage.setItem('timerSecondsLeft', secondsLeft);
                         updateUI();
                     }
                 }
@@ -139,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
     }
     
-    function syncPresence() {
+    function syncPresence(isStart = false) {
         const status = isRunning ? 'running' : 'paused'; 
         const csrfEl = document.querySelector('meta[name="csrf-token"]');
         const csrfToken = csrfEl ? csrfEl.content : '';
@@ -150,14 +182,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 status: status,
                 mode: currentMode,
                 seconds_left: secondsLeft,
-                task_id: currentTaskId
+                task_id: currentTaskId,
+                is_start: isStart
             })
-        }).then(res => {
-            if (res.status === 401) {
-                localStorage.removeItem('timerStatus');
-                localStorage.removeItem('timerEnd');
-                document.title = 'Modo - Productivity Manager';
-                return;
+        }).then(res => res.json()).then(data => {
+            if (data.server_time) {
+                // Calibrate clock offset
+                clockOffset = Date.now() - data.server_time;
             }
             lastSync = Date.now();
         }).catch(() => {});
@@ -336,20 +367,35 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         updateUI();
         startInterval();
-        syncPresence();
+        
+        // Immediate sync on start
+        syncPresence(true);
     }
 
     function startInterval() {
         if (timerInterval) clearInterval(timerInterval);
-        checkDrift();
+        
+        // Only Master Tab runs the interval logic for drift/updates
         timerInterval = setInterval(() => {
             if (!isRunning) return;
-            checkDrift();
-            if (secondsLeft <= 0) completeTimer(); else updateUI();
+            if (isMaster) {
+                checkDrift();
+                if (secondsLeft <= 0) completeTimer(); else updateUI();
+            } else {
+                // Followers just update UI from localStorage
+                const savedEnd = localStorage.getItem('timerEnd');
+                if (savedEnd) {
+                    const nowAdjusted = Date.now() - clockOffset;
+                    const remaining = Math.ceil((parseInt(savedEnd) - nowAdjusted) / 1000);
+                    secondsLeft = Math.max(0, remaining);
+                }
+                updateUI();
+            }
         }, 1000);
     }
 
     function checkDrift() {
+        if (!isMaster) return;
         const savedEnd = localStorage.getItem('timerEnd');
         if (savedEnd && isRunning) {
             const nowAdjusted = Date.now() - clockOffset;
@@ -376,7 +422,9 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('timerStatus', 'paused');
         localStorage.removeItem('timerEnd');
         updateUI();
-        syncPresence();
+        
+        // Immediate sync on pause
+        if (notifyServer) syncPresence();
     }
 
     function endSession() {
@@ -407,8 +455,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfEl ? csrfEl.content : ''},
                 body: JSON.stringify({ minutes: parseInt(minutesLogged), task_id: taskId, room_id: settings.activeRoomId })
-            }).then(() => {
-                window.modoNotify('Session logged!', 'success');
+            }).then(r => r.json()).then(data => {
+                const actual = data.logged_minutes !== undefined ? data.logged_minutes : minutesLogged;
+                window.modoNotify(`Session logged: ${actual} mins`, 'success');
                 resetTimer();
             });
         }
@@ -427,7 +476,9 @@ document.addEventListener('DOMContentLoaded', () => {
         pauseTimer(false);
         secondsLeft = (currentMode === 'break' ? (settings.breakDuration || 5) : (settings.focusDuration || 25)) * 60;
         localStorage.removeItem('timerSecondsLeft');
+        localStorage.removeItem('timerEnd');
         updateUI();
+        syncPresence();
     }
     
     function skipBreak() {
@@ -445,10 +496,13 @@ document.addEventListener('DOMContentLoaded', () => {
         secondsLeft = (settings.focusDuration || 25) * 60;
         localStorage.setItem('timerMode', currentMode);
         localStorage.removeItem('timerSecondsLeft');
+        localStorage.removeItem('timerEnd');
         updateUI();
+        syncPresence();
     }
 
     function completeTimer() {
+        if (!isMaster) return; // Only master handles completion
         pauseTimer();
         if (currentMode === 'focus') {
             const csrfEl = document.querySelector('meta[name="csrf-token"]');
@@ -456,7 +510,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfEl ? csrfEl.content : ''},
                 body: JSON.stringify({ minutes: parseInt(settings.focusDuration || 25), task_id: currentTaskId, room_id: settings.activeRoomId })
-            }).then(() => {
+            }).then(r => r.json()).then(data => {
                 document.body.dispatchEvent(new CustomEvent('tasksChanged'));
                 currentMode = 'break';
                 secondsLeft = (settings.breakDuration || 5) * 60;
@@ -531,7 +585,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     window.addEventListener('storage', (e) => {
-        if (['timerStatus', 'timerEnd', 'timerSecondsLeft', 'timerMode'].includes(e.key)) loadState();
+        if (['timerStatus', 'timerEnd', 'timerSecondsLeft', 'timerMode', 'timerTask', 'timerSubtask'].includes(e.key)) {
+            loadState();
+        }
     });
 
     init();

@@ -441,19 +441,27 @@
         };
 
         (function() {
+            // Priority 1: localStorage (Freshest state)
             const savedEnd = localStorage.getItem('timerEnd');
             const savedStatus = localStorage.getItem('timerStatus');
             const savedSeconds = localStorage.getItem('timerSecondsLeft');
             const savedMode = localStorage.getItem('timerMode');
+            
             const focusDuration = window.userSettings.focusDuration || 25;
             const breakDuration = window.userSettings.breakDuration || 5;
 
             let displaySeconds = (savedMode === 'break' ? breakDuration : focusDuration) * 60;
             
-            if (savedStatus === 'running' && savedEnd) {
+            // Priority 2: server data (Fallback)
+            const effectiveMode = savedMode || window.userSettings.serverMode || 'focus';
+            const effectiveStatus = savedStatus || (window.userSettings.serverMode !== 'none' ? 'running' : 'paused');
+            const effectiveEnd = savedEnd || window.userSettings.serverEnd;
+
+            if (effectiveStatus === 'running' && effectiveEnd) {
                 const clockOffset = Date.now() - window.userSettings.serverTime;
-                const remaining = Math.ceil((parseInt(savedEnd) - (Date.now() - clockOffset)) / 1000);
+                const remaining = Math.ceil((parseInt(effectiveEnd) - (Date.now() - clockOffset)) / 1000);
                 if (remaining > 0) displaySeconds = remaining;
+                else displaySeconds = 0;
             } else if (savedSeconds && savedSeconds !== 'null') {
                 displaySeconds = parseInt(savedSeconds);
             }
@@ -462,6 +470,10 @@
             const secs = displaySeconds % 60;
             const text = mins + ":" + secs.toString().padStart(2, '0');
             
+            // Set early to prevent flicker
+            const css = 'mono-display text-accent tracking-widest';
+            document.write(`<style>#global-timer-display:empty::before, #min-timer-display:empty::before { content: "${text}"; }</style>`);
+
             document.addEventListener('DOMContentLoaded', () => {
                 const el = document.getElementById('global-timer-display');
                 if (el) el.textContent = text;
