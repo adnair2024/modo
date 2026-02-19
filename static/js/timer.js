@@ -72,18 +72,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function loadState() {
-        if (!localStorage.getItem('timerStatus') && settings.serverMode !== 'none' && settings.serverEnd) {
+        // Priority 1: localStorage
+        const savedStatus = localStorage.getItem('timerStatus');
+        const savedEnd = localStorage.getItem('timerEnd');
+        const savedSeconds = localStorage.getItem('timerSecondsLeft');
+        const savedMode = localStorage.getItem('timerMode');
+        const savedTask = localStorage.getItem('timerTask');
+        const savedSubtask = localStorage.getItem('timerSubtask');
+
+        // Priority 2: server-side state (Fallback)
+        // If no status in localStorage, check if the server thinks we should be running
+        if (!savedStatus && settings.serverMode !== 'none' && settings.serverEnd) {
             localStorage.setItem('timerMode', settings.serverMode);
             localStorage.setItem('timerEnd', settings.serverEnd);
             localStorage.setItem('timerStatus', 'running');
         }
 
-        const savedEnd = localStorage.getItem('timerEnd');
-        const savedStatus = localStorage.getItem('timerStatus');
-        const savedTask = localStorage.getItem('timerTask');
-        const savedSubtask = localStorage.getItem('timerSubtask');
-        const savedSeconds = localStorage.getItem('timerSecondsLeft');
-        const savedMode = localStorage.getItem('timerMode');
+        // Re-read after potential fallback update
+        const status = localStorage.getItem('timerStatus') || (settings.serverMode !== 'none' ? 'running' : 'paused');
+        const mode = localStorage.getItem('timerMode') || settings.serverMode || 'focus';
+        const end = localStorage.getItem('timerEnd') || settings.serverEnd;
+
+        currentMode = mode === 'none' ? 'focus' : mode;
 
         if (savedTask && savedTask !== 'null') {
             currentTaskId = savedTask;
@@ -91,12 +101,10 @@ document.addEventListener('DOMContentLoaded', () => {
             currentSubtaskId = savedSubtask;
             fetchSubtasks(currentTaskId, currentSubtaskId);
         }
-        
-        if (savedMode) currentMode = savedMode;
 
-        if (savedStatus === 'running' && savedEnd) {
+        if (status === 'running' && end) {
             const nowAdjusted = Date.now() - clockOffset;
-            const remaining = Math.ceil((parseInt(savedEnd) - nowAdjusted) / 1000);
+            const remaining = Math.ceil((parseInt(end) - nowAdjusted) / 1000);
             if (remaining > 0) {
                 secondsLeft = remaining;
                 isRunning = true;
@@ -112,6 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
              if (timerInterval) clearInterval(timerInterval);
         } else {
              secondsLeft = (currentMode === 'break' ? (settings.breakDuration || 5) : (settings.focusDuration || 25)) * 60;
+             isRunning = false;
              if (timerInterval) clearInterval(timerInterval);
         }
         
