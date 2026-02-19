@@ -436,8 +436,39 @@
             syncMode: {{ 'true' if active_sync_room else 'false' }},
             activeRoomId: {{ active_sync_room.id if active_sync_room else 'null' }},
             serverMode: '{{ current_user.current_focus_mode }}',
-            serverEnd: {{ current_user.current_focus_end.timestamp() * 1000 if current_user.current_focus_end else 'null' }}
+            serverEnd: {{ current_user.current_focus_end.timestamp() * 1000 if current_user.current_focus_end else 'null' }},
+            serverTime: {{ now.timestamp() * 1000 }}
         };
+
+        (function() {
+            const savedEnd = localStorage.getItem('timerEnd');
+            const savedStatus = localStorage.getItem('timerStatus');
+            const savedSeconds = localStorage.getItem('timerSecondsLeft');
+            const savedMode = localStorage.getItem('timerMode');
+            const focusDuration = window.userSettings.focusDuration || 25;
+            const breakDuration = window.userSettings.breakDuration || 5;
+
+            let displaySeconds = (savedMode === 'break' ? breakDuration : focusDuration) * 60;
+            
+            if (savedStatus === 'running' && savedEnd) {
+                const clockOffset = Date.now() - window.userSettings.serverTime;
+                const remaining = Math.ceil((parseInt(savedEnd) - (Date.now() - clockOffset)) / 1000);
+                if (remaining > 0) displaySeconds = remaining;
+            } else if (savedSeconds && savedSeconds !== 'null') {
+                displaySeconds = parseInt(savedSeconds);
+            }
+
+            const mins = Math.floor(displaySeconds / 60);
+            const secs = displaySeconds % 60;
+            const text = mins + ":" + secs.toString().padStart(2, '0');
+            
+            document.addEventListener('DOMContentLoaded', () => {
+                const el = document.getElementById('global-timer-display');
+                if (el) el.textContent = text;
+                const minEl = document.getElementById('min-timer-display');
+                if (minEl) minEl.textContent = text;
+            });
+        })();
     </script>
     {% endif %}
     {% if current_user.is_authenticated and current_user.enable_vim_mode %}

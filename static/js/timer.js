@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentTaskId = null;
     let currentSubtaskId = null;
     let currentMode = 'focus'; 
+    let clockOffset = 0;
 
     function getBodyData() {
         if (window.Alpine && window.Alpine.$data) return window.Alpine.$data(document.body);
@@ -38,9 +39,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function init() {
+        if (settings.serverTime) clockOffset = Date.now() - settings.serverTime;
         loadState();
         attachListeners();
         setInterval(checkExternalUpdates, 1000);
+        window.addEventListener('beforeunload', () => {
+            if (isRunning) localStorage.setItem('timerSecondsLeft', secondsLeft);
+        });
     }
 
     function loadState() {
@@ -67,8 +72,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (savedMode) currentMode = savedMode;
 
         if (savedStatus === 'running' && savedEnd) {
-            const now = Date.now();
-            const remaining = Math.ceil((parseInt(savedEnd) - now) / 1000);
+            const nowAdjusted = Date.now() - clockOffset;
+            const remaining = Math.ceil((parseInt(savedEnd) - nowAdjusted) / 1000);
             if (remaining > 0) {
                 secondsLeft = remaining;
                 isRunning = true;
@@ -325,7 +330,10 @@ document.addEventListener('DOMContentLoaded', () => {
         isRunning = true;
         localStorage.setItem('timerStatus', 'running');
         localStorage.setItem('timerMode', currentMode);
-        if (setNewEndTime) localStorage.setItem('timerEnd', Date.now() + (secondsLeft * 1000));
+        if (setNewEndTime) {
+            const nowAdjusted = Date.now() - clockOffset;
+            localStorage.setItem('timerEnd', nowAdjusted + (secondsLeft * 1000));
+        }
         updateUI();
         startInterval();
         syncPresence();
@@ -344,7 +352,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function checkDrift() {
         const savedEnd = localStorage.getItem('timerEnd');
         if (savedEnd && isRunning) {
-            const remaining = Math.ceil((parseInt(savedEnd) - Date.now()) / 1000);
+            const nowAdjusted = Date.now() - clockOffset;
+            const remaining = Math.ceil((parseInt(savedEnd) - nowAdjusted) / 1000);
             secondsLeft = Math.max(0, remaining);
         } else if (isRunning) {
             secondsLeft--;

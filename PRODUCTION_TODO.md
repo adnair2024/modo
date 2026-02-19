@@ -26,6 +26,9 @@
 - [x] **Environment Audit:** Ensure `SECRET_KEY` and `SQLALCHEMY_DATABASE_URI` are never hardcoded and always pulled from environment variables.
 - [x] **Static Files:** Ensure `gunicorn` or a reverse proxy (like Nginx/Northflank's edge) is handling static files efficiently.
 
+## 6. Testing & Quality Assurance
+- [ ] **Unit Testing Update:** Update the `tests/` suite to cover new features (Timer synchronization, Genesis AI logic, and Subtasks). Ensure coverage for clock-drift edge cases in the frontend.
+
 ---
 **STATUS: PRODUCTION_READY**
 *Final build committed and verified. AI modules active. UI/UX optimized for Digital Noir aesthetic.*

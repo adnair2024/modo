@@ -111,5 +111,6 @@ Always prefer model names that appear in this list.
 ### 3. Timer Reset & Early Termination
 If the timer resets on reload or the 'Terminate Early' button fails to open the confirmation modal:
 
-*   **State Recovery:** Ensure `window.userSettings` is correctly initialized in `base.html` before `timer.js` is loaded. This allows the timer to calculate the remaining time based on the server-provided `current_focus_end`.
+*   **State Recovery (Zero-Flicker):** The timer state is now recovered via an **inline script** in `base.html` that reads `localStorage` before the page fully renders. This prevents the default duration (e.g., 25:00) from flickering on refresh.
+*   **Clock Calibration:** We use a `clockOffset` (Server UTC vs. Browser Local) to ensure that countdowns remain accurate even if the production server's clock drifts from the user's device.
 *   **Alpine.js Data Access:** When accessing Alpine.js data from plain JavaScript (like in `timer.js` or global functions), always use `document.body.__x.$data` instead of just `document.body.__x`. This ensures you are interacting with the reactive data object.
