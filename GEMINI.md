@@ -114,3 +114,11 @@ If the timer resets on reload or the 'Terminate Early' button fails to open the 
 *   **State Recovery (Zero-Flicker):** The timer state is now recovered via an **inline script** in `base.html` that reads `localStorage` before the page fully renders. This prevents the default duration (e.g., 25:00) from flickering on refresh.
 *   **Clock Calibration:** We use a `clockOffset` (Server UTC vs. Browser Local) to ensure that countdowns remain accurate even if the production server's clock drifts from the user's device.
 *   **Alpine.js Data Access:** When accessing Alpine.js data from plain JavaScript (like in `timer.js` or global functions), always use `document.body.__x.$data` instead of just `document.body.__x`. This ensures you are interacting with the reactive data object.
+
+### 4. Genesis Command Center (500 Errors / Connection Lost)
+If "SYSTEM VITALS" reports "Connection Lost" or "USERS LIST" shows an empty overlay:
+
+*   **Missing Imports:** Ensure `from sqlalchemy import func` is present in `routes/api.py`. Many Genesis telemetry commands rely on `func` for aggregations.
+*   **Null Date Handling:** Always use conditional checks when calling `.strftime()` or `.replace(tzinfo=...)` on database fields like `date_joined` or `created_at`. If a record has a `None` value, the route will return a 500 error.
+*   **Psutil Isolation:** Wrap system telemetry in `try/except` blocks. If the hosting environment restricts access to process data, it should fail gracefully with a message rather than crashing the route.
+*   **Data Injection:** For the overlays to populate, the JSON response MUST include the `user_data` or `vitals_data` keys alongside the response text.

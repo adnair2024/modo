@@ -1,6 +1,7 @@
 from flask import render_template, request, jsonify, abort, session
 from flask_login import login_required, current_user
 from datetime import datetime, timedelta, timezone
+from sqlalchemy import func
 from . import api_bp
 from models import db, FocusSession, StudyRoom, Task, Notification, User
 from utils import create_notification, check_event_notifications, check_task_access
@@ -370,7 +371,7 @@ def genesis_command():
         week_ago = now - timedelta(days=7)
         stagnant = Task.query.filter_by(user_id=current_user.id, status='todo').filter(Task.created_at <= week_ago).order_by(Task.created_at.asc()).limit(3).all()
         if stagnant:
-            res = "STAGNATION_DETECTED_IN_QUEUE:\n" + "\n".join([f"- {t.title} (STALL_TIME: {(now - t.created_at.replace(tzinfo=timezone.utc)).days} DAYS)" for t in stagnant])
+            res = "STAGNATION_DETECTED_IN_QUEUE:\n" + "\n".join([f"- {t.title} (STALL_TIME: {(now - t.created_at.replace(tzinfo=timezone.utc)).days if t.created_at else '??'} DAYS)" for t in stagnant])
             return jsonify({'response': res, 'is_admin': is_admin})
         return jsonify({'response': "QUEUE_FLOW_OPTIMAL. NO_BOTTLENECKS_DETECTED.", 'is_admin': is_admin})
 
@@ -378,7 +379,8 @@ def genesis_command():
     if is_admin and any(k in command.upper() for k in ["ALL USER INFO", "LIST USERS", "SHOW USERS", "FETCH SUBJECTS"]):
         users = User.query.all()
         user_list = [{
-            'id': u.id, 'username': u.username, 'date_joined': u.date_joined.strftime('%Y-%m-%d'),
+            'id': u.id, 'username': u.username, 
+            'date_joined': u.date_joined.strftime('%Y-%m-%d') if u.date_joined else 'N/A',
             'last_seen': u.last_seen.strftime('%Y-%m-%d %H:%M') if u.last_seen else 'N/A',
             'is_admin': u.is_admin, 'is_verified': u.is_verified, 'is_banned': u.is_banned
         } for u in users]
@@ -387,11 +389,19 @@ def genesis_command():
     # Special Data Command: System Vitals
     if is_admin and any(k in command.upper() for k in ["SYSTEM VITALS", "SYS VITALS", "VITALS", "HEALTH CHECK"]):
         import psutil, time
-        start = time.time()
-        db.session.execute(db.text("SELECT 1"))
-        db_latency = round((time.time() - start) * 1000, 2)
-        vitals = {'cpu': psutil.cpu_percent(), 'memory': psutil.virtual_memory().percent, 'db_latency': db_latency, 'timestamp': datetime.now(timezone.utc).strftime('%H:%M:%S')}
-        return jsonify({'response': "HEALTH_CHECK_COMPLETE. VITALS_STREAM_READY.", 'is_admin': True, 'vitals_data': vitals})
+        try:
+            start = time.time()
+            db.session.execute(db.text("SELECT 1"))
+            db_latency = round((time.time() - start) * 1000, 2)
+            vitals = {
+                'cpu': psutil.cpu_percent(), 
+                'memory': psutil.virtual_memory().percent, 
+                'db_latency': db_latency, 
+                'timestamp': datetime.now(timezone.utc).strftime('%H:%M:%S')
+            }
+            return jsonify({'response': "HEALTH_CHECK_COMPLETE. VITALS_STREAM_READY.", 'is_admin': True, 'vitals_data': vitals})
+        except Exception as e:
+            return jsonify({'response': f"VITALS_STREAM_FAILURE: {str(e)}", 'is_admin': True})
 
     # User Count
     if any(k in command.upper() for k in ["HOW MANY USERS", "USER COUNT", "COUNT USERS", "REGISTRY SIZE"]):
