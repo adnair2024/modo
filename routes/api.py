@@ -233,7 +233,6 @@ def genesis_command():
             try:
                 date_str = command.upper().split(" TO ")[-1].strip()
                 # Basic parsing: YYYY-MM-DD
-                from datetime import datetime
                 try:
                     new_date = datetime.strptime(date_str, '%Y-%m-%d').replace(tzinfo=timezone.utc)
                     task = db.session.get(Task, last_task_id)
