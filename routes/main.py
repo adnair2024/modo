@@ -4,7 +4,7 @@ from flask_login import login_required, current_user
 from sqlalchemy import func
 from datetime import datetime, timedelta, timezone
 from . import main_bp
-from models import db, Task, Subtask, Tag, Event, Habit, HabitCompletion, EventCompletion, FocusSession, User, Achievement, UserAchievement
+from models import db, Task, Subtask, Tag, task_tags, Event, Habit, HabitCompletion, EventCompletion, FocusSession, User, Achievement, UserAchievement
 from utils import expand_events, EventOccurrence, log_project_action, check_task_access
 from extensions import cache
 
