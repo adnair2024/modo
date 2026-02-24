@@ -143,7 +143,7 @@ def index():
     active_tasks = active_query.all()
     
     # 2. Fetch Completed Tasks (limited to 10 unless show_all_done is true)
-    done_query = query.filter_by(status='done').order_by(Task.created_at.desc())
+    done_query = query.filter(Task.status == 'done').order_by(Task.created_at.desc())
     
     total_done_count = done_query.count()
     if not show_all_done:
