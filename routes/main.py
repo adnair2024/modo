@@ -177,8 +177,8 @@ def index():
     # Stats Summary - Using optimized property
     total_focus = db.session.query(func.sum(FocusSession.minutes)).filter_by(user_id=current_user.id).scalar() or 0
     if request.headers.get('HX-Request'):
-        return render_template('partials/task_list.html', tasks=tasks, now=datetime.now(timezone.utc), has_more_completed=has_more_completed)
-    return render_template('index.html', tasks=tasks, user_tags=user_tags, habit_items=habit_items, today_events=today_events, total_focus=total_focus, now=datetime.now(timezone.utc), has_more_completed=has_more_completed)
+        return render_template('partials/task_list.html', tasks=tasks, now=datetime.now(timezone.utc).replace(tzinfo=None).replace(tzinfo=None), has_more_completed=has_more_completed)
+    return render_template('index.html', tasks=tasks, user_tags=user_tags, habit_items=habit_items, today_events=today_events, total_focus=total_focus, now=datetime.now(timezone.utc).replace(tzinfo=None).replace(tzinfo=None), has_more_completed=has_more_completed)
 
 @main_bp.route('/timer')
 @login_required
@@ -211,7 +211,7 @@ def add_task():
                     tag = Tag(name=name); db.session.add(tag)
                 new_task.tags.append(tag)
         db.session.add(new_task); db.session.commit()
-        response = make_response(render_template('partials/task_item.html', task=new_task, now=datetime.now(timezone.utc)))
+        response = make_response(render_template('partials/task_item.html', task=new_task, now=datetime.now(timezone.utc).replace(tzinfo=None)))
         response.headers['HX-Trigger'] = 'tasksChanged'
         return response
     return '', 400
@@ -234,7 +234,7 @@ def toggle_task(task_id):
     if not check_task_access(task): abort(403)
     task.status = 'todo' if task.status == 'done' else 'done'
     db.session.commit()
-    response = make_response(render_template('partials/task_item.html', task=task, now=datetime.now(timezone.utc)))
+    response = make_response(render_template('partials/task_item.html', task=task, now=datetime.now(timezone.utc).replace(tzinfo=None)))
     response.headers['HX-Trigger'] = 'tasksChanged'
     return response
 
@@ -276,7 +276,7 @@ def update_task(task_id):
                     tag = Tag(name=name); db.session.add(tag)
                 task.tags.append(tag)
     db.session.commit()
-    return render_template('partials/task_item.html', task=task, now=datetime.now(timezone.utc))
+    return render_template('partials/task_item.html', task=task, now=datetime.now(timezone.utc).replace(tzinfo=None))
 
 @main_bp.route('/task/<int:task_id>/subtask', methods=['POST'])
 @login_required
@@ -288,7 +288,7 @@ def add_subtask(task_id):
     if title:
         new_subtask = Subtask(title=title[:200], task_id=task.id)
         db.session.add(new_subtask); db.session.commit(); db.session.refresh(task)
-    return render_template('partials/task_item.html', task=task, now=datetime.now(timezone.utc))
+    return render_template('partials/task_item.html', task=task, now=datetime.now(timezone.utc).replace(tzinfo=None))
 
 @main_bp.route('/subtask/<int:subtask_id>/toggle', methods=['POST'])
 @login_required
@@ -300,7 +300,7 @@ def toggle_subtask(subtask_id):
     subtask.is_completed = not subtask.is_completed
     db.session.commit()
     db.session.refresh(parent_task)
-    return render_template('partials/task_item.html', task=parent_task, now=datetime.now(timezone.utc))
+    return render_template('partials/task_item.html', task=parent_task, now=datetime.now(timezone.utc).replace(tzinfo=None))
 
 @main_bp.route('/subtask/<int:subtask_id>', methods=['DELETE'])
 @login_required
@@ -310,7 +310,7 @@ def delete_subtask(subtask_id):
     task = subtask.parent
     if not check_task_access(task): abort(403)
     db.session.delete(subtask); db.session.commit(); db.session.refresh(task)
-    return render_template('partials/task_item.html', task=task, now=datetime.now(timezone.utc))
+    return render_template('partials/task_item.html', task=task, now=datetime.now(timezone.utc).replace(tzinfo=None))
 
 @main_bp.route('/subtask/<int:subtask_id>/edit', methods=['GET'])
 @login_required
@@ -329,7 +329,7 @@ def update_subtask(subtask_id):
     title = request.form.get('title')
     if title: subtask.title = title[:200]
     db.session.commit()
-    return render_template('partials/task_item.html', task=subtask.parent, now=datetime.now(timezone.utc))
+    return render_template('partials/task_item.html', task=subtask.parent, now=datetime.now(timezone.utc).replace(tzinfo=None))
 
 @main_bp.route('/task/<int:task_id>/item', methods=['GET'])
 @login_required
@@ -337,7 +337,7 @@ def get_task_item(task_id):
     task = db.session.get(Task, task_id)
     if not task: abort(404)
     if not check_task_access(task): abort(403)
-    return render_template('partials/task_item.html', task=task, now=datetime.now(timezone.utc))
+    return render_template('partials/task_item.html', task=task, now=datetime.now(timezone.utc).replace(tzinfo=None))
 
 @main_bp.route('/leaderboard')
 @login_required
