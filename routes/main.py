@@ -110,13 +110,14 @@ def badges():
 @main_bp.route('/')
 @login_required
 def index():
-    
-    
-
-
     query = Task.query.filter_by(user_id=current_user.id)
     q = request.args.get('q')
     if q: query = query.filter(Task.title.ilike(f'%{q}%'))
+    
+    tag_filter = request.args.get('tag')
+    if tag_filter:
+        query = query.join(Task.tags).filter(Tag.name == tag_filter)
+
     date_start_str = request.args.get('date_start')
     date_end_str = request.args.get('date_end')
     if date_start_str:
@@ -129,6 +130,7 @@ def index():
             date_end = datetime.strptime(date_end_str, '%Y-%m-%d').replace(tzinfo=timezone.utc)
             query = query.filter(Task.due_date <= date_end)
         except ValueError: pass
+    
     sort_by = request.args.get('sort', 'created_at')
     show_all_done = request.args.get('show_all_done') == 'true'
     
@@ -136,6 +138,7 @@ def index():
     active_query = query.filter(Task.status != 'done')
     if sort_by == 'priority': active_query = active_query.order_by(Task.priority.desc(), Task.created_at.desc())
     elif sort_by == 'due_date': active_query = active_query.order_by(Task.due_date.asc(), Task.created_at.desc())
+    elif sort_by == 'tag': active_query = active_query.outerjoin(Task.tags).order_by(Tag.name.asc(), Task.created_at.desc())
     else: active_query = active_query.order_by(Task.created_at.desc())
     active_tasks = active_query.all()
     
@@ -150,6 +153,9 @@ def index():
         
     tasks = active_tasks + done_tasks
     has_more_completed = total_done_count > 10 and not show_all_done
+    
+    # Get all tags for this user for the filter UI
+    user_tags = Tag.query.join(task_tags).join(Task).filter(Task.user_id == current_user.id).distinct().all()
     
     today = datetime.now(timezone.utc).date()
     
@@ -172,7 +178,7 @@ def index():
     total_focus = db.session.query(func.sum(FocusSession.minutes)).filter_by(user_id=current_user.id).scalar() or 0
     if request.headers.get('HX-Request'):
         return render_template('partials/task_list.html', tasks=tasks, now=datetime.now(timezone.utc), has_more_completed=has_more_completed)
-    return render_template('index.html', tasks=tasks, habit_items=habit_items, today_events=today_events, total_focus=total_focus, now=datetime.now(timezone.utc), has_more_completed=has_more_completed)
+    return render_template('index.html', tasks=tasks, user_tags=user_tags, habit_items=habit_items, today_events=today_events, total_focus=total_focus, now=datetime.now(timezone.utc), has_more_completed=has_more_completed)
 
 @main_bp.route('/timer')
 @login_required

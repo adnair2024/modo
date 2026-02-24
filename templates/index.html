@@ -328,10 +328,21 @@
                     <div class="flex-1 h-[1px] bg-black dark:bg-white opacity-20"></div>
                     <div class="flex gap-2">
                         <a href="/?sort=priority" class="text-[10px] font-bold px-2 py-1 border noir-border hover:bg-accent hover:text-[var(--bg-alt)] transition-colors uppercase tracking-widest">Priority</a>
+                        <a href="/?sort=tag" class="text-[10px] font-bold px-2 py-1 border noir-border hover:bg-accent hover:text-[var(--bg-alt)] transition-colors uppercase tracking-widest">Tag</a>
+                        <a href="/?sort=due_date" class="text-[10px] font-bold px-2 py-1 border noir-border hover:bg-accent hover:text-[var(--bg-alt)] transition-colors uppercase tracking-widest">Due</a>
                         <a href="/?sort=created_at" class="text-[10px] font-bold px-2 py-1 border noir-border hover:bg-accent hover:text-[var(--bg-alt)] transition-colors uppercase tracking-widest">Newest</a>
                     </div>
                 </div>
                 
+                {% if user_tags %}
+                <div class="flex flex-wrap gap-2 pt-2">
+                    <a href="/" class="text-[9px] font-bold px-2 py-1 border {{ 'border-accent text-accent' if not request.args.get('tag') else 'noir-border opacity-60' }} uppercase tracking-widest hover:opacity-100 transition-opacity">All_Tasks</a>
+                    {% for tag in user_tags %}
+                        <a href="/?tag={{ tag.name }}" class="text-[9px] font-bold px-2 py-1 border {{ 'border-accent text-accent' if request.args.get('tag') == tag.name else 'noir-border opacity-60' }} uppercase tracking-widest hover:opacity-100 transition-opacity">#{{ tag.name }}</a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
                 <div id="task-list" class="space-y-3">
                     {% include "partials/task_list.html" %}
                 </div>
