@@ -49,9 +49,11 @@ def trmnl_feed():
         'tasks': [
             {
                 'title': t.title[:40] + ('...' if len(t.title) > 40 else ''),
-                'progress': f"{t.completed_pomodoros}/{t.estimated_pomodoros} POMS",
+                'description': t.description[:100] if t.description else None,
+                'progress': f"{t.completed_pomodoros}/{t.estimated_pomodoros}",
                 'priority': t.priority or 1,
-                'pinned': t.is_pinned_to_trmnl
+                'pinned': t.is_pinned_to_trmnl,
+                'tags': [tag.name for tag in t.tags]
             } for t in tasks
         ]
     })

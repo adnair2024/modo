@@ -1,77 +1,110 @@
-<!-- MODO // TRMNL HALF-VERTICAL PURE-STACK MARKUP -->
-<!-- Completely avoids side-by-side framework classes to prevent squishing -->
-
-<div class="layout t-p-6 t-bg-white t-text-black t-h-full t-w-full t-flex t-flex-col">
-  
-  <!-- Robust Header -->
-  <div class="t-border-b-4 t-border-black t-pb-3 t-mb-8">
-    <div class="t-flex t-justify-between t-items-baseline">
-      <h1 class="t-text-2xl t-font-black t-tracking-tighter">MODO_OS</h1>
-      <span class="t-text-[10px] t-font-bold t-opacity-40 uppercase">{{ subject }}</span>
+<div class="layout">
+  <!-- Top Bar: Quick Stats -->
+  <div class="title_bar">
+    <div class="flex items--center gap--small">
+      <img class="image" src="https://trmnl.com/images/plugins/trmnl--render.svg" style="filter: grayscale(1);">
+      <span class="title">MODO_OS // {{ "now" | date: "%H:%M %p %Z" }}</span>
     </div>
-    <div class="t-text-[10px] t-font-mono t-mt-1">{{ status }} // QUEUE_{{ tasks|length }}</div>
+    <div class="flex items--center gap--small">
+      <span class="label">NODE_{{ subject }}</span>
+      <span class="label label--underline">{{ status }}</span>
+    </div>
   </div>
 
-  <!-- Pure Vertical Stack -->
-  <div class="t-flex-grow">
-    {% for task in tasks %}
-      <div class="t-w-full t-mb-10 t-pb-4 t-border-b t-border-black t-border-opacity-20">
-        
-        <!-- Top Row: Index and Priority -->
-        <div class="t-flex t-justify-between t-items-center t-mb-2">
-          <div class="t-flex t-items-center t-gap-2">
-            <span class="t-text-[10px] t-font-black t-bg-black t-text-white t-px-2 t-py-0.5">
-              NODE_{{ forloop.index }}
-            </span>
+  <div class="columns">
+    <!-- Main Column: Priority Nodes -->
+    <div class="column">
+      <span class="label">Priority Tasks // Nodes</span>
+      <div class="list" data-list-limit="true">
+        {% for task in tasks %}
+        <div class="item t-mb-8">
+          <div class="meta">
+            <!-- Node Priority Icon -->
+            <span class="index">P{{ task.priority }}</span>
             {% if task.pinned %}
-              <span class="t-text-[10px] t-font-black t-border t-border-black t-px-1 uppercase">PINNED</span>
+              <span class="label label--small label--underline">PIN</span>
             {% endif %}
           </div>
-          <span class="t-text-[10px] t-font-mono t-font-bold">P{{ task.priority }}</span>
-        </div>
-
-        <!-- Task Title (Large but wrapping) -->
-        <div class="t-text-xl t-font-bold t-leading-snug t-break-words t-mb-3">
-          {{ task.title }}
-        </div>
-
-        <!-- Progress Row -->
-        <div class="t-flex t-justify-between t-items-center">
-          <div class="t-flex t-gap-1">
-            {% assign parts = task.progress | split: '/' %}
-            {% assign done = parts[0] | plus: 0 %}
-            {% assign total_part = parts[1] | split: ' ' %}
-            {% assign total = total_part[0] | plus: 0 %}
+          <div class="content">
+            <span class="title title--small">{{ task.title }}</span>
             
-            {% for i in (1..total) %}
-              {% if i <= done %}
-                <div class="t-w-4 t-h-4 t-bg-black"></div>
-              {% else %}
-                <div class="t-w-4 t-h-4 t-border t-border-black"></div>
-              {% endif %}
-            {% endfor %}
+            {% if task.description %}
+              <span class="description">{{ task.description | truncate: 60 }}</span>
+            {% endif %}
+
+            <!-- Tags Row -->
+            <div class="flex gap--xsmall t-mt-2">
+              {% for tag in task.tags %}
+                <span class="label label--small">{{ tag }}</span>
+              {% endfor %}
+            </div>
           </div>
-          <span class="t-text-xs t-font-bold t-opacity-60">{{ task.progress }}</span>
+          
+          <!-- Progress Stats on Right Side -->
+          <div class="meta meta--right">
+            <span class="label label--small">{{ task.progress }}</span>
+            <div class="flex gap--xsmall">
+              {% assign parts = task.progress | split: '/' %}
+              {% assign done = parts[0] | plus: 0 %}
+              {% assign total = parts[1] | plus: 0 %}
+              {% for i in (1..total) %}
+                <div class="t-w-2 t-h-2 {% if i <= done %}t-bg-black{% else %}t-border t-border-black{% endif %}"></div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+        
+        {% if tasks.size == 0 %}
+          <div class="item t-py-12 t-text-center">
+            <span class="title title--small t-opacity-40">BUFFER_EMPTY</span>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Right Sidebar: System Status & Legend -->
+    <div class="column column--one-third t-border-l t-border-black t-pl-4">
+      <span class="label">System Vitals</span>
+      <div class="list">
+        <div class="item">
+          <div class="content">
+            <span class="title title--small">MODO_CORE</span>
+            <span class="description">Tasks Loaded: {{ tasks.size }}</span>
+          </div>
+        </div>
+        <div class="item">
+          <div class="content">
+            <span class="title title--small">Priority Legend</span>
+            <span class="description">P3: High Priority</span>
+            <span class="description">P2: Medium</span>
+            <span class="description">P1: Standard</span>
+          </div>
         </div>
       </div>
-    {% endfor %}
 
-    {% if tasks|length == 0 %}
-      <div class="t-py-20 t-text-center t-opacity-20">
-        <div class="t-text-3xl t-font-black uppercase">Buffer_Empty</div>
+      <div class="t-mt-auto">
+        <span class="label">TRMNL_ID</span>
+        <span class="description t-font-mono">{{ "now" | date: "%Y%m%d%H%M" }}</span>
       </div>
-    {% endif %}
+    </div>
   </div>
-
-  <!-- Simplified System Bar -->
-  <div class="t-mt-auto t-pt-4 t-border-t-2 t-border-black t-flex t-justify-between t-items-center t-opacity-40">
-    <div class="t-text-[10px] t-font-mono uppercase tracking-widest">MODO_OS // TERMINAL</div>
-    <div class="t-text-[10px] t-font-mono uppercase">{{ "now" | date: "%s" | minus: 21600 | date: "%H:%M %p CST" }}</div>
-  </div>
-
 </div>
 
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-  .layout { font-family: 'Inter', sans-serif; }
+  /* Extra spacing for readability */
+  .t-mb-8 { margin-bottom: 32px; }
+  .t-mt-2 { margin-top: 8px; }
+  .t-mt-auto { margin-top: auto; }
+  .t-w-2 { width: 8px; }
+  .t-h-2 { height: 8px; }
+  .t-bg-black { background-color: black; }
+  .t-border { border-style: solid; border-width: 1px; }
+  .t-border-black { border-color: black; }
+  .t-border-l { border-left-width: 2px; }
+  .t-pl-4 { padding-left: 16px; }
+  .t-py-12 { padding-top: 48px; padding-bottom: 48px; }
+  .t-text-center { text-align: center; }
+  .t-opacity-40 { opacity: 0.4; }
+  .t-font-mono { font-family: monospace; }
 </style>
