@@ -1,6 +1,6 @@
 <div class="layout">
   <div class="columns">
-    <!-- Main Task List (70% width) -->
+    <!-- Main Task List (75% width for more space) -->
     <div class="column">
       <span class="label">Priority Nodes // Queue</span>
       <div class="list" data-list-limit="true">
@@ -9,41 +9,50 @@
           <div class="meta">
             <span class="index">P{{ task.priority }}</span>
           </div>
+          
           <div class="content">
+            <!-- Title and Description -->
             <span class="title title--small">{{ task.title }}</span>
             {% if task.description %}
               <span class="description">{{ task.description | truncate: 50 }}</span>
             {% endif %}
             
+            <!-- Progress Line (Separate from Title) -->
+            <div class="flex items--center gap--small t-mt-1">
+              <span class="label label--small label--underline">{{ task.progress }} POMS</span>
+              <div class="flex gap--xsmall">
+                {% assign parts = task.progress | split: '/' %}
+                {% assign done = parts[0] | plus: 0 %}
+                {% assign total = parts[1] | plus: 0 %}
+                {% for i in (1..total) %}
+                  <div class="dot {% if i <= done %}dot--filled{% endif %}"></div>
+                {% endfor %}
+              </div>
+            </div>
+
+            <!-- Tags Row (Clean and separate) -->
             <div class="flex gap--xsmall items--center t-mt-1">
               {% if task.pinned %}
-                <span class="label label--small label--underline">PINNED</span>
+                <span class="label label--small">PINNED</span>
               {% endif %}
               {% for tag in task.tags %}
-                <span class="label label--small">{{ tag }}</span>
-              {% endfor %}
-            </div>
-          </div>
-          
-          <!-- Progress Stats -->
-          <div class="meta meta--right">
-            <span class="label label--small">{{ task.progress }}</span>
-            <div class="flex gap--xsmall">
-              {% assign parts = task.progress | split: '/' %}
-              {% assign done = parts[0] | plus: 0 %}
-              {% assign total = parts[1] | plus: 0 %}
-              {% for i in (1..total) %}
-                <div class="dot {% if i <= done %}dot--filled{% endif %}"></div>
+                <span class="label label--small label--underline">{{ tag }}</span>
               {% endfor %}
             </div>
           </div>
         </div>
         {% endfor %}
+        
+        {% if tasks.size == 0 %}
+          <div class="item t-py-12 t-text-center">
+            <span class="title title--small t-opacity-40">BUFFER_EMPTY</span>
+          </div>
+        {% endif %}
       </div>
     </div>
 
-    <!-- Sidebar (30% width) -->
-    <div class="column column--one-third">
+    <!-- Sidebar (25% width) -->
+    <div class="column column--one-fourth">
       <span class="label">System Vitals</span>
       <div class="list">
         <div class="item">
@@ -53,12 +62,14 @@
             <span class="description">Tasks: {{ tasks.size }}</span>
           </div>
         </div>
-        <div class="item">
-          <div class="content">
-            <span class="title title--small">Legend</span>
-            <span class="description">P3: High</span>
-            <span class="description">P1: Standard</span>
-          </div>
+      </div>
+      
+      <div class="t-mt-auto">
+        <span class="label">Legend</span>
+        <div class="t-mt-1">
+          <div class="t-text-xs t-font-bold">P3: CRITICAL</div>
+          <div class="t-text-xs t-font-bold">P2: MEDIUM</div>
+          <div class="t-text-xs t-font-bold">P1: STANDARD</div>
         </div>
       </div>
     </div>
@@ -68,15 +79,27 @@
 <!-- Footer System Bar -->
 <div class="title_bar">
   <div class="flex items--center gap--small">
-    <img src="https://trmnl.com/images/plugins/trmnl--render.svg" style="width: 20px; height: 20px; filter: grayscale(1);">
+    <img src="https://trmnl.com/images/plugins/trmnl--render.svg" class="t-logo-img" style="width: 20px !important; height: 20px !important; filter: grayscale(1);">
     <span class="title">MODO_OS // {{ "now" | date: "%H:%M %p %Z" }}</span>
   </div>
 </div>
 
 <style>
   .t-mt-1 { margin-top: 4px; }
-  .dot { width: 6px; height: 6px; border: 1px solid black; }
+  .t-mt-auto { margin-top: auto; }
+  .t-py-12 { padding-top: 48px; padding-bottom: 48px; }
+  .t-text-center { text-align: center; }
+  .t-opacity-40 { opacity: 0.4; }
+  .t-text-xs { font-size: 10px; }
+  .t-font-bold { font-weight: bold; }
+  .t-logo-img { width: 20px !important; height: 20px !important; display: block; }
+  
+  .dot { width: 8px; height: 8px; border: 1px solid black; }
   .dot--filled { background-color: black; }
-  /* Ensure column split is visible */
-  .column--one-third { border-left: 1px solid #eee; padding-left: 15px; }
+  
+  /* Ensure column split is visible but not overwhelming */
+  .column--one-fourth { border-left: 1px solid #ddd; padding-left: 10px; }
+  
+  /* Prevent labels from squashing */
+  .label--small { white-space: nowrap; }
 </style>
