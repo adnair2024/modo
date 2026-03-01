@@ -9,6 +9,65 @@ from services.achievement_service import check_achievements
 from extensions import csrf
 import os
 
+@api_bp.route('/trmnl', methods=['GET'])
+@csrf.exempt
+def trmnl_feed():
+    # Authentication check
+    auth_header = request.headers.get('Authorization')
+    expected_token = os.environ.get('TRMNL_API_KEY')
+    
+    # Check Bearer token or fallback to query param api_key
+    authenticated = False
+    if auth_header and auth_header.startswith('Bearer '):
+        if auth_header.split(' ')[1] == expected_token:
+            authenticated = True
+    elif request.args.get('api_key') == expected_token:
+        authenticated = True
+
+    if not authenticated:
+        return jsonify({'error': 'UNAUTHORIZED'}), 401
+
+    # Fetch tasks for the primary admin (Lord Silver / lost)
+    user = User.query.filter_by(is_admin=True).first()
+    if not user:
+        return jsonify({'error': 'SUBJECT_NOT_FOUND'}), 404
+
+    # Update last poll time
+    user.last_trmnl_poll = datetime.now(timezone.utc)
+    db.session.commit()
+
+    # Data Extraction: Prioritize Pinned Tasks, then most recent incomplete
+    tasks = (Task.query.filter_by(user_id=user.id)
+             .filter(Task.status != 'done')
+             .order_by(Task.is_pinned_to_trmnl.desc(), Task.created_at.desc())
+             .limit(5).all())
+
+    # Return high-contrast minimal JSON for TRMNL
+    return jsonify({
+        'status': 'OPERATIONAL',
+        'subject': user.username.upper(),
+        'tasks': [
+            {
+                'title': t.title[:40] + ('...' if len(t.title) > 40 else ''),
+                'progress': f"{t.completed_pomodoros}/{t.estimated_pomodoros} POMS",
+                'priority': 'HIGH' if t.priority == 3 else 'MED' if t.priority == 2 else 'LOW',
+                'pinned': t.is_pinned_to_trmnl
+            } for t in tasks
+        ]
+    })
+
+@api_bp.route('/tasks/<int:task_id>/toggle_trmnl', methods=['POST'])
+@login_required
+def toggle_trmnl_pin(task_id):
+    task = db.session.get(Task, task_id)
+    if not task or task.user_id != current_user.id:
+        abort(403)
+    
+    task.is_pinned_to_trmnl = not task.is_pinned_to_trmnl
+    db.session.commit()
+    
+    return jsonify({'status': 'success', 'is_pinned': task.is_pinned_to_trmnl})
+
 @api_bp.route('/log_session', methods=['POST'])
 @login_required
 def log_session():

@@ -93,6 +93,16 @@ Follow these steps to get a local copy of **Modo** up and running.
 6.  **Access the app:**
     Open your browser and navigate to `http://127.0.0.1:5000`.
 
+### 6. TRMNL Device Integration (E-Ink)
+Modo supports high-contrast task syncing for the **TRMNL** e-ink display via a private plugin.
+- **Endpoint:** `/api/trmnl`
+- **Authentication:** Bearer Token (`TRMNL_API_KEY`)
+- **Display Data:**
+  - **Subject:** Current user's identity (e.g., "LOST").
+  - **Task Queue:** The top 5 incomplete tasks.
+  - **Metrics:** Pomodoro progress (e.g., "2/4 POMS") and priority level (LOW/MED/HIGH) for each task.
+  - **Optimization:** Text is truncated to 40 characters for optimal e-ink legibility.
+
 ---
 
 ## 📂 Project Structure

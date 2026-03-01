@@ -48,6 +48,7 @@ class User(UserMixin, db.Model):
     is_admin = db.Column(db.Boolean, default=False)
     is_banned = db.Column(db.Boolean, default=False)
     must_logout = db.Column(db.Boolean, default=False)
+    last_trmnl_poll = db.Column(db.DateTime, nullable=True)
 
     notifications = db.relationship('Notification', backref='user', lazy=True, cascade="all, delete-orphan")
 
@@ -124,6 +125,7 @@ class Task(db.Model):
     completed_pomodoros = db.Column(db.Integer, default=0)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     section_id = db.Column(db.Integer, db.ForeignKey('project_section.id'), nullable=True)
+    is_pinned_to_trmnl = db.Column(db.Boolean, default=False)
     subtasks = db.relationship('Subtask', backref='parent', lazy=True, cascade="all, delete-orphan")
     tags = db.relationship('Tag', secondary=task_tags, backref=db.backref('tasks', lazy='dynamic'))
 

@@ -24,6 +24,16 @@
             {% if task.priority > 1 %}
                 <span class="text-[10px] font-bold px-2 py-0.5 border border-accent text-accent uppercase tracking-widest">P_{{ task.priority }}</span>
             {% endif %}
+            
+            <!-- TRMNL Sync Toggle -->
+            <button hx-post="{{ url_for('api.toggle_trmnl_pin', task_id=task.id) }}" 
+                    hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}'
+                    hx-swap="none"
+                    @click="$el.classList.toggle('bg-accent/20'); $el.classList.toggle('text-accent'); $el.classList.toggle('border-accent'); $el.classList.toggle('opacity-30')"
+                    class="text-[9px] font-bold px-1.5 py-0.5 border uppercase tracking-tighter transition-all {{ 'border-accent bg-accent/20 text-accent' if task.is_pinned_to_trmnl else 'noir-border opacity-30 hover:opacity-100' }}"
+                    title="Toggle TRMNL Sync">
+                TRMNL
+            </button>
         </div>
 
         {% if task.description %}

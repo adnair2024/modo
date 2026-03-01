@@ -188,6 +188,24 @@
                     <span class="text-base font-bold tracking-widest">{{ label }}</span>
                 </a>
                 {% endfor %}
+                
+                <!-- TRMNL Telemetry Widget -->
+                <div class="mt-4 p-3 border noir-border border-opacity-20 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[9px] font-bold opacity-40 uppercase tracking-widest">TRMNL_NODE</span>
+                        <div class="w-1.5 h-1.5 {{ 'bg-green-500 animate-pulse' if current_user.last_trmnl_poll else 'bg-red-600' }}"></div>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-[10px] font-bold uppercase truncate">
+                            {% if current_user.last_trmnl_poll %}
+                                LAST_SYNC: <span class="text-accent utc-time" data-ts="{{ current_user.last_trmnl_poll.isoformat() }}">{{ current_user.last_trmnl_poll.strftime('%H:%M') }}</span>
+                            {% else %}
+                                STATUS: <span class="opacity-40">OFFLINE</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+
                 {% if current_user.is_admin %}
                 <a href="{{ url_for('main.admin') }}" class="flex items-center gap-3 p-3 text-accent hover:bg-accent hover:text-[var(--bg-main)] transition-colors group" title="ADMIN">
                     <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A3.323 3.323 0 0010.605 4.5c-1.107 0-2.005.898-2.005 2.005 0 1.107.898 2.005 2.005 2.005.344 0 .667-.087.95-.239l.527.527a2.5 2.5 0 103.536 3.536l.527.527a3.323 3.323 0 00-.239.95c0 1.107.898 2.005 2.005 2.005 1.107 0 2.005-.898 2.005-2.005-2.005-.344 0-.667.087-.95.239l-.527-.527a2.5 2.5 0 10-3.536-3.536l-.527-.527z"></path></svg>
