@@ -1,0 +1,77 @@
+<!-- MODO // TRMNL HALF-VERTICAL PURE-STACK MARKUP -->
+<!-- Completely avoids side-by-side framework classes to prevent squishing -->
+
+<div class="layout t-p-6 t-bg-white t-text-black t-h-full t-w-full t-flex t-flex-col">
+  
+  <!-- Robust Header -->
+  <div class="t-border-b-4 t-border-black t-pb-3 t-mb-8">
+    <div class="t-flex t-justify-between t-items-baseline">
+      <h1 class="t-text-2xl t-font-black t-tracking-tighter">MODO_OS</h1>
+      <span class="t-text-[10px] t-font-bold t-opacity-40 uppercase">{{ subject }}</span>
+    </div>
+    <div class="t-text-[10px] t-font-mono t-mt-1">{{ status }} // QUEUE_{{ tasks|length }}</div>
+  </div>
+
+  <!-- Pure Vertical Stack -->
+  <div class="t-flex-grow">
+    {% for task in tasks %}
+      <div class="t-w-full t-mb-10 t-pb-4 t-border-b t-border-black t-border-opacity-20">
+        
+        <!-- Top Row: Index and Priority -->
+        <div class="t-flex t-justify-between t-items-center t-mb-2">
+          <div class="t-flex t-items-center t-gap-2">
+            <span class="t-text-[10px] t-font-black t-bg-black t-text-white t-px-2 t-py-0.5">
+              NODE_{{ forloop.index }}
+            </span>
+            {% if task.pinned %}
+              <span class="t-text-[10px] t-font-black t-border t-border-black t-px-1 uppercase">PINNED</span>
+            {% endif %}
+          </div>
+          <span class="t-text-[10px] t-font-mono t-font-bold">P{{ task.priority }}</span>
+        </div>
+
+        <!-- Task Title (Large but wrapping) -->
+        <div class="t-text-xl t-font-bold t-leading-snug t-break-words t-mb-3">
+          {{ task.title }}
+        </div>
+
+        <!-- Progress Row -->
+        <div class="t-flex t-justify-between t-items-center">
+          <div class="t-flex t-gap-1">
+            {% assign parts = task.progress | split: '/' %}
+            {% assign done = parts[0] | plus: 0 %}
+            {% assign total_part = parts[1] | split: ' ' %}
+            {% assign total = total_part[0] | plus: 0 %}
+            
+            {% for i in (1..total) %}
+              {% if i <= done %}
+                <div class="t-w-4 t-h-4 t-bg-black"></div>
+              {% else %}
+                <div class="t-w-4 t-h-4 t-border t-border-black"></div>
+              {% endif %}
+            {% endfor %}
+          </div>
+          <span class="t-text-xs t-font-bold t-opacity-60">{{ task.progress }}</span>
+        </div>
+      </div>
+    {% endfor %}
+
+    {% if tasks|length == 0 %}
+      <div class="t-py-20 t-text-center t-opacity-20">
+        <div class="t-text-3xl t-font-black uppercase">Buffer_Empty</div>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Simplified System Bar -->
+  <div class="t-mt-auto t-pt-4 t-border-t-2 t-border-black t-flex t-justify-between t-items-center t-opacity-40">
+    <div class="t-text-[10px] t-font-mono uppercase tracking-widest">MODO_OS // TERMINAL</div>
+    <div class="t-text-[10px] t-font-mono uppercase">{{ "now" | date: "%s" | minus: 21600 | date: "%H:%M %p CST" }}</div>
+  </div>
+
+</div>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+  .layout { font-family: 'Inter', sans-serif; }
+</style>

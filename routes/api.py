@@ -40,7 +40,7 @@ def trmnl_feed():
     tasks = (Task.query.filter_by(user_id=user.id)
              .filter(Task.status != 'done')
              .order_by(Task.is_pinned_to_trmnl.desc(), Task.created_at.desc())
-             .limit(5).all())
+             .limit(10).all())
 
     # Return high-contrast minimal JSON for TRMNL
     return jsonify({
@@ -50,7 +50,7 @@ def trmnl_feed():
             {
                 'title': t.title[:40] + ('...' if len(t.title) > 40 else ''),
                 'progress': f"{t.completed_pomodoros}/{t.estimated_pomodoros} POMS",
-                'priority': 'HIGH' if t.priority == 3 else 'MED' if t.priority == 2 else 'LOW',
+                'priority': t.priority or 1,
                 'pinned': t.is_pinned_to_trmnl
             } for t in tasks
         ]
