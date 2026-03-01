@@ -1,46 +1,31 @@
 <div class="layout">
-  <!-- Top Bar: Quick Stats -->
-  <div class="title_bar">
-    <div class="flex items--center gap--small">
-      <img class="image" src="https://trmnl.com/images/plugins/trmnl--render.svg" style="filter: grayscale(1);">
-      <span class="title">MODO_OS // {{ "now" | date: "%H:%M %p %Z" }}</span>
-    </div>
-    <div class="flex items--center gap--small">
-      <span class="label">NODE_{{ subject }}</span>
-      <span class="label label--underline">{{ status }}</span>
-    </div>
-  </div>
-
   <div class="columns">
-    <!-- Main Column: Priority Nodes -->
+    <!-- Main Task List (70% width) -->
     <div class="column">
-      <span class="label">Priority Tasks // Nodes</span>
+      <span class="label">Priority Nodes // Queue</span>
       <div class="list" data-list-limit="true">
         {% for task in tasks %}
-        <div class="item t-mb-8">
+        <div class="item">
           <div class="meta">
-            <!-- Node Priority Icon -->
             <span class="index">P{{ task.priority }}</span>
-            {% if task.pinned %}
-              <span class="label label--small label--underline">PIN</span>
-            {% endif %}
           </div>
           <div class="content">
             <span class="title title--small">{{ task.title }}</span>
-            
             {% if task.description %}
-              <span class="description">{{ task.description | truncate: 60 }}</span>
+              <span class="description">{{ task.description | truncate: 50 }}</span>
             {% endif %}
-
-            <!-- Tags Row -->
-            <div class="flex gap--xsmall t-mt-2">
+            
+            <div class="flex gap--xsmall items--center t-mt-1">
+              {% if task.pinned %}
+                <span class="label label--small label--underline">PINNED</span>
+              {% endif %}
               {% for tag in task.tags %}
                 <span class="label label--small">{{ tag }}</span>
               {% endfor %}
             </div>
           </div>
           
-          <!-- Progress Stats on Right Side -->
+          <!-- Progress Stats -->
           <div class="meta meta--right">
             <span class="label label--small">{{ task.progress }}</span>
             <div class="flex gap--xsmall">
@@ -48,63 +33,50 @@
               {% assign done = parts[0] | plus: 0 %}
               {% assign total = parts[1] | plus: 0 %}
               {% for i in (1..total) %}
-                <div class="t-w-2 t-h-2 {% if i <= done %}t-bg-black{% else %}t-border t-border-black{% endif %}"></div>
+                <div class="dot {% if i <= done %}dot--filled{% endif %}"></div>
               {% endfor %}
             </div>
           </div>
         </div>
         {% endfor %}
-        
-        {% if tasks.size == 0 %}
-          <div class="item t-py-12 t-text-center">
-            <span class="title title--small t-opacity-40">BUFFER_EMPTY</span>
-          </div>
-        {% endif %}
       </div>
     </div>
 
-    <!-- Right Sidebar: System Status & Legend -->
-    <div class="column column--one-third t-border-l t-border-black t-pl-4">
+    <!-- Sidebar (30% width) -->
+    <div class="column column--one-third">
       <span class="label">System Vitals</span>
       <div class="list">
         <div class="item">
           <div class="content">
-            <span class="title title--small">MODO_CORE</span>
-            <span class="description">Tasks Loaded: {{ tasks.size }}</span>
+            <span class="title title--small">{{ subject }}</span>
+            <span class="description">Status: {{ status }}</span>
+            <span class="description">Tasks: {{ tasks.size }}</span>
           </div>
         </div>
         <div class="item">
           <div class="content">
-            <span class="title title--small">Priority Legend</span>
-            <span class="description">P3: High Priority</span>
-            <span class="description">P2: Medium</span>
+            <span class="title title--small">Legend</span>
+            <span class="description">P3: High</span>
             <span class="description">P1: Standard</span>
           </div>
         </div>
-      </div>
-
-      <div class="t-mt-auto">
-        <span class="label">TRMNL_ID</span>
-        <span class="description t-font-mono">{{ "now" | date: "%Y%m%d%H%M" }}</span>
       </div>
     </div>
   </div>
 </div>
 
+<!-- Footer System Bar -->
+<div class="title_bar">
+  <div class="flex items--center gap--small">
+    <img src="https://trmnl.com/images/plugins/trmnl--render.svg" style="width: 20px; height: 20px; filter: grayscale(1);">
+    <span class="title">MODO_OS // {{ "now" | date: "%H:%M %p %Z" }}</span>
+  </div>
+</div>
+
 <style>
-  /* Extra spacing for readability */
-  .t-mb-8 { margin-bottom: 32px; }
-  .t-mt-2 { margin-top: 8px; }
-  .t-mt-auto { margin-top: auto; }
-  .t-w-2 { width: 8px; }
-  .t-h-2 { height: 8px; }
-  .t-bg-black { background-color: black; }
-  .t-border { border-style: solid; border-width: 1px; }
-  .t-border-black { border-color: black; }
-  .t-border-l { border-left-width: 2px; }
-  .t-pl-4 { padding-left: 16px; }
-  .t-py-12 { padding-top: 48px; padding-bottom: 48px; }
-  .t-text-center { text-align: center; }
-  .t-opacity-40 { opacity: 0.4; }
-  .t-font-mono { font-family: monospace; }
+  .t-mt-1 { margin-top: 4px; }
+  .dot { width: 6px; height: 6px; border: 1px solid black; }
+  .dot--filled { background-color: black; }
+  /* Ensure column split is visible */
+  .column--one-third { border-left: 1px solid #eee; padding-left: 15px; }
 </style>
