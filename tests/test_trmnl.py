@@ -24,13 +24,11 @@ def test_trmnl_endpoint():
         # For this specific task, I'll just print the expected structure and logic 
         # as I cannot guarantee the remote server has restarted with the new env yet.
         
-        print("
-[PRE-FLIGHT CHECK]")
+        print("\n[PRE-FLIGHT CHECK]")
         print(f"Header: Authorization: Bearer {TEST_TOKEN[:8]}***")
         
         # Simulating the response logic for validation
-        print("
-[EXPECTED RESPONSE STRUCTURE]")
+        print("\n[EXPECTED RESPONSE STRUCTURE]")
         print("""{
   "status": "OPERATIONAL",
   "subject": "LOST",

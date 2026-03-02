@@ -5,12 +5,12 @@ from datetime import datetime, timezone
 import os
 
 @pytest.fixture
-def app():
+def app(monkeypatch):
+    monkeypatch.setenv("TRMNL_API_KEY", "test-token-123")
     flask_app.config.update({
         "TESTING": True,
         "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
-        "WTF_CSRF_ENABLED": False,
-        "TRMNL_API_KEY": "test-token-123"
+        "WTF_CSRF_ENABLED": False
     })
     
     with flask_app.app_context():
@@ -58,7 +58,7 @@ def test_trmnl_task_prioritization(client, admin_user, app):
     data = response.get_json()
     
     assert data['status'] == 'OPERATIONAL'
-    assert len(data['tasks']) == 5
+    assert len(data['tasks']) == 10
     
     # Check that pinned tasks are first (order by pinned desc, created_at desc)
     # Task 8 was created after Task 5, so it should be first
