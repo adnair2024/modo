@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import func
 from . import api_bp
-from models import db, FocusSession, StudyRoom, Task, Notification, User
+from models import db, FocusSession, StudyRoom, Task, Notification, User, Event
 from utils import create_notification, check_event_notifications, check_task_access
 from services.achievement_service import check_achievements
 from extensions import csrf
@@ -42,10 +42,35 @@ def trmnl_feed():
              .order_by(Task.is_pinned_to_trmnl.desc(), Task.created_at.desc())
              .limit(10).all())
 
+    # Fetch upcoming events for next 3 days
+    from utils import expand_events
+    now = datetime.now(timezone.utc)
+    today = now.date()
+    end_date = today + timedelta(days=3)
+    user_events = Event.query.filter_by(user_id=user.id).all()
+    expanded = expand_events(user_events, today, end_date)
+    
+    # Filter to future occurrences and sort
+    upcoming_appointments = []
+    for e in expanded:
+        occ_time = e.start_time.replace(tzinfo=timezone.utc) if e.start_time.tzinfo is None else e.start_time
+        if occ_time >= now and not e.is_completed:
+            upcoming_appointments.append(e)
+    
+    upcoming_appointments.sort(key=lambda x: x.start_time)
+
     # Return high-contrast minimal JSON for TRMNL
     return jsonify({
         'status': 'OPERATIONAL',
         'subject': user.username.upper(),
+        'appointments': [
+            {
+                'title': a.title[:30],
+                'time': a.start_time.strftime('%H:%M'),
+                'date': a.start_time.strftime('%m/%d'),
+                'is_today': a.start_time.date() == today
+            } for a in upcoming_appointments[:5]
+        ],
         'tasks': [
             {
                 'title': t.title[:40] + ('...' if len(t.title) > 40 else ''),
