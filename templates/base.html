@@ -26,10 +26,17 @@
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', resolveTheme);
     </script>
     <script>
-        
+        function getBodyData() {
+            if (window.Alpine && window.Alpine.$data) return window.Alpine.$data(document.body);
+            if (document.body.__x && document.body.__x.$data) return document.body.__x.$data;
+            if (document.body._x_dataStack) return document.body._x_dataStack[0];
+            return null;
+        }
+
         window.modoAlert = (msg, title = 'SYSTEM_ALERT') => {
             return new Promise(resolve => {
-                const bodyData = document.body.__x.$data;
+                const bodyData = getBodyData();
+                if (!bodyData) return resolve(false);
                 bodyData.systemModal.title = title;
                 bodyData.systemModal.msg = msg;
                 bodyData.systemModal.isConfirm = false;
@@ -40,7 +47,8 @@
 
         window.modoConfirm = (msg, title = 'SYSTEM_CONFIRM') => {
             return new Promise(resolve => {
-                const bodyData = document.body.__x.$data;
+                const bodyData = getBodyData();
+                if (!bodyData) return resolve(false);
                 bodyData.systemModal.title = title;
                 bodyData.systemModal.msg = msg;
                 bodyData.systemModal.isConfirm = true;

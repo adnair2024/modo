@@ -35,13 +35,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const TAB_ID = Math.random().toString(36).substring(2, 9);
     let isMaster = false;
 
-    function getBodyData() {
-        if (window.Alpine && window.Alpine.$data) return window.Alpine.$data(document.body);
-        if (document.body.__x && document.body.__x.$data) return document.body.__x.$data;
-        if (document.body._x_dataStack) return document.body._x_dataStack[0];
-        return null;
-    }
-
     function init() {
         if (settings.serverTime) clockOffset = Date.now() - settings.serverTime;
         loadState();
