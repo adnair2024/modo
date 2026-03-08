@@ -1,6 +1,6 @@
 from flask import render_template, request, redirect, url_for, abort
 from flask_login import login_required, current_user
-from datetime import datetime
+from datetime import datetime, timezone
 import calendar
 from . import schedule_bp
 from models import db, Event, Notification
@@ -39,8 +39,8 @@ def add_event():
     
     if title and start_time_str and end_time_str:
         try:
-            start_time = datetime.strptime(start_time_str, '%Y-%m-%dT%H:%M')
-            end_time = datetime.strptime(end_time_str, '%Y-%m-%dT%H:%M')
+            start_time = datetime.strptime(start_time_str, '%Y-%m-%dT%H:%M').replace(tzinfo=timezone.utc)
+            end_time = datetime.strptime(end_time_str, '%Y-%m-%dT%H:%M').replace(tzinfo=timezone.utc)
             
             recurrence_days_str = ",".join(recurrence_days_list) if recurrence_days_list else None
 
@@ -87,13 +87,13 @@ def update_event(event_id):
 
     if start_time_str:
         try:
-            event.start_time = datetime.strptime(start_time_str, '%Y-%m-%dT%H:%M')
+            event.start_time = datetime.strptime(start_time_str, '%Y-%m-%dT%H:%M').replace(tzinfo=timezone.utc)
         except ValueError:
             pass
             
     if end_time_str:
         try:
-            event.end_time = datetime.strptime(end_time_str, '%Y-%m-%dT%H:%M')
+            event.end_time = datetime.strptime(end_time_str, '%Y-%m-%dT%H:%M').replace(tzinfo=timezone.utc)
         except ValueError:
             pass
 

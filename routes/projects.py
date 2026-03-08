@@ -1,6 +1,6 @@
 from flask import render_template, request, jsonify, abort, redirect, url_for
 from flask_login import login_required, current_user
-from datetime import datetime
+from datetime import datetime, timezone
 from . import projects_bp
 from models import db, Project, ProjectMember, ProjectSection, Task, ProjectInvite, User
 from utils import log_project_action, get_username_html, create_notification
@@ -79,7 +79,7 @@ def add_project_task(section_id):
     due_date = None
     if due_date_str:
         try:
-            due_date = datetime.strptime(due_date_str, '%Y-%m-%dT%H:%M')
+            due_date = datetime.strptime(due_date_str, '%Y-%m-%dT%H:%M').replace(tzinfo=timezone.utc)
         except ValueError:
             pass
 

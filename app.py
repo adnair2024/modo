@@ -146,7 +146,7 @@ def inject_active_sync():
     return {
         'active_sync_room': active_room,
         'amoled_unlocked': current_user.total_focus_hours >= 10,
-        'now': datetime.now(timezone.utc)
+        'now': datetime.now(timezone.utc).replace(tzinfo=None)
     }
 
 @app.route('/health')

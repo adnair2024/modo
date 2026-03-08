@@ -63,6 +63,25 @@
           </div>
         </div>
       </div>
+
+      <span class="label t-mt-1">Appointments</span>
+      <div class="list">
+        {% for appt in appointments %}
+        <div class="item">
+          <div class="content">
+            <span class="title title--small">{{ appt.title }}</span>
+            <span class="description">{% if appt.is_today %}TODAY{% else %}{{ appt.date }}{% endif %} @ {{ appt.time }}</span>
+          </div>
+        </div>
+        {% endfor %}
+        {% if appointments.size == 0 %}
+        <div class="item">
+          <div class="content">
+            <span class="description">NO_PLANNED_EVENTS</span>
+          </div>
+        </div>
+        {% endif %}
+      </div>
       
       <div class="t-mt-auto">
         <span class="label">Legend</span>
@@ -80,7 +99,9 @@
 <div class="title_bar">
   <div class="flex items--center gap--small">
     <img src="https://trmnl.com/images/plugins/trmnl--render.svg" class="t-logo-img" style="width: 20px !important; height: 20px !important; filter: grayscale(1);">
-    <span class="title">MODO_OS // {{ "now" | date: "%H:%M %p %Z" }}</span>
+    {% assign seconds_offset = 6 | times: 3600 %}
+    {% assign local_time = "now" | date: "%s" | minus: seconds_offset %}
+    <span class="title">MODO_OS // {{ local_time | date: "%H:%M %p" }} CST</span>
   </div>
 </div>
 
