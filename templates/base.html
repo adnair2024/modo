@@ -114,7 +114,14 @@
         }
     </style>
 </head>
-<body class="transition-colors duration-0" x-data="{ mobileSidebarOpen: false, desktopSidebarOpen: true, endSessionModal: { open: false, mins: 0, taskId: null }, systemModal: { open: false, title: '', msg: '', isConfirm: false, resolve: null } }">
+<body class="transition-colors duration-0" 
+      x-data="{ 
+        mobileSidebarOpen: false, 
+        desktopSidebarOpen: localStorage.getItem('desktopSidebarOpen') === null ? true : localStorage.getItem('desktopSidebarOpen') === 'true', 
+        endSessionModal: { open: false, mins: 0, taskId: null }, 
+        systemModal: { open: false, title: '', msg: '', isConfirm: false, resolve: null } 
+      }"
+      x-init="$watch('desktopSidebarOpen', value => localStorage.setItem('desktopSidebarOpen', value))">
     <div class="flex h-screen overflow-hidden" x-data="{ 
         toasts: [],
         addToast(msg, type = 'info') {
