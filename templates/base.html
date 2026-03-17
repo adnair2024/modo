@@ -2,9 +2,16 @@
 <html lang="en" data-theme="{{ current_user.theme_preference if (current_user.is_authenticated and current_user.theme_preference) else 'light' }}">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>MODO // TERMINAL</title>
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    
+    <!-- iOS PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MODO">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='favicon.svg') }}">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -173,13 +180,25 @@
         </div>
 
         {% if current_user.is_authenticated %}
+        <!-- Sidebar Overlay (Mobile) -->
+        <div x-show="desktopSidebarOpen" 
+             @click="desktopSidebarOpen = false"
+             class="fixed inset-0 bg-black/50 z-[45] md:hidden"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-300"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             x-cloak></div>
+
         <!-- Sidebar: Digital Noir / Terminal Style -->
         <aside :class="desktopSidebarOpen ? 'translate-x-0 w-64 opacity-100' : '-translate-x-full w-0 opacity-0'" 
-               class="fixed inset-y-0 left-0 z-50 border-r noir-border bg-[var(--bg-main)] transition-all duration-300 flex flex-col h-screen overflow-y-auto overflow-x-hidden md:static">
+               class="fixed inset-y-0 left-0 z-50 border-r noir-border bg-[var(--bg-main)] transition-all duration-300 flex flex-col h-screen overflow-y-auto overflow-x-hidden md:static safe-pl">
             
-            <div class="h-16 flex items-center justify-between px-6 border-b noir-border text-white dark:text-black bg-black dark:bg-white">
+            <div class="h-16 flex items-center justify-between px-6 border-b noir-border text-white dark:text-black bg-black dark:bg-white safe-pt">
                 <span class="text-2xl font-bold tracking-tighter mono-display">MODO_OS</span>
-                <button @click="desktopSidebarOpen = false" class="hidden md:block hover:text-accent">
+                <button @click="desktopSidebarOpen = false" class="hover:text-accent">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path></svg>
                 </button>
             </div>
@@ -247,7 +266,7 @@
         <!-- Main Content Canvas -->
         <div class="flex-1 flex flex-col overflow-hidden h-screen bg-[var(--bg-main)] transition-all duration-300">
             {% if current_user.is_authenticated %}
-            <header class="h-16 flex items-center justify-between px-6 border-b noir-border bg-[var(--bg-main)] z-40">
+            <header class="h-16 flex items-center justify-between px-6 border-b noir-border bg-[var(--bg-main)] z-40 safe-pt safe-pl safe-pr">
                 <div class="flex items-center gap-4">
                     <button @click="desktopSidebarOpen = !desktopSidebarOpen" 
                             x-show="!desktopSidebarOpen"
@@ -293,7 +312,7 @@
             </header>
             {% endif %}
 
-            <main class="flex-1 overflow-y-auto p-8 custom-scrollbar">
+            <main class="flex-1 overflow-y-auto p-8 custom-scrollbar safe-pb safe-pl safe-pr has-bottom-nav">
                 {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
                         {% for category, message in messages %}
@@ -308,6 +327,26 @@
             </main>
 
             {% if current_user.is_authenticated %}
+            <!-- Mobile Bottom Nav -->
+            <nav class="bottom-nav md:hidden">
+                <a href="{{ url_for('main.index') }}" class="bottom-nav-item {{ 'active' if request.endpoint == 'main.index' }}">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                    <span class="text-[8px] font-bold uppercase tracking-tighter">CMD</span>
+                </a>
+                <a href="{{ url_for('main.timer') }}" class="bottom-nav-item {{ 'active' if request.endpoint == 'main.timer' }}">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <span class="text-[8px] font-bold uppercase tracking-tighter">FOCUS</span>
+                </a>
+                <a href="{{ url_for('schedule.schedule') }}" class="bottom-nav-item {{ 'active' if request.endpoint == 'schedule.schedule' }}">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    <span class="text-[8px] font-bold uppercase tracking-tighter">PLAN</span>
+                </a>
+                <button @click="desktopSidebarOpen = true" class="bottom-nav-item">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    <span class="text-[8px] font-bold uppercase tracking-tighter">MORE</span>
+                </button>
+            </nav>
+
             <!-- Global Timer: MOVED TO BOTTOM RIGHT -->
             <div id="global-timer-container" 
                  x-data="{ 
@@ -364,7 +403,7 @@
                  @mousemove.window="doDrag($event)"
                  @mouseup.window="stopDrag()"
                  :style="`left: ${x}px; top: ${y}px; cursor: ${isDragging ? 'grabbing' : 'default'}`"
-                 class="fixed noir-border bg-[var(--bg-alt)] shadow-2xl z-50 overflow-hidden"
+                 class="fixed noir-border bg-[var(--bg-alt)] shadow-2xl z-50 overflow-hidden safe-mb safe-mr"
                  :class="minimized ? 'w-12 h-12 rounded-full cursor-grab' : 'p-4 flex flex-col gap-4 min-w-[300px]'">
                 
                 <!-- Minimized View -->
