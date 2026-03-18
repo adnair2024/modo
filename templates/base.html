@@ -215,11 +215,13 @@
         <aside :class="desktopSidebarOpen ? 'translate-x-0 w-64 opacity-100' : '-translate-x-full w-0 opacity-0'" 
                class="fixed inset-y-0 left-0 z-50 border-r noir-border bg-[var(--bg-main)] transition-all duration-300 flex flex-col h-screen overflow-y-auto overflow-x-hidden md:static safe-pl">
             
-            <div class="h-16 flex items-center justify-between px-6 border-b noir-border text-white dark:text-black bg-black dark:bg-white safe-pt">
-                <span class="text-2xl font-bold tracking-tighter mono-display">MODO_OS</span>
-                <button @click="desktopSidebarOpen = false" class="hover:text-accent">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path></svg>
-                </button>
+            <div class="border-b noir-border text-white dark:text-black bg-black dark:bg-white safe-pt">
+                <div class="h-16 flex items-center justify-between px-6">
+                    <span class="text-2xl font-bold tracking-tighter mono-display">MODO_OS</span>
+                    <button @click="desktopSidebarOpen = false" class="hover:text-accent">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path></svg>
+                    </button>
+                </div>
             </div>
 
             <nav class="mt-4 flex-1 px-4 space-y-1">
@@ -285,48 +287,50 @@
         <!-- Main Content Canvas -->
         <div class="flex-1 flex flex-col overflow-hidden h-screen bg-[var(--bg-main)] transition-all duration-300">
             {% if current_user.is_authenticated %}
-            <header class="h-16 flex items-center justify-between px-6 border-b noir-border bg-[var(--bg-main)] z-40 safe-pt safe-pl safe-pr">
-                <div class="flex items-center gap-4">
-                    <button @click="desktopSidebarOpen = !desktopSidebarOpen" 
-                            x-show="!desktopSidebarOpen"
-                            x-transition:enter="transition ease-out duration-200"
-                            x-transition:enter-start="opacity-0 -translate-x-4"
-                            x-transition:enter-end="opacity-100 translate-x-0"
-                            class="hover:text-accent transition-transform rotate-180">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path></svg>
-                    </button>
-                </div>
-
-                <div class="flex items-center gap-6">
-                    <div class="relative" x-data="{ notifOpen: false, unreadCount: 0 }" 
-                         x-init="fetch('/api/notifications').then(r => r.json()).then(data => unreadCount = data.length)"
-                         @unread-count-update.window="unreadCount = $event.detail">
-                        <button @click="notifOpen = !notifOpen" 
-                                hx-get="/api/notifications" 
-                                hx-target="#notif-content"
-                                :class="unreadCount > 0 ? 'animate-pulse-accent' : ''" class="relative hover:text-accent transition-colors flex items-center gap-2">
-                            <span class="text-xs font-bold tracking-widest uppercase">ALERTS</span>
-                            <span class="text-[10px] font-bold px-1.5 py-0.5 border border-accent bg-accent/10 text-accent" x-text="unreadCount">0</span>
+            <header class="border-b noir-border bg-[var(--bg-main)] z-40 safe-pt safe-pl safe-pr">
+                <div class="h-16 flex items-center justify-between px-6">
+                    <div class="flex items-center gap-4">
+                        <button @click="desktopSidebarOpen = !desktopSidebarOpen" 
+                                x-show="!desktopSidebarOpen"
+                                x-transition:enter="transition ease-out duration-200"
+                                x-transition:enter-start="opacity-0 -translate-x-4"
+                                x-transition:enter-end="opacity-100 translate-x-0"
+                                class="hover:text-accent transition-transform rotate-180">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path></svg>
                         </button>
+                    </div>
 
-                        <!-- Alerts Dropdown -->
-                        <div x-show="notifOpen" 
-                             @click.away="notifOpen = false"
-                             x-transition:enter="transition ease-out duration-200"
-                             x-transition:enter-start="opacity-0 translate-y-2"
-                             x-transition:enter-end="opacity-100 translate-y-0"
-                             class="absolute right-0 mt-4 w-80 noir-border bg-[var(--bg-alt)] shadow-2xl z-[100] p-4 space-y-4"
-                             x-cloak>
-                            <div class="flex items-center justify-between border-b noir-border border-opacity-20 pb-2">
-                                <span class="text-[10px] font-bold uppercase tracking-widest opacity-60">System_Notifications</span>
-                                <button @click="notifOpen = false" class="text-[9px] font-bold hover:text-accent uppercase">[ Dismiss ]</button>
-                            </div>
-                            <div id="notif-content" class="max-h-64 overflow-y-auto custom-scrollbar">
-                                <p class="text-[10px] text-center py-8 opacity-40 uppercase tracking-widest font-bold">Scanning_For_New_Data...</p>
+                    <div class="flex items-center gap-6">
+                        <div class="relative" x-data="{ notifOpen: false, unreadCount: 0 }" 
+                             x-init="fetch('/api/notifications').then(r => r.json()).then(data => unreadCount = data.length)"
+                             @unread-count-update.window="unreadCount = $event.detail">
+                            <button @click="notifOpen = !notifOpen" 
+                                    hx-get="/api/notifications" 
+                                    hx-target="#notif-content"
+                                    :class="unreadCount > 0 ? 'animate-pulse-accent' : ''" class="relative hover:text-accent transition-colors flex items-center gap-2">
+                                <span class="text-xs font-bold tracking-widest uppercase">ALERTS</span>
+                                <span class="text-[10px] font-bold px-1.5 py-0.5 border border-accent bg-accent/10 text-accent" x-text="unreadCount">0</span>
+                            </button>
+
+                            <!-- Alerts Dropdown -->
+                            <div x-show="notifOpen" 
+                                 @click.away="notifOpen = false"
+                                 x-transition:enter="transition ease-out duration-200"
+                                 x-transition:enter-start="opacity-0 translate-y-2"
+                                 x-transition:enter-end="opacity-100 translate-y-0"
+                                 class="absolute right-0 mt-4 w-80 noir-border bg-[var(--bg-alt)] shadow-2xl z-[100] p-4 space-y-4"
+                                 x-cloak>
+                                <div class="flex items-center justify-between border-b noir-border border-opacity-20 pb-2">
+                                    <span class="text-[10px] font-bold uppercase tracking-widest opacity-60">System_Notifications</span>
+                                    <button @click="notifOpen = false" class="text-[9px] font-bold hover:text-accent uppercase">[ Dismiss ]</button>
+                                </div>
+                                <div id="notif-content" class="max-h-64 overflow-y-auto custom-scrollbar">
+                                    <p class="text-[10px] text-center py-8 opacity-40 uppercase tracking-widest font-bold">Scanning_For_New_Data...</p>
+                                </div>
                             </div>
                         </div>
+                        <a href="{{ url_for('auth.logout') }}" class="text-xs font-bold border noir-border px-3 py-1.5 hover:bg-red-600 hover:text-white transition uppercase tracking-widest">Shutdown</a>
                     </div>
-                    <a href="{{ url_for('auth.logout') }}" class="text-xs font-bold border noir-border px-3 py-1.5 hover:bg-red-600 hover:text-white transition uppercase tracking-widest">Shutdown</a>
                 </div>
             </header>
             {% endif %}
