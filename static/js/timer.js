@@ -35,6 +35,56 @@ document.addEventListener('DOMContentLoaded', () => {
     const TAB_ID = Math.random().toString(36).substring(2, 9);
     let isMaster = false;
 
+    function requestNotificationPermission() {
+        if (!('Notification' in window)) return;
+        if (Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+    }
+
+    function sendNotification(title, body) {
+        if (!settings.notifyPomodoro) return;
+        if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+        if (navigator.serviceWorker.controller) {
+            navigator.serviceWorker.ready.then(registration => {
+                registration.showNotification(title, {
+                    body: body,
+                    icon: '/static/favicon.svg',
+                    vibrate: [200, 100, 200],
+                    tag: 'modo-timer',
+                    renotify: true
+                });
+            });
+        } else {
+            new Notification(title, { body, icon: '/static/favicon.svg' });
+        }
+    }
+
+    function updateMediaSession(text) {
+        if (!('mediaSession' in navigator)) return;
+        const isBreak = currentMode === 'break';
+        const status = isRunning ? (isBreak ? 'Taking a Break' : 'Focusing') : 'Paused';
+        
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: `MODO: ${text}`,
+            artist: status,
+            album: 'Productivity OS',
+            artwork: [
+                { src: '/static/icon.png', sizes: '512x512', type: 'image/png' }
+            ]
+        });
+
+        navigator.mediaSession.playbackState = isRunning ? 'playing' : 'paused';
+
+        // Add handlers once
+        if (!window.mediaHandlersSet) {
+            navigator.mediaSession.setActionHandler('play', () => startTimer(false));
+            navigator.mediaSession.setActionHandler('pause', () => pauseTimer());
+            window.mediaHandlersSet = true;
+        }
+    }
+
     function init() {
         if (settings.serverTime) clockOffset = Date.now() - settings.serverTime;
         loadState();
@@ -320,6 +370,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         toggleButtons(elements.global, isRunning);
         toggleButtons(elements.page, isRunning);
+        updateMediaSession(text);
     }
 
     function toggleButtons(els, showPause) {
@@ -342,6 +393,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function startTimer(setNewEndTime = true) {
+        if ("vibrate" in navigator) navigator.vibrate(10);
+        requestNotificationPermission();
         if (settings.syncMode && settings.activeRoomId) {
             const csrfEl = document.querySelector('meta[name="csrf-token"]');
             fetch('/api/study/control', {
@@ -363,6 +416,10 @@ document.addEventListener('DOMContentLoaded', () => {
         isRunning = true;
         localStorage.setItem('timerStatus', 'running');
         localStorage.setItem('timerMode', currentMode);
+
+        const silentAudio = document.getElementById('silent-audio');
+        if (silentAudio) silentAudio.play().catch(() => {});
+
         if (setNewEndTime) {
             const nowAdjusted = Date.now() - clockOffset;
             localStorage.setItem('timerEnd', nowAdjusted + (secondsLeft * 1000));
@@ -411,6 +468,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function pauseTimer(notifyServer = true) {
+        if ("vibrate" in navigator) navigator.vibrate(10);
         if (notifyServer && settings.syncMode && settings.activeRoomId) {
              const csrfEl = document.querySelector('meta[name="csrf-token"]');
              fetch('/api/study/control', {
@@ -421,6 +479,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (timerInterval) clearInterval(timerInterval);
         isRunning = false;
+
+        const silentAudio = document.getElementById('silent-audio');
+        if (silentAudio) silentAudio.pause();
+
         localStorage.setItem('timerStatus', 'paused');
         localStorage.removeItem('timerEnd');
         updateUI();
@@ -466,6 +528,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function resetTimer() {
+        if ("vibrate" in navigator) navigator.vibrate([10, 30, 10]);
         if (settings.syncMode && settings.activeRoomId) {
              const csrfEl = document.querySelector('meta[name="csrf-token"]');
              fetch('/api/study/control', {
@@ -525,6 +588,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 updateUI();
                 if (settings.autoStartBreak) startTimer(true); else window.modoNotify('Focus Complete! Take a break?', 'warning');
+                sendNotification('Focus Complete!', 'Time for a break.');
             });
         } else {
             currentMode = 'focus';
@@ -542,6 +606,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     setTimeout(() => finishBreak(), 200);
                 });
             } else finishBreak();
+            sendNotification('Break Over!', 'Ready to focus?');
         }
     }
 

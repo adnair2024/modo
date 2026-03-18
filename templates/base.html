@@ -6,12 +6,21 @@
     <title>MODO // TERMINAL</title>
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register("{{ url_for('static', filename='js/sw.js') }}")
+                    .then(reg => console.log('SW Registered', reg))
+                    .catch(err => console.log('SW Failed', err));
+            });
+        }
+    </script>
     
     <!-- iOS PWA Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="MODO">
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename='favicon.svg') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon.png') }}">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -22,16 +31,26 @@
         function resolveTheme() {
             const theme = "{{ current_user.theme_preference if (current_user.is_authenticated and current_user.theme_preference) else 'light' }}";
             const html = document.documentElement;
+            let finalTheme = theme;
             if (theme === 'system') {
                 const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                html.setAttribute('data-theme', isDark ? 'dark' : 'light');
-            } else {
-                html.setAttribute('data-theme', theme);
+                finalTheme = isDark ? 'dark' : 'light';
             }
+            html.setAttribute('data-theme', finalTheme);
+            
+            // Update Meta Theme Color
+            const colors = {
+                'light': '#F2F2F2',
+                'dark': '#1A1A1A',
+                'amoled': '#000000'
+            };
+            const metaTheme = document.querySelector('meta[name="theme-color"]');
+            if (metaTheme) metaTheme.setAttribute('content', colors[finalTheme] || '#4f46e5');
         }
         resolveTheme();
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', resolveTheme);
     </script>
+    <meta name="theme-color" content="#4f46e5">
     <script>
         function getBodyData() {
             if (window.Alpine && window.Alpine.$data) return window.Alpine.$data(document.body);
@@ -347,6 +366,11 @@
                 </button>
             </nav>
 
+            <!-- Silent Audio for Media Session -->
+            <audio id="silent-audio" loop preload="auto" style="display: none;">
+                <source src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAQAI" type="audio/wav">
+            </audio>
+
             <!-- Global Timer: MOVED TO BOTTOM RIGHT -->
             <div id="global-timer-container" 
                  x-data="{ 
@@ -403,7 +427,7 @@
                  @mousemove.window="doDrag($event)"
                  @mouseup.window="stopDrag()"
                  :style="`left: ${x}px; top: ${y}px; cursor: ${isDragging ? 'grabbing' : 'default'}`"
-                 class="fixed noir-border bg-[var(--bg-alt)] shadow-2xl z-50 overflow-hidden safe-mb safe-mr"
+                 class="hidden md:block fixed noir-border bg-[var(--bg-alt)] shadow-2xl z-50 overflow-hidden safe-mb safe-mr"
                  :class="minimized ? 'w-12 h-12 rounded-full cursor-grab' : 'p-4 flex flex-col gap-4 min-w-[300px]'">
                 
                 <!-- Minimized View -->
@@ -509,7 +533,8 @@
             activeRoomId: {{ active_sync_room.id if active_sync_room else 'null' }},
             serverMode: '{{ current_user.current_focus_mode }}',
             serverEnd: {{ current_user.current_focus_end.timestamp() * 1000 if current_user.current_focus_end else 'null' }},
-            serverTime: {{ now.timestamp() * 1000 }}
+            serverTime: {{ now.timestamp() * 1000 }},
+            notifyPomodoro: {{ 'true' if current_user.notify_pomodoro else 'false' }}
         };
 
         (function() {
