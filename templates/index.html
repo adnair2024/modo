@@ -127,9 +127,10 @@
             {% if current_user.is_admin %}
             <!-- Genesis Sentient Terminal -->
             <div id="panel-genesis" 
-                 :class="genesisFloating ? 'fixed z-[60] w-[450px] shadow-2xl' : 'relative'"
+                 x-show="!genesisFloating || (genesisFloating && window.innerWidth > 768)"
+                 :class="genesisFloating ? 'fixed z-[60] w-[450px] shadow-2xl flex flex-col' : (history.length === 0 ? 'hidden md:flex md:flex-col relative' : 'relative flex flex-col')"
                  :style="genesisFloating ? `left: ${gx}px; top: ${gy}px;` : ''"
-                 class="noir-border bg-[var(--bg-alt)] p-6 space-y-4 transition-all duration-500 focus-within:border-accent h-96 flex flex-col">
+                 class="noir-border bg-[var(--bg-alt)] p-6 space-y-4 transition-all duration-500 focus-within:border-accent h-96">
                 
                 <div class="flex items-center justify-between border-b noir-border border-opacity-20 pb-2 flex-shrink-0 cursor-grab panel-handle"
                      @mousedown="startDragGenesis($event)">
@@ -295,7 +296,7 @@
             </div>
 
             <!-- Events (Mini View) -->
-            <div id="panel-events" class="noir-border bg-[var(--bg-alt)] p-6">
+            <div id="panel-events" class="noir-border bg-[var(--bg-alt)] p-6 {% if not today_events %}hidden md:block{% endif %}">
                 <div class="flex flex-col items-center relative mb-6 border-b noir-border border-opacity-20 pb-4 text-center cursor-grab panel-handle">
                     <span class="text-xs font-bold uppercase tracking-widest text-[var(--text-main)]">Scheduled_Events</span>
                     <a href="{{ url_for('schedule.schedule') }}" class="absolute right-0 top-0 text-[10px] font-bold opacity-70 hover:text-accent hover:underline uppercase tracking-widest transition-colors">Full_Grid</a>

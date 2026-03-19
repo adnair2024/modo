@@ -3,11 +3,15 @@
 {% block content %}
 <div class="max-w-4xl mx-auto space-y-12">
     <!-- Header Section -->
-    <div class="flex flex-col items-center justify-center border-b noir-border pt-6 pb-6 space-y-4 text-center">
+    <div class="flex flex-col items-center justify-center border-b noir-border pt-6 pb-6 space-y-4 text-center relative">
         <div class="space-y-1">
             <h1 class="text-4xl font-bold tracking-tighter mono-display uppercase">System_Config</h1>
             <p class="text-[10px] font-bold opacity-50 uppercase tracking-widest">PATH: /ROOT/SETTINGS</p>
         </div>
+        <button onclick="document.getElementById('save-settings').click()" 
+                class="absolute right-0 bottom-4 text-[10px] font-bold border noir-border px-3 py-1 hover:bg-accent hover:text-[var(--bg-alt)] transition-colors uppercase tracking-widest md:hidden">
+            COMMIT
+        </button>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-12" x-data="{ vimMode: {{ 'true' if current_user.enable_vim_mode else 'false' }} }">
@@ -201,21 +205,23 @@
                 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
             },
             body: JSON.stringify(settings)
-        }).then(response => {
+        }).then(async response => {
             if (response.ok) {
-                window.modoAlert('CONFIG_COMMITTED', 'SYNC_SUCCESS');
+                if ("vibrate" in navigator) navigator.vibrate([10, 50, 10]);
+                await window.modoAlert('CONFIG_COMMITTED', 'SYNC_SUCCESS');
                 location.reload();
             } else {
                 console.error('Failed to save settings:', response.statusText);
-                window.modoAlert('CONFIG_ERROR: ' + response.statusText, 'SYNC_FAILURE');
+                await window.modoAlert('CONFIG_ERROR: ' + response.statusText, 'SYNC_FAILURE');
             }
-        }).catch(err => {
+        }).catch(async err => {
             console.error('Fetch error:', err);
-            window.modoAlert('SYSTEM_NET_ERROR', 'CRITICAL_ERROR');
+            await window.modoAlert('SYSTEM_NET_ERROR', 'CRITICAL_ERROR');
         });
     });
 
     function setTheme(theme) {
+        if ("vibrate" in navigator) navigator.vibrate(10);
         fetch('/api/update_settings', {
             method: 'POST',
             headers: {
@@ -223,7 +229,28 @@
                 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
             },
             body: JSON.stringify({theme: theme})
-        }).then(() => { location.reload(); });
+        }).then(async () => { 
+            await window.modoAlert('THEME_UPDATED', 'SYNC_SUCCESS');
+            location.reload(); 
+        });
     }
 </script>
+
+<!-- Mobile Floating Save Button -->
+<div class="fixed bottom-24 right-6 md:hidden z-50">
+    <button onclick="document.getElementById('save-settings').click()" 
+            class="w-14 h-14 bg-accent text-[var(--bg-alt)] noir-border shadow-2xl flex items-center justify-center animate-bounce-subtle">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+    </button>
+</div>
+
+<style>
+@keyframes bounce-subtle {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+.animate-bounce-subtle {
+    animation: bounce-subtle 2s infinite ease-in-out;
+}
+</style>
 {% endblock %}
