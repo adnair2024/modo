@@ -52,21 +52,6 @@
     </script>
     <meta name="theme-color" content="#4f46e5">
     <script>
-        // Keyboard Resilience for iOS PWA
-        window.addEventListener('blur', (e) => {
-            if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
-                // Force layout recalculation and scroll reset on iOS
-                setTimeout(() => {
-                    window.scrollTo(0, 0);
-                    document.body.scrollTop = 0;
-                    // Trigger a tiny resize to force redraw
-                    window.dispatchEvent(new Event('resize'));
-                }, 10);
-            }
-        }, true);
-    </script>
-
-    <script>
         function getBodyData() {
             if (window.Alpine && window.Alpine.$data) return window.Alpine.$data(document.body);
             if (document.body.__x && document.body.__x.$data) return document.body.__x.$data;
@@ -228,7 +213,7 @@
 
         <!-- Sidebar: Digital Noir / Terminal Style -->
         <aside :class="desktopSidebarOpen ? 'translate-x-0 w-64 opacity-100' : '-translate-x-full w-0 opacity-0'" 
-               class="fixed inset-y-0 left-0 z-50 border-r noir-border bg-[var(--bg-main)] transition-all duration-300 flex flex-col h-dvh overflow-y-auto overflow-x-hidden md:static safe-pl">
+               class="fixed inset-y-0 left-0 z-50 border-r noir-border bg-[var(--bg-main)] transition-all duration-300 flex flex-col overflow-y-auto overflow-x-hidden md:static safe-pl">
 
             
             <div class="border-b noir-border text-white dark:text-black bg-black dark:bg-white safe-pt">
@@ -301,7 +286,7 @@
         {% endif %}
 
         <!-- Main Content Canvas -->
-        <div class="flex-1 flex flex-col overflow-hidden h-dvh bg-[var(--bg-main)] transition-all duration-300">
+        <div class="flex-1 flex flex-col overflow-hidden bg-[var(--bg-main)] transition-all duration-300">
             {% if current_user.is_authenticated %}
             <header class="border-b noir-border bg-[var(--bg-main)] z-40 safe-pt safe-pl safe-pr">
                 <div class="h-16 flex items-center justify-between px-6">
@@ -364,152 +349,152 @@
                 
                 {% block content %}{% endblock %}
             </main>
-
-            {% if current_user.is_authenticated %}
-            <!-- Mobile Bottom Nav -->
-            <nav class="bottom-nav md:hidden">
-                <a href="{{ url_for('main.index') }}" class="bottom-nav-item {{ 'active' if request.endpoint == 'main.index' }}">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
-                    <span class="text-[8px] font-bold uppercase tracking-tighter">CMD</span>
-                </a>
-                <a href="{{ url_for('main.timer') }}" class="bottom-nav-item {{ 'active' if request.endpoint == 'main.timer' }}">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    <span class="text-[8px] font-bold uppercase tracking-tighter">FOCUS</span>
-                </a>
-                <a href="{{ url_for('schedule.schedule') }}" class="bottom-nav-item {{ 'active' if request.endpoint == 'schedule.schedule' }}">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                    <span class="text-[8px] font-bold uppercase tracking-tighter">PLAN</span>
-                </a>
-                <button @click="desktopSidebarOpen = true" class="bottom-nav-item">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-                    <span class="text-[8px] font-bold uppercase tracking-tighter">MORE</span>
-                </button>
-            </nav>
-
-            <!-- Silent Audio for Media Session -->
-            <audio id="silent-audio" loop preload="auto" style="display: none;">
-                <source src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAQAI" type="audio/wav">
-            </audio>
-
-            <!-- Global Timer: MOVED TO BOTTOM RIGHT -->
-            <div id="global-timer-container" 
-                 x-data="{ 
-                    open: true, 
-                    minimized: localStorage.getItem('timerMinimized') === 'true' || window.location.pathname === '/timer',
-                    isDragging: false, 
-                    x: parseInt(localStorage.getItem('timerX')) || window.innerWidth - 340, 
-                    y: parseInt(localStorage.getItem('timerY')) || window.innerHeight - 300,
-                    offsetX: 0,
-                    offsetY: 0,
-                    startDrag(e) {
-                        if (e.target.closest('button') || e.target.closest('select')) return;
-                        this.isDragging = true;
-                        this.offsetX = e.clientX - this.x;
-                        this.offsetY = e.clientY - this.y;
-                        document.body.style.userSelect = 'none';
-                    },
-                    doDrag(e) {
-                        if (this.isDragging) {
-                            requestAnimationFrame(() => {
-                                let newX = e.clientX - this.offsetX;
-                                let newY = e.clientY - this.offsetY;
-                                const width = this.minimized ? 48 : 300;
-                                const height = this.minimized ? 48 : 250;
-                                newX = Math.max(0, Math.min(newX, window.innerWidth - width));
-                                newY = Math.max(0, Math.min(newY, window.innerHeight - height));
-                                this.x = newX;
-                                this.y = newY;
-                                localStorage.setItem('timerX', this.x);
-                                localStorage.setItem('timerY', this.y);
-                            });
-                        }
-                    },
-                    stopDrag() {
-                        this.isDragging = false;
-                        document.body.style.userSelect = '';
-                    }
-                 }"
-                 x-init="
-                    const check = () => {
-                        const width = minimized ? 48 : 300;
-                        const height = minimized ? 48 : 250;
-                        x = Math.max(0, Math.min(x, window.innerWidth - width));
-                        y = Math.max(0, Math.min(y, window.innerHeight - height));
-                    };
-                    check();
-                    setTimeout(check, 100);
-                    $watch('minimized', value => {
-                        localStorage.setItem('timerMinimized', value);
-                        setTimeout(check, 50);
-                    });
-                 "
-                 @resize.window="const width = minimized ? 48 : 300; const height = minimized ? 48 : 250; x = Math.max(0, Math.min(x, window.innerWidth - width)); y = Math.max(0, Math.min(y, window.innerHeight - height));"
-                 @mousemove.window="doDrag($event)"
-                 @mouseup.window="stopDrag()"
-                 :style="`left: ${x}px; top: ${y}px; cursor: ${isDragging ? 'grabbing' : 'default'}`"
-                 class="hidden md:block fixed noir-border bg-[var(--bg-alt)] shadow-2xl z-50 overflow-hidden safe-mb safe-mr"
-                 :class="minimized ? 'w-12 h-12 rounded-full cursor-grab' : 'p-4 flex flex-col gap-4 min-w-[300px]'">
-                
-                <!-- Minimized View -->
-                <div x-show="minimized" 
-                     class="w-full h-full flex items-center justify-center border-2 border-accent bg-[var(--bg-main)] text-accent hover:scale-110 transition-transform select-none cursor-pointer"
-                     @mousedown="startDrag($event)"
-                     @dblclick="minimized = false">
-                    <span id="min-timer-display" class="text-[9px] font-bold tracking-tighter">--:--</span>
-                </div>
-
-                <!-- Full View -->
-                <div x-show="!minimized" class="flex flex-col gap-4">
-                    <div class="flex justify-between items-center border-b noir-border pb-2 opacity-50 cursor-grab" @mousedown="startDrag($event)">
-                        <div class="flex items-center gap-2">
-                            <span class="text-[9px] font-bold uppercase tracking-widest">Hardware_Monitor</span>
-                            <div class="flex items-center gap-2">
-                                <span class="text-[8px] font-bold" id="global-timer-status">IDLE</span>
-                                <div class="w-1.5 h-1.5 bg-accent animate-pulse" id="global-timer-dot"></div>
-                            </div>
-                        </div>
-                        <button @click="minimized = true" class="text-[10px] font-bold hover:text-accent transition-colors">[ _ ]</button>
-                    </div>
-                    
-                    <div id="global-active-process" class="hidden">
-                        <p class="text-[8px] font-bold opacity-40 uppercase tracking-widest mb-1">Active_Process</p>
-                        <p class="text-[10px] font-bold text-accent truncate uppercase" id="global-active-subtask-display"></p>
-                    </div>
-                    
-                    <div class="flex items-center justify-between gap-8">
-                        <div class="flex flex-col gap-2">
-                            <span id="global-timer-display" class="text-3xl font-bold mono-display text-accent tracking-widest"></span>
-                            <div id="global-pom-progress" class="flex gap-1"></div>
-                        </div>
-                        
-                        <div class="flex-1 flex flex-col text-right">
-                            <span class="text-[8px] font-bold opacity-40 uppercase mb-1">Execution_Target</span>
-                            <select id="global-timer-task" class="bg-transparent border noir-border border-opacity-20 text-[10px] font-bold focus:outline-none focus:text-accent focus:border-accent uppercase p-1 text-right mb-1">
-                                <option value="">[IDLE_STATE]</option>
-                                {% for task in current_user.all_accessible_tasks %}
-                                    {% if task.status != 'done' %}
-                                    <option value="{{ task.id }}" data-est="{{ task.estimated_pomodoros }}" data-done="{{ task.completed_pomodoros }}">{{ task.title }}</option>
-                                    {% endif %}
-                                {% endfor %}
-                            </select>
-                            <select id="global-timer-subtask" class="bg-transparent border noir-border border-opacity-20 text-[9px] font-bold focus:outline-none focus:text-accent focus:border-accent uppercase p-1 text-right hidden">
-                                <option value="">[NO_SUBTASK]</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-4 gap-2">
-                        <button id="global-timer-start" class="noir-button text-[9px] py-2">START</button>
-                        <button id="global-timer-pause" class="noir-button text-[9px] py-2 hidden" style="filter: hue-rotate(45deg);">PAUSE</button>
-                        <button id="global-timer-skip" class="noir-button-outline text-[9px] py-2 hidden">SKIP</button>
-                        <button id="global-timer-reset" class="noir-button-outline text-[9px] py-2">RESET</button>
-                        <button id="global-timer-end" class="noir-button-outline text-[9px] py-2 hidden">END</button>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
         </div>
     </div>
+
+    {% if current_user.is_authenticated %}
+    <!-- Mobile Bottom Nav -->
+    <nav class="bottom-nav md:hidden">
+        <a href="{{ url_for('main.index') }}" class="bottom-nav-item {{ 'active' if request.endpoint == 'main.index' }}">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+            <span class="text-[8px] font-bold uppercase tracking-tighter">CMD</span>
+        </a>
+        <a href="{{ url_for('main.timer') }}" class="bottom-nav-item {{ 'active' if request.endpoint == 'main.timer' }}">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <span class="text-[8px] font-bold uppercase tracking-tighter">FOCUS</span>
+        </a>
+        <a href="{{ url_for('schedule.schedule') }}" class="bottom-nav-item {{ 'active' if request.endpoint == 'schedule.schedule' }}">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+            <span class="text-[8px] font-bold uppercase tracking-tighter">PLAN</span>
+        </a>
+        <button @click="document.body.__x.$data.desktopSidebarOpen = true" class="bottom-nav-item">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            <span class="text-[8px] font-bold uppercase tracking-tighter">MORE</span>
+        </button>
+    </nav>
+
+    <!-- Silent Audio for Media Session -->
+    <audio id="silent-audio" loop preload="auto" style="display: none;">
+        <source src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAQAI" type="audio/wav">
+    </audio>
+
+    <!-- Global Timer: MOVED TO BOTTOM RIGHT -->
+    <div id="global-timer-container" 
+         x-data="{ 
+            open: true, 
+            minimized: localStorage.getItem('timerMinimized') === 'true' || window.location.pathname === '/timer',
+            isDragging: false, 
+            x: parseInt(localStorage.getItem('timerX')) || window.innerWidth - 340, 
+            y: parseInt(localStorage.getItem('timerY')) || window.innerHeight - 300,
+            offsetX: 0,
+            offsetY: 0,
+            startDrag(e) {
+                if (e.target.closest('button') || e.target.closest('select')) return;
+                this.isDragging = true;
+                this.offsetX = e.clientX - this.x;
+                this.offsetY = e.clientY - this.y;
+                document.body.style.userSelect = 'none';
+            },
+            doDrag(e) {
+                if (this.isDragging) {
+                    requestAnimationFrame(() => {
+                        let newX = e.clientX - this.offsetX;
+                        let newY = e.clientY - this.offsetY;
+                        const width = this.minimized ? 48 : 300;
+                        const height = this.minimized ? 48 : 250;
+                        newX = Math.max(0, Math.min(newX, window.innerWidth - width));
+                        newY = Math.max(0, Math.min(newY, window.innerHeight - height));
+                        this.x = newX;
+                        this.y = newY;
+                        localStorage.setItem('timerX', this.x);
+                        localStorage.setItem('timerY', this.y);
+                    });
+                }
+            },
+            stopDrag() {
+                this.isDragging = false;
+                document.body.style.userSelect = '';
+            }
+         }"
+         x-init="
+            const check = () => {
+                const width = minimized ? 48 : 300;
+                const height = minimized ? 48 : 250;
+                x = Math.max(0, Math.min(x, window.innerWidth - width));
+                y = Math.max(0, Math.min(y, window.innerHeight - height));
+            };
+            check();
+            setTimeout(check, 100);
+            $watch('minimized', value => {
+                localStorage.setItem('timerMinimized', value);
+                setTimeout(check, 50);
+            });
+         "
+         @resize.window="const width = minimized ? 48 : 300; const height = minimized ? 48 : 250; x = Math.max(0, Math.min(x, window.innerWidth - width)); y = Math.max(0, Math.min(y, window.innerHeight - height));"
+         @mousemove.window="doDrag($event)"
+         @mouseup.window="stopDrag()"
+         :style="`left: ${x}px; top: ${y}px; cursor: ${isDragging ? 'grabbing' : 'default'}`"
+         class="hidden md:block fixed noir-border bg-[var(--bg-alt)] shadow-2xl z-50 overflow-hidden safe-mb safe-mr"
+         :class="minimized ? 'w-12 h-12 rounded-full cursor-grab' : 'p-4 flex flex-col gap-4 min-w-[300px]'">
+        
+        <!-- Minimized View -->
+        <div x-show="minimized" 
+             class="w-full h-full flex items-center justify-center border-2 border-accent bg-[var(--bg-main)] text-accent hover:scale-110 transition-transform select-none cursor-pointer"
+             @mousedown="startDrag($event)"
+             @dblclick="minimized = false">
+            <span id="min-timer-display" class="text-[9px] font-bold tracking-tighter">--:--</span>
+        </div>
+
+        <!-- Full View -->
+        <div x-show="!minimized" class="flex flex-col gap-4">
+            <div class="flex justify-between items-center border-b noir-border pb-2 opacity-50 cursor-grab" @mousedown="startDrag($event)">
+                <div class="flex items-center gap-2">
+                    <span class="text-[9px] font-bold uppercase tracking-widest">Hardware_Monitor</span>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[8px] font-bold" id="global-timer-status">IDLE</span>
+                        <div class="w-1.5 h-1.5 bg-accent animate-pulse" id="global-timer-dot"></div>
+                    </div>
+                </div>
+                <button @click="minimized = true" class="text-[10px] font-bold hover:text-accent transition-colors">[ _ ]</button>
+            </div>
+            
+            <div id="global-active-process" class="hidden">
+                <p class="text-[8px] font-bold opacity-40 uppercase tracking-widest mb-1">Active_Process</p>
+                <p class="text-[10px] font-bold text-accent truncate uppercase" id="global-active-subtask-display"></p>
+            </div>
+            
+            <div class="flex items-center justify-between gap-8">
+                <div class="flex flex-col gap-2">
+                    <span id="global-timer-display" class="text-3xl font-bold mono-display text-accent tracking-widest"></span>
+                    <div id="global-pom-progress" class="flex gap-1"></div>
+                </div>
+                
+                <div class="flex-1 flex flex-col text-right">
+                    <span class="text-[8px] font-bold opacity-40 uppercase mb-1">Execution_Target</span>
+                    <select id="global-timer-task" class="bg-transparent border noir-border border-opacity-20 text-[10px] font-bold focus:outline-none focus:text-accent focus:border-accent uppercase p-1 text-right mb-1">
+                        <option value="">[IDLE_STATE]</option>
+                        {% for task in current_user.all_accessible_tasks %}
+                            {% if task.status != 'done' %}
+                            <option value="{{ task.id }}" data-est="{{ task.estimated_pomodoros }}" data-done="{{ task.completed_pomodoros }}">{{ task.title }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                    <select id="global-timer-subtask" class="bg-transparent border noir-border border-opacity-20 text-[9px] font-bold focus:outline-none focus:text-accent focus:border-accent uppercase p-1 text-right hidden">
+                        <option value="">[NO_SUBTASK]</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-4 gap-2">
+                <button id="global-timer-start" class="noir-button text-[9px] py-2">START</button>
+                <button id="global-timer-pause" class="noir-button text-[9px] py-2 hidden" style="filter: hue-rotate(45deg);">PAUSE</button>
+                <button id="global-timer-skip" class="noir-button-outline text-[9px] py-2 hidden">SKIP</button>
+                <button id="global-timer-reset" class="noir-button-outline text-[9px] py-2">RESET</button>
+                <button id="global-timer-end" class="noir-button-outline text-[9px] py-2 hidden">END</button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
     
     <script>
         const themeToggle = document.getElementById('theme-toggle');
