@@ -89,6 +89,11 @@ body {
     font-family: 'VT323', monospace;
 }
 
+.h-dvh {
+    height: 100vh;
+    height: 100dvh;
+}
+
 [x-cloak] { 
     display: none !important; 
 }

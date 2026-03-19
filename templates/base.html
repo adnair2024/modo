@@ -52,6 +52,21 @@
     </script>
     <meta name="theme-color" content="#4f46e5">
     <script>
+        // Keyboard Resilience for iOS PWA
+        window.addEventListener('blur', (e) => {
+            if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
+                // Force layout recalculation and scroll reset on iOS
+                setTimeout(() => {
+                    window.scrollTo(0, 0);
+                    document.body.scrollTop = 0;
+                    // Trigger a tiny resize to force redraw
+                    window.dispatchEvent(new Event('resize'));
+                }, 10);
+            }
+        }, true);
+    </script>
+
+    <script>
         function getBodyData() {
             if (window.Alpine && window.Alpine.$data) return window.Alpine.$data(document.body);
             if (document.body.__x && document.body.__x.$data) return document.body.__x.$data;
@@ -148,7 +163,7 @@
         systemModal: { open: false, title: '', msg: '', isConfirm: false, resolve: null } 
       }"
       x-init="$watch('desktopSidebarOpen', value => localStorage.setItem('desktopSidebarOpen', value))">
-    <div class="flex h-screen overflow-hidden" x-data="{ 
+    <div class="flex h-dvh overflow-hidden" x-data="{ 
         toasts: [],
         addToast(msg, type = 'info') {
             const id = Date.now();
@@ -213,7 +228,8 @@
 
         <!-- Sidebar: Digital Noir / Terminal Style -->
         <aside :class="desktopSidebarOpen ? 'translate-x-0 w-64 opacity-100' : '-translate-x-full w-0 opacity-0'" 
-               class="fixed inset-y-0 left-0 z-50 border-r noir-border bg-[var(--bg-main)] transition-all duration-300 flex flex-col h-screen overflow-y-auto overflow-x-hidden md:static safe-pl">
+               class="fixed inset-y-0 left-0 z-50 border-r noir-border bg-[var(--bg-main)] transition-all duration-300 flex flex-col h-dvh overflow-y-auto overflow-x-hidden md:static safe-pl">
+
             
             <div class="border-b noir-border text-white dark:text-black bg-black dark:bg-white safe-pt">
                 <div class="h-16 flex items-center justify-between px-6">
@@ -285,7 +301,7 @@
         {% endif %}
 
         <!-- Main Content Canvas -->
-        <div class="flex-1 flex flex-col overflow-hidden h-screen bg-[var(--bg-main)] transition-all duration-300">
+        <div class="flex-1 flex flex-col overflow-hidden h-dvh bg-[var(--bg-main)] transition-all duration-300">
             {% if current_user.is_authenticated %}
             <header class="border-b noir-border bg-[var(--bg-main)] z-40 safe-pt safe-pl safe-pr">
                 <div class="h-16 flex items-center justify-between px-6">
