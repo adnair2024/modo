@@ -44,20 +44,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function sendNotification(title, body) {
         if (!settings.notifyPomodoro) return;
-        if (!('Notification' in window) || Notification.permission !== 'granted') return;
+        if (!('Notification' in window)) return;
+        if (Notification.permission !== 'granted') {
+             console.log("Notification permission not granted: ", Notification.permission);
+             return;
+        }
 
         if (navigator.serviceWorker.controller) {
-            navigator.serviceWorker.ready.then(registration => {
-                registration.showNotification(title, {
-                    body: body,
-                    icon: '/static/favicon.svg',
-                    vibrate: [200, 100, 200],
-                    tag: 'modo-timer',
-                    renotify: true
-                });
+            navigator.serviceWorker.controller.postMessage({
+                type: 'SHOW_NOTIFICATION',
+                title: title,
+                body: body
             });
         } else {
-            new Notification(title, { body, icon: '/static/favicon.svg' });
+            // Fallback for non-SW environments
+            new Notification(title, { body, icon: '/static/icon.png' });
         }
     }
 
@@ -568,8 +569,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function completeTimer() {
         if (!isMaster) return; // Only master handles completion
-        pauseTimer();
+        
         if (currentMode === 'focus') {
+            sendNotification('Focus Complete!', 'Time for a break.');
+            pauseTimer();
             const csrfEl = document.querySelector('meta[name="csrf-token"]');
             fetch('/api/log_session', {
                 method: 'POST',
@@ -588,9 +591,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 updateUI();
                 if (settings.autoStartBreak) startTimer(true); else window.modoNotify('Focus Complete! Take a break?', 'warning');
-                sendNotification('Focus Complete!', 'Time for a break.');
             });
         } else {
+            sendNotification('Break Over!', 'Ready to focus?');
+            pauseTimer();
             currentMode = 'focus';
             secondsLeft = (settings.focusDuration || 25) * 60;
             localStorage.setItem('timerMode', currentMode);
@@ -606,7 +610,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     setTimeout(() => finishBreak(), 200);
                 });
             } else finishBreak();
-            sendNotification('Break Over!', 'Ready to focus?');
         }
     }
 

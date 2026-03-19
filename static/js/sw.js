@@ -3,7 +3,7 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-    event.waitUntil(self.clients.claim());
+    event.waitUntil(clients.claim());
 });
 
 self.addEventListener('notificationclick', (event) => {
@@ -22,4 +22,19 @@ self.addEventListener('notificationclick', (event) => {
             return clients.openWindow('/');
         })
     );
+});
+
+// Handle messages to show notifications from background
+self.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+        const { title, body } = event.data;
+        self.registration.showNotification(title, {
+            body: body,
+            icon: '/static/icon.png',
+            badge: '/static/icon.png',
+            vibrate: [200, 100, 200],
+            tag: 'modo-timer',
+            renotify: true
+        });
+    }
 });
