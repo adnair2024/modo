@@ -59,6 +59,16 @@
             return null;
         }
 
+        // Reset scroll and layout shifts on mobile load/navigation
+        function resetLayout() {
+            window.scrollTo(0, 0);
+            document.body.scrollTop = 0;
+            // Force a slight reflow if needed
+            window.dispatchEvent(new Event('resize'));
+        }
+        document.addEventListener('DOMContentLoaded', resetLayout);
+        document.addEventListener('htmx:afterSwap', resetLayout);
+
         window.modoAlert = (msg, title = 'SYSTEM_ALERT') => {
             return new Promise(resolve => {
                 const bodyData = getBodyData();
