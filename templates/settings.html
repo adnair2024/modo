@@ -68,18 +68,18 @@
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-12 pt-4">
                     <div class="space-y-4">
-                        <div class="flex items-center justify-between group cursor-pointer" @click="$refs.autoBreak.click()">
+                        <label class="flex items-center justify-between group cursor-pointer">
                             <span class="text-xs font-bold uppercase tracking-widest">Auto_Break</span>
-                            <input type="checkbox" id="auto-break" x-ref="autoBreak" class="accent-accent w-4 h-4" {{ 'checked' if current_user.auto_start_break else '' }}>
-                        </div>
-                        <div class="flex items-center justify-between group cursor-pointer" @click="$refs.autoFocus.click()">
+                            <input type="checkbox" id="auto-break" class="accent-accent w-5 h-5" {{ 'checked' if current_user.auto_start_break else '' }}>
+                        </label>
+                        <label class="flex items-center justify-between group cursor-pointer">
                             <span class="text-xs font-bold uppercase tracking-widest">Auto_Focus</span>
-                            <input type="checkbox" id="auto-focus" x-ref="autoFocus" class="accent-accent w-4 h-4" {{ 'checked' if current_user.auto_start_focus else '' }}>
-                        </div>
-                        <div class="flex items-center justify-between group cursor-pointer" @click="$refs.autoPriority.click()">
+                            <input type="checkbox" id="auto-focus" class="accent-accent w-5 h-5" {{ 'checked' if current_user.auto_start_focus else '' }}>
+                        </label>
+                        <label class="flex items-center justify-between group cursor-pointer">
                             <span class="text-xs font-bold uppercase tracking-widest">Auto_Task_Select</span>
-                            <input type="checkbox" id="auto-priority" x-ref="autoPriority" class="accent-accent w-4 h-4" {{ 'checked' if current_user.auto_select_priority else '' }}>
-                        </div>
+                            <input type="checkbox" id="auto-priority" class="accent-accent w-5 h-5" {{ 'checked' if current_user.auto_select_priority else '' }}>
+                        </label>
                     </div>
                     
                     <div class="space-y-4">
@@ -136,15 +136,17 @@
                     <h2 class="text-xs font-bold uppercase tracking-[0.2em] text-accent">Sys_Access</h2>
                 </div>
                 <div class="space-y-6 pt-4">
-                    <div class="flex items-center justify-between group cursor-pointer" @click="vimMode = !vimMode">
+                    <label class="flex items-center justify-between group cursor-pointer">
                         <span class="text-xs font-bold uppercase tracking-widest">Enable_Vim_Mode</span>
-                        <div :class="vimMode ? 'bg-accent' : 'bg-gray-200 dark:bg-white/10'" class="w-10 h-4 transition-colors"></div>
-                        <input type="hidden" id="enable-vim-mode" :value="vimMode">
-                    </div>
-                    <div class="flex items-center justify-between group cursor-pointer" @click="$refs.showLastSeen.click()">
+                        <div class="flex items-center">
+                            <input type="checkbox" id="vim-toggle" x-model="vimMode" class="accent-accent w-5 h-5">
+                            <input type="hidden" id="enable-vim-mode" :value="vimMode">
+                        </div>
+                    </label>
+                    <label class="flex items-center justify-between group cursor-pointer">
                         <span class="text-xs font-bold uppercase tracking-widest">Online_Status</span>
-                        <input type="checkbox" id="show-last-seen" x-ref="showLastSeen" class="accent-accent" {{ 'checked' if current_user.show_last_seen else '' }}>
-                    </div>
+                        <input type="checkbox" id="show-last-seen" class="accent-accent w-5 h-5" {{ 'checked' if current_user.show_last_seen else '' }}>
+                    </label>
                 </div>
             </section>
 
